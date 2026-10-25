@@ -74,8 +74,9 @@ Claude Code ──hooks──▶ agent-theatre (local) ──WebSocket──▶ 
    only to open, celebrate and close, so it never gets cluttered. One key light: long soft
    cast shadows, gradient faces with ambient occlusion and rim light, aerial haze on far rows,
    bloom only on lamps and lit windows, cloud shadows drifting over the ground.
-   `prefers-reduced-motion` respected. Twenty stages; a cast of twelve characters from one
-   procedural routine.
+   `prefers-reduced-motion` respected. Twenty stages, each with its own silhouette — gabled
+   harbour houses, pagoda tiers, onion domes, moonbase capsules, bazaar tents — on the same
+   geometry; a cast of twelve characters from one procedural routine.
 5. **Sound.** Every beat has a sound, all synthesized at runtime with the Web Audio API — no
    audio files, no licences to worry about. Every stage has its own voice (waveform, pitch,
    decay, the surface underfoot) and its own ambience — washes, pads and occasional details

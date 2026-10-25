@@ -4,6 +4,7 @@ import type { Place, World } from "@agent-theatre/core";
 import { hashString, mulberry32 } from "@agent-theatre/core";
 import { corners, depthOf, flat, iso, lerpP, up, type Pt } from "./iso.js";
 import type { Palette, SetTheme } from "../sets/types.js";
+import { ARCHITECTURE } from "../sets/architecture.js";
 
 export type LampState = "idle" | "scan" | "fail" | "pass";
 
@@ -31,7 +32,7 @@ export class WorldLayer {
     this.container.addChild(this.ripples, this.terrain, this.paths, this.labels, this.shadows, this.clouds, this.objects);
     this.objects.sortableChildren = true;
     // emissive bloom: only the brightest things (lamps, windows, embers) glow; everything else is untouched
-    this.objects.filters = [new AdvancedBloomFilter({ threshold: 0.86, bloomScale: 0.55, brightness: 1, blur: 5, quality: 4 })];
+    this.objects.filters = [new AdvancedBloomFilter({ threshold: 0.9, bloomScale: 0.42, brightness: 1, blur: 5, quality: 4 })];
     this.shadows.alpha = 0.9;
     this.drawTerrain();
     this.drawPaths();
@@ -123,13 +124,8 @@ export class WorldLayer {
       const door = lerpP(c[3], c[2], 0.3);
       g.poly([door.x - 3, door.y - 1, door.x + 3, door.y + 1, door.x + 3, door.y - 9, door.x - 3, door.y - 11]).fill({ color: P.roofD, alpha: 0.9 });
     }
-    if (p.kind === "building" && fp <= 2) {
-      const apex = up(iso(p.gx + fp / 2, p.gy + fp / 2), h + 14 + fp * 8);
-      this.pyramid(g, c.map((q) => up(q, h)) as [Pt, Pt, Pt, Pt], apex, P.roof, P.roofD);
-      // eave line
-      g.poly(flat(c.map((q) => up(q, h)))).stroke({ width: 1.2, color: P.roofD, alpha: 0.5 });
-    }
-    if (p.kind === "building" && fp >= 3) {
+    if (p.kind === "building" && fp <= 2) this.roof(g, p, h, P);
+    if (p.kind === "building" && fp >= 3 && ARCHITECTURE[this.theme.id].roof !== "capsule" && ARCHITECTURE[this.theme.id].roof !== "dome") {
       // tower: parapet band, a stepped penthouse, mast + lantern
       const t = c.map((q) => up(q, h)) as [Pt, Pt, Pt, Pt];
       g.poly(flat([t[3], t[2], up(t[2], 4), up(t[3], 4)])).fill(P.roofD);
@@ -165,6 +161,103 @@ export class WorldLayer {
     }
     if (d.glow > 0) this.outline(g, c, h, 0xffc85a, 0.4 + 0.4 * pulse);
     if (d.scaffold > 0) this.scaffold(g, p, h, d.scaffold);
+  }
+
+  /** Roofline by stage: this is what makes silhouettes differ, not just paint. */
+  private roof(g: Graphics, p: Place, h: number, P: Palette): void {
+    const A = ARCHITECTURE[this.theme.id], fp = p.footprint, e = A.eave;
+    const k = hashString(p.path);
+    const ec = corners(p.gx - e, p.gy - e, fp + e * 2, h); // eave corners (overhang)
+    const centre = iso(p.gx + fp / 2, p.gy + fp / 2);
+    const under = mix(P.roofD, this.shadowInk, 0.35);
+    if (e > 0) {
+      // the overhang's underside is in shadow — the single strongest "built, not extruded" cue
+      g.poly(flat([ec[3], ec[2], up(ec[2], -3), up(ec[3], -3)])).fill({ color: under, alpha: 0.9 });
+      g.poly(flat([ec[2], ec[1], up(ec[1], -3), up(ec[2], -3)])).fill({ color: mix(under, 0x000000, 0.2), alpha: 0.9 });
+    }
+    switch (A.roof) {
+      case "pitched": {
+        this.pyramid(g, ec, up(centre, h + 12 + fp * 9), P.roof, P.roofD);
+        break;
+      }
+      case "gable": {
+        // ridge along the long axis: two sloped faces, two triangular gables
+        const ridgeH = 11 + fp * 7, r0 = up(lerpP(ec[0], ec[3], 0.5), h + ridgeH), r1 = up(lerpP(ec[1], ec[2], 0.5), h + ridgeH);
+        g.poly(flat([ec[3], ec[2], r1, r0])).fill(vGrad(mix(P.roof, 0xffffff, 0.1), P.roof, r0.y, ec[3].y));
+        g.poly(flat([ec[0], ec[1], r1, r0])).fill(mix(P.roofD, this.shadowInk, 0.2));
+        g.poly(flat([ec[2], ec[1], r1])).fill(mix(P.right, this.shadowInk, 0.1));
+        g.poly(flat([ec[3], ec[0], r0])).fill(P.left);
+        g.moveTo(r0.x, r0.y).lineTo(r1.x, r1.y).stroke({ width: 1.4, color: 0xffffff, alpha: 0.4, cap: "round" });
+        break;
+      }
+      case "flat": {
+        const t = ec.map((q) => up(q, 3)) as [Pt, Pt, Pt, Pt];
+        g.poly(flat([ec[3], ec[2], t[2], t[3]])).fill(P.roofD);
+        g.poly(flat([ec[2], ec[1], t[1], t[2]])).fill(mix(P.roofD, 0x000000, 0.2));
+        g.poly(flat(t)).fill(hGrad(mix(P.roof, 0xffffff, 0.08), P.roof, t[3].x, t[1].x));
+        // rooftop units read as a city from above
+        const u = corners(p.gx + 0.25 + (k % 3) * 0.1, p.gy + 0.3, 0.4, h + 3);
+        g.poly(flat([u[3], u[2], up(u[2], 6), up(u[3], 6)])).fill(P.left); g.poly(flat([u[2], u[1], up(u[1], 6), up(u[2], 6)])).fill(P.right); g.poly(flat(u.map((q) => up(q, 6)))).fill(P.top);
+        break;
+      }
+      case "dome": {
+        const r = (fp * 32) * 0.78, cy = centre.y - h + 2;
+        g.ellipse(centre.x, cy, r, r * 0.62).fill(vGrad(mix(P.roof, 0xffffff, 0.22), mix(P.roofD, this.shadowInk, 0.15), cy - r * 0.62, cy + r * 0.3));
+        g.rect(centre.x - r, cy, r * 2, r * 0.62).fill({ color: 0, alpha: 0 });
+        g.ellipse(centre.x - r * 0.3, cy - r * 0.28, r * 0.28, r * 0.14).fill({ color: 0xffffff, alpha: 0.32 });
+        break;
+      }
+      case "onion": {
+        const r = fp * 16, cy = centre.y - h;
+        g.moveTo(centre.x - r, cy).quadraticCurveTo(centre.x - r * 1.15, cy - r * 1.1, centre.x, cy - r * 2.2).quadraticCurveTo(centre.x + r * 1.15, cy - r * 1.1, centre.x + r, cy).fill(vGrad(mix(P.roof, 0xffffff, 0.2), P.roofD, cy - r * 2.2, cy));
+        g.moveTo(centre.x - r * 0.4, cy - r * 0.3).quadraticCurveTo(centre.x - r * 0.5, cy - r * 1.2, centre.x - r * 0.05, cy - r * 1.9).stroke({ width: 1.6, color: 0xffffff, alpha: 0.35, cap: "round" });
+        break;
+      }
+      case "tiered": {
+        // two stacked roofs with upturned eaves
+        for (let tier = 0; tier < 2; tier++) {
+          const eh = h + tier * 14, ee = e * (1 - tier * 0.45);
+          const tc = corners(p.gx - ee, p.gy - ee, fp + ee * 2, eh);
+          g.poly(flat([tc[3], tc[2], up(tc[2], -2), up(tc[3], -2)])).fill(under);
+          const apex = up(centre, eh + 9 + fp * 3);
+          g.poly(flat([up(tc[3], 3), up(tc[2], 3), apex])).fill(P.roof);
+          g.poly(flat([up(tc[2], 3), up(tc[1], 3), apex])).fill(P.roofD);
+          g.poly(flat([up(tc[3], 3), up(tc[0], 3), apex])).fill(mix(P.roof, 0xffffff, 0.1));
+          // upturned corners
+          for (const q of [tc[1], tc[2], tc[3]]) g.moveTo(q.x, q.y + 1).quadraticCurveTo(q.x + (q.x < centre.x ? -4 : 4), q.y - 1, q.x + (q.x < centre.x ? -5 : 5), q.y - 6).stroke({ width: 2, color: P.roofD, cap: "round" });
+        }
+        break;
+      }
+      case "tent": {
+        const apex = up(centre, h + 16 + fp * 8);
+        this.pyramid(g, ec, apex, P.roof, P.roofD);
+        // scalloped hem
+        for (let i = 0; i < fp * 3; i++) { const a = lerpP(ec[3], ec[2], i / (fp * 3)), b = lerpP(ec[3], ec[2], (i + 1) / (fp * 3)); g.moveTo(a.x, a.y).quadraticCurveTo((a.x + b.x) / 2, (a.y + b.y) / 2 + 4, b.x, b.y).fill(P.roofD); }
+        g.moveTo(apex.x, apex.y).lineTo(apex.x, apex.y - 8).stroke({ width: 1.5, color: P.roofD }); g.poly([apex.x, apex.y - 8, apex.x + 7, apex.y - 6, apex.x, apex.y - 4]).fill(P.win);
+        break;
+      }
+      case "capsule": {
+        const r = fp * 32 * 0.7, cy = centre.y - h + 1;
+        g.ellipse(centre.x, cy, r * 1.02, r * 0.5).fill(vGrad(mix(P.top, 0xffffff, 0.25), P.top, cy - r * 0.5, cy + r * 0.1));
+        g.ellipse(centre.x - r * 0.3, cy - r * 0.22, r * 0.3, r * 0.1).fill({ color: 0xffffff, alpha: 0.4 });
+        g.ellipse(centre.x, cy, r * 1.02, r * 0.5).stroke({ width: 1.2, color: mix(P.roofD, 0xffffff, 0.1), alpha: 0.6 });
+        break;
+      }
+    }
+    // furniture
+    const fx = up(iso(p.gx + fp * 0.72, p.gy + fp * 0.3), h + (A.roof === "flat" ? 3 : A.roof === "pitched" || A.roof === "gable" ? 8 : 0));
+    switch (A.furniture) {
+      case "chimney": if (k % 2 === 0) { g.rect(fx.x - 3, fx.y - 12, 6, 12).fill(P.roofD); g.rect(fx.x - 4, fx.y - 13, 8, 3).fill(mix(P.roofD, 0x000000, 0.2)); } break;
+      case "vent": g.rect(fx.x - 4, fx.y - 5, 8, 5).fill(mix(P.left, this.shadowInk, 0.2)); g.ellipse(fx.x, fx.y - 5, 4, 1.6).fill(P.top); break;
+      case "mast": g.moveTo(fx.x, fx.y).lineTo(fx.x, fx.y - 16).stroke({ width: 1.4, color: P.roofD }); g.circle(fx.x, fx.y - 17, 2).fill(P.win); break;
+      case "finial": { const ap = up(centre, h + 12 + fp * 9 + (A.roof === "onion" ? fp * 16 * 2.2 - 12 - fp * 9 : 0)); g.moveTo(ap.x, ap.y).lineTo(ap.x, ap.y - 7).stroke({ width: 1.4, color: 0xffd66b }); g.circle(ap.x, ap.y - 8, 2).fill(0xffd66b); break; }
+      case "lantern": { const q = lerpP(ec[3], ec[2], 0.5); g.moveTo(q.x, q.y).lineTo(q.x, q.y + 5).stroke({ width: 1, color: P.roofD }); g.roundRect(q.x - 3, q.y + 5, 6, 8, 2).fill(d_glow(P.win)); break; }
+      case "dish": g.ellipse(fx.x, fx.y - 2, 6, 3).stroke({ width: 1.4, color: 0xffffff, alpha: 0.7 }); g.moveTo(fx.x, fx.y - 2).lineTo(fx.x + 2, fx.y - 7).stroke({ width: 1, color: 0xffffff, alpha: 0.7 }); break;
+    }
+    if (A.stripes) {
+      const c = corners(p.gx, p.gy, fp);
+      for (let i = 0; i < fp * 4; i += 2) { const a = lerpP(c[3], c[2], i / (fp * 4)), b = lerpP(c[3], c[2], (i + 1) / (fp * 4)); g.poly([a.x, a.y, b.x, b.y, b.x, b.y - h * 0.35, a.x, a.y - h * 0.35]).fill({ color: 0xffffff, alpha: 0.22 }); }
+    }
   }
 
   private box(g: Graphics, gx: number, gy: number, fp: number, h: number, top: number, left: number, right: number): [Pt, Pt, Pt, Pt] {
@@ -403,6 +496,8 @@ export class WorldLayer {
     }
   }
 }
+
+const d_glow = (c: number) => mix(c, 0xffffff, 0.25);
 
 /** Vertical two-stop gradient in world px (Pixi 8 FillGradient, global coordinates). */
 function vGrad(top: number, bottom: number, y0: number, y1: number): FillGradient {

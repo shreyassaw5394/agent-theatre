@@ -18,3 +18,11 @@ describe("sets catalog", () => {
     expect(suggestSets({ kinds: ["unknown"], languages: [], files: 0 }, 3).length).toBeGreaterThanOrEqual(3);
   });
 });
+
+import { ARCHITECTURE } from "../src/sets/architecture.js";
+describe("architecture", () => {
+  it("every set has a silhouette and at least five rooflines are in use", () => {
+    for (const s of SETS) expect(ARCHITECTURE[s.id], s.id).toBeTruthy();
+    expect(new Set(SETS.map((s) => ARCHITECTURE[s.id].roof)).size).toBeGreaterThanOrEqual(5);
+  });
+});

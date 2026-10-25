@@ -607,3 +607,15 @@ tenth of the frame tall whatever the repo size); only the establishing and
 closing shots fit the whole stage. A seek that produced a negative frame delta
 used to flip the ease factors and send the camera to infinity — the delta is
 now clamped, which is what "the panning isn't right" turned out to be.
+
+**Silhouettes per stage (art milestone, 2026-10-25).** `packages/web/src/sets/architecture.ts`
+gives every set a roofline — `pitched`, `gable`, `flat`, `dome`, `onion`, `tiered`
+(pagoda), `tent`, `capsule` — an eave overhang whose underside is drawn in shadow
+(the single strongest "built, not extruded" cue), rooftop furniture (chimney,
+vent, mast, finial, lantern, dish) and optional stripes. So a monastery is onion
+domes with gold finials, Lanterns is two-tier pagoda roofs with upturned corners,
+Moonbase is capsules with dishes, Bazaar is scalloped tents with pennants — from
+the same geometry. Characters got a rim light on the sunward side and a cool
+ground bounce on the far side so bodies read as round. The honest ceiling of
+procedural `Graphics` is still there; the next step up is baked textures or
+Rive characters, which is a separate decision.

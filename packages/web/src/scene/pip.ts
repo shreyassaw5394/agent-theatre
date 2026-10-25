@@ -88,6 +88,10 @@ export class Pip {
       case "bean": g.ellipse(0, -12, 12.5, 11.5).fill(T.body); g.ellipse(-2, -18, 8, 6).fill({ color: T.bodyLight, alpha: 0.55 }); break;
       default: g.ellipse(0, -13.5, 11.5, 13.5).fill(T.body); g.ellipse(-1.5, -17, 9.5, 9).fill({ color: T.bodyLight, alpha: 0.55 });
     }
+    // rim light (sun upper-left) and a cool bounce from the ground on the far side: the body reads as round, not flat
+    const bodyR = T.shape === "tall" ? 9.5 : T.shape === "boxy" ? 11 : T.shape === "bean" ? 12.5 : 11.5, bodyY = T.shape === "tall" ? -16 : T.shape === "boxy" ? -13 : T.shape === "bean" ? -12 : -13.5;
+    g.moveTo(-bodyR * 0.9, bodyY - bodyR * 0.2).quadraticCurveTo(-bodyR * 0.75, bodyY - bodyR * 0.95, bodyR * 0.1, bodyY - bodyR * 1.02).stroke({ width: 2.2, color: 0xffffff, alpha: 0.5, cap: "round" });
+    g.moveTo(bodyR * 0.95, bodyY + bodyR * 0.1).quadraticCurveTo(bodyR * 0.8, bodyY + bodyR * 0.8, bodyR * 0.1, bodyY + bodyR * 0.98).stroke({ width: 2.4, color: this.theme.sky[0], alpha: 0.28, cap: "round" });
     g.ellipse(a.face * 1.2, -7.5, 6.5, 5.5).fill({ color: T.belly, alpha: 0.92 });
     // cheeks
     g.ellipse(-8 + a.face * 1.5, -11, 2.4, 1.5).fill({ color: T.cheek, alpha: 0.45 });
