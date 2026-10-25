@@ -13,8 +13,9 @@ describe("extension manifest", () => {
     expect(pkg.main).toBe("./dist/extension.js");
     expect(pkg.engines.vscode).toMatch(/^\^1\.\d+\.0$/);
   });
-  it("the webview only frames the loopback server", () => {
-    expect(src).toContain("frame-src http://127.0.0.1:* http://localhost:*");
+  it("the webview talks only to the loopback server and frames nothing", () => {
+    expect(src).toContain("connect-src http://127.0.0.1:* ws://127.0.0.1:* http://localhost:* ws://localhost:*");
+    expect(src).not.toContain("<iframe");
     expect(src).not.toMatch(/https?:\/\/(?!127\.0\.0\.1|localhost)[a-z]/);
   });
 });
