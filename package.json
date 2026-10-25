@@ -1,0 +1,22 @@
+{
+  "name": "agent-theatre-monorepo",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "typecheck": "pnpm -r typecheck",
+    "lint": "oxlint packages",
+    "test": "pnpm -r test",
+    "build": "pnpm -r build",
+    "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm build"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "oxlint": "^0.16.0",
+    "tsup": "^8.3.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}

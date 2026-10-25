@@ -1,0 +1,21 @@
+{
+  "session_id": "11111111-2222-3333-4444-555555555555",
+  "transcript_path": "/Users/dev/.claude/projects/-Users-dev-projects-acme-shop/11111111-2222-3333-4444-555555555555.jsonl",
+  "cwd": "/Users/dev/projects/acme-shop",
+  "permission_mode": "default",
+  "hook_event_name": "PostToolUse",
+  "tool_name": "Bash",
+  "tool_use_id": "toolu_hk_2",
+  "duration_ms": 1020,
+  "tool_input": {
+    "command": "npx vitest run",
+    "description": "run tests"
+  },
+  "tool_response": {
+    "stdout": "\n \u276f tests/login.spec.ts (24 tests | 2 failed) 412ms\n\n Test Files  1 failed (1)\n      Tests  2 failed | 22 passed (24)\n   Start at  10:00:14\n   Duration  1.02s\n",
+    "stderr": "",
+    "interrupted": false,
+    "isImage": false,
+    "noOutputExpected": false
+  }
+}

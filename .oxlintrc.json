@@ -1,0 +1,9 @@
+{
+  "plugins": ["typescript"],
+  "categories": { "correctness": "error", "suspicious": "warn" },
+  "rules": {
+    "no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
+    "typescript/no-explicit-any": "off"
+  },
+  "ignorePatterns": ["dist", "node_modules", "fixtures"]
+}

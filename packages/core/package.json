@@ -1,0 +1,19 @@
+{
+  "name": "@agent-theatre/core",
+  "version": "0.1.0",
+  "description": "Agent Theatre core: agent-session event schema, adapters, island generator, director. Pure TypeScript, no DOM, no fs.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json",
+    "test": "vitest run",
+    "build": "tsup",
+    "demo": "tsx scripts/demo.ts"
+  },
+  "devDependencies": {}
+}
