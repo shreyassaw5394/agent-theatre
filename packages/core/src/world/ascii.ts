@@ -9,7 +9,7 @@ export function worldToAscii(w: World): string {
     if (r >= 0 && r < H && c >= 0 && c < W) grid[r]![c] = ch;
   };
   for (const p of w.places) {
-    const ch = p.touched ? "#" : p.kind === "building" ? "B" : p.kind === "archive" ? "A" : p.kind === "beacon" ? "L" : p.kind === "forge" ? "F" : "D";
+    const ch = p.touched ? "#" : p.kind === "building" ? "B" : p.kind === "archive" ? "A" : p.kind === "beacon" ? "L" : p.kind === "forge" ? "F" : p.kind === "overflow" ? "+" : "D";
     for (let dx = 0; dx < p.footprint; dx++) for (let dy = 0; dy < p.footprint; dy++) put(p.gx + dx, p.gy + dy, ch);
   }
   return grid.map((r) => r.join("")).join("\n");

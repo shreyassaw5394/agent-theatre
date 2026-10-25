@@ -1,8 +1,9 @@
+import type { RepoProfile } from "./profile.js";
 /**
  * A set-agnostic world: the repo's structure laid out on an integer grid.
  * Themes ("sets") are applied by the renderer; nothing here names one.
  */
-export type PlaceKind = "building" | "beacon" | "archive" | "forge" | "dock";
+export type PlaceKind = "building" | "beacon" | "archive" | "forge" | "dock" | "overflow";
 export type PlaceId = string;
 
 export interface FileNode {
@@ -53,6 +54,8 @@ export interface Path { from: string; to: string; points: Array<[number, number]
 export interface World {
   repoId: string;
   seed: number;
+  /** What the repo looks like it is; the renderer uses it to suggest sets. */
+  profile: RepoProfile;
   districts: District[];
   places: Place[];
   paths: Path[];
@@ -70,4 +73,8 @@ export interface GenerateOptions {
   cap?: number;
   /** Max beacons. Default 8. */
   beaconCap?: number;
+  /** Max session-touched files force-included. Default 48; the rest share a per-district overflow building. */
+  touchedCap?: number;
+  /** Manifest contents (package.json etc.) if the host read them, for better project-kind detection. Never stored. */
+  manifests?: Record<string, string>;
 }

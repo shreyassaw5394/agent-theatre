@@ -108,7 +108,7 @@ export class WorldLayer {
     const pulse = d.glow > 0 ? 0.6 + 0.4 * Math.sin(this.time * 10) : 0;
     const win = d.glow > 0 ? mix(P.win, 0xffe9a8, 0.5 + 0.5 * pulse) : P.win;
     if (p.kind !== "archive" && p.kind !== "forge") {
-      const rows = Math.max(1, Math.round(h / 22)), cols = fp >= 3 ? 3 : 2;
+      const rows = Math.max(1, Math.round(h / 28)), cols = fp >= 3 ? 3 : 2;
       this.windows(g, c[3], c[2], h, rows, cols, win, d.glow > 0 ? 1 : 0.9);
       this.windows(g, c[2], c[1], h, rows, cols, win, d.glow > 0 ? 1 : 0.8);
       // a door on the near face grounds the building
@@ -278,7 +278,7 @@ export class WorldLayer {
     }
     for (let k = 0; k < 3; k++) {
       const u = (this.time * 0.06 + k / 3) % 1;
-      this.blobPath(g, 1.04 + u * 0.45, 8).stroke({ width: 1.6, color: this.theme.water.ripple, alpha: this.theme.water.rippleAlpha * (1 - u) });
+      this.blobPath(g, 1.04 + u * 0.45, 8).stroke({ width: 1.4, color: this.theme.water.ripple, alpha: this.theme.water.rippleAlpha * 0.7 * (1 - u) });
     }
   }
   private drawPaths(): void {
@@ -291,14 +291,14 @@ export class WorldLayer {
     }
   }
   private drawLabels(): void {
-    const style = new TextStyle({ fontFamily: "Fredoka, Trebuchet MS, sans-serif", fontSize: 30, fontWeight: "700", fill: 0xffffff, letterSpacing: 2, stroke: { color: this.theme.vignette, width: 5, join: "round" } });
+    const style = new TextStyle({ fontFamily: "Fredoka, Trebuchet MS, sans-serif", fontSize: 22, fontWeight: "700", fill: 0xffffff, letterSpacing: 2, stroke: { color: this.theme.vignette, width: 4, join: "round" } });
     for (const d of this.world.districts) {
       const t = new Text({ text: d.label, style });
       t.anchor.set(0.5, 0.5);
       // painted on the grass just in front of the patch, where buildings never cover it
       const p = iso(d.bounds.x + d.bounds.w / 2 + 0.5, d.bounds.y + d.bounds.h + 0.55);
       t.position.set(p.x, p.y);
-      t.alpha = 0.85;
+      t.alpha = 0.55;
       t.skew.set(-0.35, 0.17);
       this.labels.addChild(t);
     }
@@ -309,7 +309,7 @@ export class WorldLayer {
     for (const p of this.world.places) for (let dx = 0; dx < p.footprint; dx++) for (let dy = 0; dy < p.footprint; dy++) occupied.add(`${p.gx + dx},${p.gy + dy}`);
     const b = this.world.bounds;
     let tries = 0, placed = 0;
-    const want = Math.min(46, 14 + this.world.places.length / 2);
+    const want = Math.min(18, 5 + Math.floor(this.world.places.length / 5));
     while (placed < want && tries++ < 700) {
       const gx = Math.floor(b.x + 1 + rnd() * (b.w - 2)), gy = Math.floor(b.y + 1 + rnd() * (b.h - 2));
       if (occupied.has(`${gx},${gy}`)) continue;
@@ -320,7 +320,7 @@ export class WorldLayer {
       node.zIndex = depthOf(gx, gy);
       const g = new Graphics();
       node.addChild(g);
-      const p = iso(gx + 0.5, gy + 0.5), s = (0.85 + rnd() * 0.4) * 1.5;
+      const p = iso(gx + 0.5, gy + 0.5), s = (0.85 + rnd() * 0.4) * 1.25;
       const [c1, c2, c3] = this.theme.propColors;
       let canopy: Graphics | undefined;
       if (this.theme.prop === "tree") {

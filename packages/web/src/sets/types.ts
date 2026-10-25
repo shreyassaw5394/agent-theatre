@@ -3,10 +3,16 @@
  * style, prop style and silhouettes. The Director and player never see this.
  */
 export interface Palette { top: number; left: number; right: number; roof: number; roofD: number; win: number }
+import type { ProjectKind } from "@agent-theatre/core";
+export type SetId = "island" | "orbit" | "metropolis" | "harbour" | "observatory" | "greenhouse" | "workshop" | "arcade" | "kingdom" | "outpost" | "snowfield" | "canopy" | "lagoon" | "volcano" | "cloudtop" | "reef" | "bazaar" | "monastery" | "moonbase" | "lanterns";
 export interface SetTheme {
-  id: "island" | "orbit" | "metropolis";
+  id: SetId;
   name: string;
   tagline: string;
+  /** Project kinds this stage suits; used to suggest a default. */
+  fits: ProjectKind[];
+  /** Fully art-directed (true) or a palette set on shared geometry (false). */
+  flagship: boolean;
   /** Stage background, top→bottom. */
   sky: [number, number];
   /** Terrain style selects the ground painter. */

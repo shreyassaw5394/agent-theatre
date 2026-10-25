@@ -1,7 +1,8 @@
 import type { AgentEvent, Beat, World } from "@agent-theatre/core";
 import { captionFor, deriveActs, type Act } from "../scene/story.js";
 import type { PlayerState } from "../scene/player.js";
-import { SETS, type SetTheme } from "../sets/index.js";
+import { SETS, suggestSets, type SetTheme } from "../sets/index.js";
+import type { RepoProfile } from "@agent-theatre/core";
 
 const fmt = (ms: number) => { const s = Math.floor(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 const hex = (n: number) => `#${n.toString(16).padStart(6, "0")}`;
@@ -10,7 +11,7 @@ const PLAY = '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 2.8v10.
 const PAUSE = '<svg viewBox="0 0 16 16" fill="currentColor"><rect x="3.5" y="3" width="3" height="10" rx="1"/><rect x="9.5" y="3" width="3" height="10" rx="1"/></svg>';
 const CHECK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3L13 4.5"/></svg>';
 
-export interface PanelHandlers { onPlayPause(): void; onSeek(ms: number): void; onRate(): void; onMute(): void; onPickSet(id: SetTheme["id"]): void; onShuffle(): void }
+export interface PanelHandlers { onPlayPause(): void; onSeek(ms: number): void; onRate(): void; onMute(): void; onAmbience(): void; onPickSet(id: SetTheme["id"]): void; onShuffle(): void }
 
 /** All DOM. Reads PlayerState every frame; never touches Pixi. */
 export class Panel {
@@ -18,7 +19,7 @@ export class Panel {
   readonly stageEl: HTMLElement;
   private readonly overlay: HTMLElement; private readonly caption: HTMLElement; private readonly chip: HTMLElement; private readonly signal: HTMLElement;
   private readonly title: HTMLElement; private readonly end: HTMLElement; private readonly picker: HTMLElement;
-  private readonly playBtn: HTMLButtonElement; private readonly rateBtn: HTMLButtonElement; private readonly muteBtn: HTMLButtonElement; private readonly setBtn: HTMLButtonElement;
+  private readonly playBtn: HTMLButtonElement; private readonly rateBtn: HTMLButtonElement; private readonly muteBtn: HTMLButtonElement; private readonly ambBtn: HTMLButtonElement; private readonly setBtn: HTMLButtonElement;
   private readonly actsEl: HTMLElement; private readonly labelsEl: HTMLElement; private readonly head: HTMLElement; private readonly time: HTMLElement; private readonly logEl: HTMLElement;
   private acts: Act[] = []; private actBtns: HTMLButtonElement[] = []; private actLabels: HTMLElement[] = [];
   private logBtns: Array<{ btn: HTMLButtonElement; ms: number }> = [];
@@ -31,8 +32,9 @@ export class Panel {
     const brand = el("div", "brand", `<div class="eyebrow">Agent Theatre</div><h1 id="title">Loading…</h1>`);
     const tb = el("div", "toolbar");
     this.setBtn = el("button", "btn ghost", "Set"); this.setBtn.type = "button"; this.setBtn.onclick = () => this.showPicker(true);
-    this.muteBtn = el("button", "btn ghost", "Sound on"); this.muteBtn.type = "button"; this.muteBtn.onclick = () => h.onMute();
-    tb.append(this.setBtn, this.muteBtn);
+    this.muteBtn = el("button", "btn ghost", "Effects on"); this.muteBtn.type = "button"; this.muteBtn.title = "Sound effects"; this.muteBtn.onclick = () => h.onMute();
+    this.ambBtn = el("button", "btn ghost", "Ambience on"); this.ambBtn.type = "button"; this.ambBtn.title = "Background sound"; this.ambBtn.onclick = () => h.onAmbience();
+    tb.append(this.setBtn, this.muteBtn, this.ambBtn);
     header.append(brand, tb);
     const grid = el("div", "grid");
     const col = el("div", "stage-col");
@@ -57,16 +59,18 @@ export class Panel {
     const aside = el("aside");
     const logPanel = el("section", "panel", `<h2>Event log</h2><p class="sub">Every scene is driven by one of these agent events. Tap one to jump there.</p>`);
     this.logEl = el("ul", "log"); logPanel.append(this.logEl);
-    const legend = el("section", "panel", `<h2>How to read the stage</h2><p class="sub">Buildings are files, districts are folders, beacons are test suites. Gremlins are failing tests. Pip is the agent; the antenna shows its mood. If Pip says it's done without a passing test, something hides behind it.</p>`);
+    const legend = el("section", "panel", `<h2>How to read the stage</h2><p class="sub">Buildings are files, districts are folders, beacons are test suites. Gremlins are failing tests. The lead character is the agent; its light shows its mood. Helpers are subagents. If the agent says it's done without a passing test, something hides behind it.</p>`);
     aside.append(logPanel, legend);
     grid.append(col, aside);
     this.root.append(header, grid, el("p", "note", "Everything you see is generated locally from agent events. No code, prompts or file contents are shown or sent anywhere."));
     host.append(this.root);
   }
   private durationMs = 0;
+  repoId = "";
 
   setTitle(repoId: string, episode?: string): void { (this.root.querySelector("#title") as HTMLElement).textContent = repoId; (this.root.querySelector("#titleBig") as HTMLElement).textContent = episode ?? repoId; }
-  setMuted(m: boolean): void { this.muteBtn.textContent = m ? "Sound off" : "Sound on"; }
+  setMuted(m: boolean): void { this.muteBtn.textContent = m ? "Effects off" : "Effects on"; this.muteBtn.setAttribute("aria-pressed", String(!m)); }
+  setAmbience(on: boolean): void { this.ambBtn.textContent = on ? "Ambience on" : "Ambience off"; this.ambBtn.setAttribute("aria-pressed", String(on)); }
   setRate(r: number): void { this.rateBtn.textContent = `${r}×`; }
 
   loadTimeline(beats: Beat[], events: AgentEvent[], world: World): void {
@@ -97,21 +101,31 @@ export class Panel {
 
   previews = new Map<string, string>();
   get pickerOpen(): boolean { return !this.picker.hidden; }
+  profile: RepoProfile | undefined;
+  leadName = "Pip";
+  showAll = false;
   showPicker(show: boolean, themeId?: string): void {
     this.picker.hidden = !show;
     if (!show) return;
     this.picker.innerHTML = "";
-    this.picker.append(el("h3", "", "Choose your set"), el("p", "", "Same repo, same story — pick the stage. You can change it any time."));
+    const kind = this.profile?.kinds?.[0];
+    const kindLabel = kind && kind !== "unknown" ? ({ "web-frontend": "a web app", "backend-api": "a backend", "cli-tool": "a CLI", library: "a library", "data-ml": "data & ML work", mobile: "a mobile app", game: "a game", "infra-devops": "infrastructure", "docs-content": "documentation", monorepo: "a monorepo", systems: "systems code" } as Record<string, string>)[kind] : null;
+    const suggested = suggestSets(this.profile, hashSeed(this.repoId)).slice(0, 3);
+    const list = this.showAll ? [...SETS] : suggested;
+    this.picker.append(el("h3", "", this.showAll ? "All sets" : "Choose your set"), el("p", "", kindLabel && !this.showAll ? `This looks like ${kindLabel}${this.profile?.languages?.[0] ? ` in ${this.profile.languages[0]}` : ""}. These stages suit it — or browse them all.` : "Same repo, same story — pick the stage. You can change it any time."));
     const cards = el("div", "setcards");
-    for (const s of SETS) {
+    for (const s of list) {
       const c = el("button", "setcard"); c.type = "button";
       const img = this.previews.get(s.id);
       c.innerHTML = `<div class="sw" style="--a:${hex(s.sky[0])};--b:${hex(s.palettes[0]!.left)}">${img ? `<img src="${img}" alt="" />` : ""}</div><div class="nm">${s.name}${s.id === themeId ? " ·" : ""}</div><div class="tg">${s.tagline}</div>`;
       c.onclick = () => { this.h.onPickSet(s.id); this.showPicker(false); };
       cards.append(c);
     }
+    const row = el("div", "toolbar");
     const sh = el("button", "btn ghost", "Surprise me"); sh.type = "button"; sh.onclick = () => this.h.onShuffle();
-    this.picker.append(cards, sh);
+    const all = el("button", "btn ghost", this.showAll ? "Suggested" : `All ${SETS.length} sets`); all.type = "button"; all.onclick = () => { this.showAll = !this.showAll; this.showPicker(true, themeId); };
+    row.append(sh, all);
+    this.picker.append(cards, row);
   }
 
   update(s: PlayerState, world: World, lampOf: (id: string) => string, helperLabel?: string): void {
@@ -124,7 +138,7 @@ export class Panel {
     const endBeat = cur && cur.kind === "curtain_down" ? cur : null;
     this.end.style.opacity = String(endBeat ? Math.min(1, Math.max(0, (s.t - endBeat.atMs - 400) / 600)) : 0);
     // caption
-    const text = cur ? captionFor(cur, world, helperLabel) : "";
+    const text = cur ? captionFor(cur, world, helperLabel).replace(/\bPip\b/g, this.leadName) : "";
     if (cur && cur.id !== this.lastBeatId) { this.lastBeatId = cur.id; if (text) this.lastCaption = text; }
     const span = this.caption.firstElementChild as HTMLElement; span.textContent = this.lastCaption; span.style.opacity = this.lastCaption && !(cur?.kind === "curtain_up" && s.t - (cur?.atMs ?? 0) < 900) ? "1" : "0";
     // evidence chip
@@ -170,4 +184,5 @@ function describe(e: AgentEvent, world: World): [string, string] {
   }
   void world;
 }
+const hashSeed = (s: string) => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);

@@ -2,7 +2,7 @@ import { Application } from "pixi.js";
 import { direct, filesFromEvents, generateWorld, parseTranscript, type Beat } from "@agent-theatre/core";
 import { AudioEngine } from "./audio/engine.js";
 import { ScenePlayer } from "./scene/player.js";
-import { SETS, setById, type SetTheme } from "./sets/index.js";
+import { SETS, setById, suggestSets, type SetTheme } from "./sets/index.js";
 import { StaticTransport, WsTransport, replayTransport, type Transport } from "./transport.js";
 import { Panel } from "./ui/panel.js";
 import { previewSet } from "./render/preview.js";
@@ -30,17 +30,19 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
   let player: ScenePlayer | null = null;
   let rate = Number(q.get("rate")) || 1;
   let muted = store.get("at:muted") === "1";
-  audio.setMuted(muted);
+  let ambience = store.get("at:ambience") !== "0";
+  audio.setMuted(muted); audio.setAmbienceEnabled(ambience);
 
   const panel = new Panel(host, {
     onPlayPause: () => { if (!player) return; void audio.arm(); if (player.playing) player.pause(); else { if (player.state.t >= player.state.duration - 1) player.seek(0); player.play(); } },
     onSeek: (ms) => { player?.seek(ms); },
     onRate: () => { rate = rate >= 4 ? 1 : rate * 2; player?.setRate(rate); panel.setRate(rate); },
     onMute: () => { muted = !muted; audio.setMuted(muted); store.set("at:muted", muted ? "1" : "0"); panel.setMuted(muted); void audio.arm(); },
+    onAmbience: () => { ambience = !ambience; audio.setAmbienceEnabled(ambience); store.set("at:ambience", ambience ? "1" : "0"); panel.setAmbience(ambience); void audio.arm(); },
     onPickSet: (id) => { theme = setById(id); if (player) { store.set(`at:set:${player.world.repoId}`, id); rebuild(); } },
-    onShuffle: () => { const others = SETS.filter((s) => s.id !== theme.id); theme = others[Math.floor(Math.random() * others.length)]!; if (player) { store.set(`at:set:${player.world.repoId}`, theme.id); rebuild(); } panel.showPicker(false); },
+    onShuffle: () => { const pool = suggestSets(payload?.world.profile).filter((s) => s.id !== theme.id); const pick = pool.slice(0, Math.max(3, Math.min(5, pool.length))); theme = pick[Math.floor(Math.random() * pick.length)] ?? SETS[0]!; if (player) { store.set(`at:set:${player.world.repoId}`, theme.id); rebuild(); } panel.showPicker(false); },
   });
-  panel.setMuted(muted); panel.setRate(rate);
+  panel.setMuted(muted); panel.setAmbience(ambience); panel.setRate(rate);
   panel.liveMode = transport.mode === "live";
 
   const app = new Application();
@@ -53,7 +55,9 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
     if (!payload) return;
     if (player) { wasT = player.state.t; wasPlaying = player.playing; player.destroy(); }
     app.renderer.background.color = theme.sky[1];
-    player = new ScenePlayer(app, payload.world, theme, audio, reducedMotion);
+    player = new ScenePlayer(app, payload.world, theme, audio, reducedMotion, q.get("cast") ?? store.get(`at:cast:${payload.repoId}`));
+    (globalThis as any).__agentTheatre = { app, get player() { return player; }, panel };
+    panel.leadName = player.leadName;
     player.load(payload.beats); player.setRate(rate); player.seek(wasT); if (wasPlaying) player.play();
   }
 
@@ -61,14 +65,16 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
     payload = p;
     const saved = store.get(`at:set:${p.repoId}`);
     const chosen = q.get("set") ?? saved;
-    if (chosen) theme = setById(chosen); else theme = SETS[Math.floor(Math.random() * SETS.length)]!;
+    panel.profile = p.world.profile; panel.repoId = p.repoId;
+    // default: the stage that fits what this repo is, chosen deterministically per repo
+    if (chosen) theme = setById(chosen); else theme = suggestSets(p.world.profile, p.world.seed)[0] ?? SETS[0]!;
     panel.setTitle(p.repoId, q.get("episode") ?? undefined);
     panel.loadTimeline(p.beats, p.events, p.world);
     rebuild();
     const t = Number(q.get("t")); if (t > 0 && player) player.seek(t * 1000);
     // real previews for the picker, rendered from this repo's world in each set
-    void (async () => { for (const s of SETS) { try { panel.previews.set(s.id, await previewSet(app, p.world, s)); } catch (err) { console.warn("set preview failed", s.id, err); } } if (panel.pickerOpen) panel.showPicker(true, theme.id); wake(); })();
-    if (!chosen && !q.has("t")) panel.showPicker(true, theme.id);
+    const buildPreviews = (async () => { if (q.has("nopreview")) return; for (const s of SETS) { try { panel.previews.set(s.id, await previewSet(app, p.world, s)); } catch (err) { console.warn("set preview failed", s.id, err); } } if (panel.pickerOpen) panel.showPicker(true, theme.id); wake(); })();
+    if (!chosen && !q.has("t")) void buildPreviews.then(() => panel.showPicker(true, theme.id));
     if (q.get("paused") !== "1" && !reducedMotion) { player?.play(); }
     if (reducedMotion && !q.has("t")) player?.seek(Math.min(player.state.duration, 25_400));
   });

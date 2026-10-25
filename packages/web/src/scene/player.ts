@@ -8,6 +8,7 @@ import type { SetTheme } from "../sets/types.js";
 import { Gremlin } from "./gremlin.js";
 import { Particles } from "./particles.js";
 import { Pip, type CharacterPose } from "./pip.js";
+import { pickCompany, type CharacterSpec } from "./cast.js";
 import type { AudioEngine } from "../audio/engine.js";
 import { Sfx } from "../audio/sfx.js";
 import { Ambience } from "../audio/ambience.js";
@@ -52,10 +53,13 @@ export class ScenePlayer {
   private claimGremlinId: string | null = null;
   evidenceCount: number | null = null;
 
-  constructor(private readonly app: Application, public world: World, public theme: SetTheme, private readonly audio: AudioEngine, private readonly reducedMotion: boolean) {
+  readonly company: { lead: CharacterSpec; helpers: CharacterSpec[] };
+  private helperIndex = 0;
+  constructor(private readonly app: Application, public world: World, public theme: SetTheme, private readonly audio: AudioEngine, private readonly reducedMotion: boolean, leadId?: string | null) {
     this.worldLayer = new WorldLayer(world, theme);
     this.particles = new Particles(reducedMotion);
-    this.pip = new Pip(theme, reducedMotion);
+    this.company = pickCompany(world.seed, leadId);
+    this.pip = new Pip(theme, reducedMotion, this.company.lead);
     this.camera = new Camera(this.stage, reducedMotion);
     this.sfx = new Sfx(audio); this.amb = new Ambience(audio);
     this.stage.sortableChildren = true;
@@ -83,9 +87,9 @@ export class ScenePlayer {
     this.prevT = this.t;
     this.particles.clear();
   }
+  get leadName(): string { return this.company.lead.name; }
   get state(): PlayerState {
     const cur = this.currentBeat();
-    const view = this.app.renderer;
     return { t: this.t, duration: this.duration, playing: this._playing, rate: this.rate, current: cur, mood: this.mood, bubble: this.bubble(cur), labels: this.labels(cur), evidence: this.evidenceCount !== null ? { passed: this.evidenceCount } : null, signal: this.signal };
   }
 
@@ -121,7 +125,7 @@ export class ScenePlayer {
   /** Replay all beats up to t without sound/particles to recover persistent state. */
   private rebuild(t: number): void {
     this.actorAt.clear(); this.actorAt.set("pip", "forge");
-    this.growth.clear(); this.lastPass = 0; this.evidenceCount = null; this.mood = "curious"; this.claimGremlinId = null;
+    this.growth.clear(); this.lastPass = 0; this.evidenceCount = null; this.mood = "curious"; this.claimGremlinId = null; this.helperIndex = 0;
     for (const g of this.gremlins.values()) g.container.destroy(); this.gremlins.clear();
     for (const h of this.helpers.values()) h.container.destroy(); this.helpers.clear();
     for (const p of this.world.places) { this.worldLayer.setLamp(p.id, "idle"); this.worldLayer.setGrowth(p.id, 0); this.worldLayer.setGlow(p.id, 0); this.worldLayer.setScaffold(p.id, 0); }
@@ -188,7 +192,8 @@ export class ScenePlayer {
       }
       case "celebrate": { play("celebrate"); if (!silent) { this.camera.pushIn(0.1); const p = this.worldLayer.standingSpot(this.actorAt.get("pip") ?? "forge"); this.particles.burst(p.x, p.y - 30, 56, [0xffb547, 0x5ff0a6, 0x7cc8ff, 0xff7b69, 0xb69cff, 0xffffff], 130, 90); } break; }
       case "summon_helper": {
-        const h = new Pip(theme, this.reducedMotion); h.container.scale.set(0.72);
+        const spec = this.company.helpers[this.helperIndex++ % this.company.helpers.length]!;
+        const h = new Pip(theme, this.reducedMotion, spec); h.container.scale.set(0.82 * spec.size);
         const spot = this.worldLayer.standingSpot("dock"); h.pose.x = spot.x; h.pose.y = spot.y;
         this.worldLayer.container.addChild(h.container); this.helpers.set(b.helperId, h); this.actorAt.set(b.helperId, "dock");
         play("summon_helper", { pan: pan("dock") }); break;
@@ -307,12 +312,14 @@ export class ScenePlayer {
     const view = { w: this.app.renderer.width / this.app.renderer.resolution, h: this.app.renderer.height / this.app.renderer.resolution };
     const narrow = view.w < 640;
     // follow Pip loosely; weight ramps in after the curtain
-    const w = narrow ? 0.45 : 0.22;
+    // Frame the action: close on the character for the story; pull back to the whole stage only to open, celebrate and close.
+    const wide = !cur || cur.kind === "curtain_up" || cur.kind === "curtain_down" || cur.kind === "celebrate" || cur.kind === "your_turn";
+    const w = wide ? (narrow ? 0.4 : 0.15) : narrow ? 0.9 : 0.8;
     const pts = this.world.places.map((p) => iso(p.gx + p.footprint / 2, p.gy + p.footprint / 2));
     const minX = Math.min(...pts.map((p) => p.x)) - 70, maxX = Math.max(...pts.map((p) => p.x)) + 70;
     const minY = Math.min(...pts.map((p) => p.y)) - 110, maxY = Math.max(...pts.map((p) => p.y)) + 50;
     const centre = { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
-    const z = this.fitZoom() * (cur?.kind === "celebrate" ? 1.07 : 1);
+    const z = this.fitZoom() * this.zoomFor(cur);
     const halfW = view.w / z / 2, halfH = view.h / z / 2;
     const clampAxis = (v: number, lo: number, hi: number) => (lo + halfW > hi - halfW ? (lo + hi) / 2 : Math.max(lo + halfW, Math.min(hi - halfW, v)));
     const clampY = (v: number, lo: number, hi: number) => (lo + halfH > hi - halfH ? (lo + hi) / 2 : Math.max(lo + halfH, Math.min(hi - halfH, v)));
@@ -320,11 +327,23 @@ export class ScenePlayer {
     const ty = clampY(lerp(centre.y, this.pip.pose.y - 24, w * 0.8), minY, maxY);
     this.camera.follow(tx, ty, 1);
     this.camera.setDrift(this.mood === "lost");
-    if (cur?.kind === "curtain_up") { const u = seg(this.t, cur.atMs, cur.atMs + cur.durationMs); this.camera.setZoomFactor(this.fitZoom() * lerp(1.14, 1, walkEase(u))); }
-    else this.camera.setZoomFactor(this.fitZoom() * (cur?.kind === "celebrate" ? 1.07 : 1));
+    this.camera.setZoomFactor(this.fitZoom() * this.zoomFor(cur));
     this.camera.update(dtMs, view.w, view.h);
   }
   /** Zoom so the inhabited part of the world (places, not the whole terrain) fills the view. */
+  /** Close for the story (a character is about an eighth of the frame); wide for the establishing and closing shots. */
+  private zoomFor(cur: Beat | null): number {
+    if (!cur) return 1;
+    const n = this.world.places.length;
+    const close = n > 40 ? 1.9 : n > 20 ? 1.7 : 1.45;
+    switch (cur.kind) {
+      case "curtain_up": return lerp(1.08, 1, walkEase(seg(this.t, cur.atMs, cur.atMs + cur.durationMs)));
+      case "curtain_down": case "your_turn": return 1.05;
+      case "celebrate": return 1.15;
+      case "spawn_gremlin": case "chase": case "banish": return close * 1.12;
+      default: return close;
+    }
+  }
   private fitZoom(): number {
     const pts = this.world.places.flatMap((p) => [iso(p.gx, p.gy), iso(p.gx + p.footprint, p.gy + p.footprint)]);
     const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
@@ -351,7 +370,7 @@ export class ScenePlayer {
       if (p.kind === "forge" || p.kind === "dock") continue;
       const isActive = p.id === active;
       const lamp = p.kind === "beacon" ? this.worldLayer.lampOf(p.id) : "idle";
-      if (!isActive && lamp === "idle" && !p.touched) continue;
+      if (!isActive && lamp === "idle") continue;
       const pos = this.worldLayer.positionOf(p.id); if (!pos) continue;
       out.push({ text: p.label, screen: this.camera.toScreen(pos.top.x, pos.top.y - 2), active: isActive });
     }

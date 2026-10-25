@@ -190,11 +190,16 @@ export class Director {
     this.actorAt.set(actor, to.id);
   }
 
-  /** Known place, or a new one raised in its top-level district (files created mid-session). */
+  private raised = 0;
+  /** Known place; else the district's overflow building; else (bounded) a new one raised for a file created mid-session. */
   private placeFor(path: string, e: AgentEvent, actor: ActorId): Place {
     const known = this.byPath.get(path);
     if (known) return known;
     const top = path.includes("/") ? path.slice(0, path.indexOf("/")) : "";
+    const overflow = this.byPath.get(`${top ? top + "/" : ""}…`);
+    if (overflow && (this.raised >= 24 || !this.world.stats.capped === false)) return overflow;
+    if (this.raised >= 24) return overflow ?? this.forge;
+    this.raised++;
     const district = this.world.districts.find((d) => d.id === `d:${top}`) ?? this.world.districts[0];
     const anchor = district ? { gx: district.cx, gy: district.cy } : { gx: this.forge.gx + 3, gy: this.forge.gy };
     const place: Place = { id: `p:${path}`, kind: kindOf(path), path, label: path.slice(path.lastIndexOf("/") + 1), district: district?.id ?? "", gx: anchor.gx, gy: anchor.gy, footprint: 1, height: 1, score: 0, touched: true };

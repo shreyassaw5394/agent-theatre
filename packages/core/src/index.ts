@@ -18,3 +18,4 @@ export * from "./director/types.js";
 export { Director, direct } from "./director/direct.js";
 export { MoodTracker } from "./director/mood.js";
 export { filesFromEvents } from "./world/from-events.js";
+export { profileRepo, type ProjectKind, type RepoProfile } from "./world/profile.js";

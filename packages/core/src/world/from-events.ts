@@ -15,6 +15,6 @@ export function filesFromEvents(events: AgentEvent[]): { files: FileNode[]; touc
     else if (e.kind === "write_file") bump(e.path, Math.max(5, e.added * 2));
     else if (e.kind === "run_command") for (const p of e.touched) bump(p, 5);
   }
-  const touched = [...loc.keys()];
+  const touched = [...loc.keys()].sort((a, b) => loc.get(b)! - loc.get(a)!);
   return { files: touched.map((path) => ({ path, loc: loc.get(path)! })), touched };
 }

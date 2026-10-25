@@ -1,7 +1,7 @@
 import { Command } from "commander";
 import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join } from "node:path";
 import pc from "picocolors";
 import { Theatre } from "./server.js";
 import { repoIdFor, scanRepo } from "./scan.js";
@@ -64,12 +64,11 @@ program
     if (!found) { console.log(pc.red(`No session ${id}`)); process.exit(1); }
     const files = scanRepo(cwd);
     const theatre = new Theatre({ cwd, repoId: repoIdFor(cwd), files, ...(webDir ? { webDir } : {}) });
-    const port = await theatre.listen(0);
+    await theatre.listen(0);
     const url = `${theatre.url}?session=${found.id}${o.set ? `&set=${o.set}` : ""}`;
     console.log(`${pc.bold("Agent Theatre")} · replay · ${found.title || found.id}`);
     console.log(`${pc.green("▶")} ${url}`);
     if (o.open) await openBrowser(url);
-    void port;
     const bye = async () => { await theatre.close(); process.exit(0); };
     process.on("SIGINT", bye); process.on("SIGTERM", bye);
   });

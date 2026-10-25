@@ -2,6 +2,7 @@ import { Container, Graphics } from "pixi.js";
 import type { Mood } from "@agent-theatre/core";
 import type { SetTheme } from "../sets/types.js";
 import { bump } from "../render/ease.js";
+import { CAST, type CharacterSpec } from "./cast.js";
 
 /**
  * Pip, drawn procedurally every frame. Kept behind this small interface so a
@@ -38,15 +39,15 @@ export class Pip {
   /** Call after a seek so the character doesn't glide from the old spot. */
   snap(): void { this.snapNext = true; }
 
-  constructor(private theme: SetTheme, private reducedMotion: boolean) {
+  constructor(private theme: SetTheme, private reducedMotion: boolean, public spec: CharacterSpec = CAST[0]!) {
     this.container.addChild(this.shadow, this.body);
-    this.container.scale.set(1.18);
+    this.container.scale.set(1.4 * spec.size);
   }
   setTheme(t: SetTheme): void { this.theme = t; }
 
   update(dtMs: number): void {
     this.t += dtMs / 1000;
-    const target = this.pose, T = this.theme.pip, t = this.t;
+    const target = this.pose, T = this.spec, t = this.t;
     const sh = this.shown, dt = Math.min(0.05, dtMs / 1000);
     if (this.snapNext) { Object.assign(sh, { x: target.x, y: target.y, lift: target.lift, sx: target.sx, sy: target.sy, lean: target.lean, face: target.face, faceK: 1 }); this.snapNext = false; }
     // exponential ease toward target; squash/lean are quick, position a touch slower (follow-through)
@@ -76,17 +77,29 @@ export class Pip {
     const fo = a.moving ? Math.sin(t * 11) * 3 : 0;
     g.ellipse(-5 + fo, -1.5, 4.2, 2.6).fill(T.ear);
     g.ellipse(5 - fo, -1.5, 4.2, 2.6).fill(T.ear);
-    // body: two tones to fake the gradient
-    g.ellipse(0, -13.5, 11.5, 13.5).fill(T.body);
-    g.ellipse(-1.5, -17, 9.5, 9).fill({ color: T.bodyLight, alpha: 0.55 });
+    // body silhouette by shape; two tones to fake the gradient
+    switch (T.shape) {
+      case "tall": g.ellipse(0, -16, 9.5, 16.5).fill(T.body); g.ellipse(-1.5, -21, 7.5, 9).fill({ color: T.bodyLight, alpha: 0.55 }); break;
+      case "boxy": g.roundRect(-11, -26, 22, 26, 6).fill(T.body); g.roundRect(-9, -24, 12, 10, 4).fill({ color: T.bodyLight, alpha: 0.5 }); break;
+      case "teardrop": g.moveTo(0, -30).quadraticCurveTo(13, -16, 11, -6).quadraticCurveTo(0, 2, -11, -6).quadraticCurveTo(-13, -16, 0, -30).fill(T.body); g.ellipse(-2, -16, 6, 7).fill({ color: T.bodyLight, alpha: 0.5 }); break;
+      case "bean": g.ellipse(0, -12, 12.5, 11.5).fill(T.body); g.ellipse(-2, -18, 8, 6).fill({ color: T.bodyLight, alpha: 0.55 }); break;
+      default: g.ellipse(0, -13.5, 11.5, 13.5).fill(T.body); g.ellipse(-1.5, -17, 9.5, 9).fill({ color: T.bodyLight, alpha: 0.55 });
+    }
     g.ellipse(a.face * 1.2, -7.5, 6.5, 5.5).fill({ color: T.belly, alpha: 0.92 });
     // cheeks
     g.ellipse(-8 + a.face * 1.5, -11, 2.4, 1.5).fill({ color: T.cheek, alpha: 0.45 });
     g.ellipse(8 + a.face * 1.5, -11, 2.4, 1.5).fill({ color: T.cheek, alpha: 0.45 });
-    // ears flap while walking
+    // topper
     const flap = a.moving ? Math.sin(t * 14) * 0.25 : 0;
-    g.ellipse(-9, -23 + flap * 6, 3.2, 5).fill(T.ear);
-    g.ellipse(9, -23 - flap * 6, 3.2, 5).fill(T.ear);
+    const crown = T.shape === "tall" ? -33 : T.shape === "teardrop" ? -30 : -27;
+    switch (T.topper) {
+      case "ears": g.ellipse(-9, crown + 4 + flap * 6, 3.2, 5).fill(T.ear); g.ellipse(9, crown + 4 - flap * 6, 3.2, 5).fill(T.ear); break;
+      case "tuft": g.moveTo(-3, crown + 1).quadraticCurveTo(-6, crown - 9, 1, crown - 12).moveTo(0, crown).quadraticCurveTo(4, crown - 10, 8, crown - 8).stroke({ width: 2.2, color: T.ear, cap: "round" }); break;
+      case "leaf": g.moveTo(0, crown).quadraticCurveTo(2 + flap * 10, crown - 8, 8, crown - 12).quadraticCurveTo(4, crown - 4, 0, crown).fill(T.ear); g.moveTo(0, crown).lineTo(5, crown - 7).stroke({ width: 1, color: T.belly, alpha: 0.7 }); break;
+      case "crest": for (const k of [-6, -2, 2, 6]) g.moveTo(k, crown + 1).lineTo(k * 1.4, crown - 7 - Math.abs(k) * 0.3).stroke({ width: 2.4, color: T.ear, cap: "round" }); break;
+      case "halo": g.ellipse(0, crown - 7, 9, 2.6).stroke({ width: 1.8, color: this.theme.mood[a.mood], alpha: 0.9 }); break;
+      case "antenna": g.ellipse(-9, crown + 4 + flap * 6, 3.2, 5).fill(T.ear); g.ellipse(9, crown + 4 - flap * 6, 3.2, 5).fill(T.ear); break;
+    }
 
     // eyes
     const ex = a.face * 1.8, ey = -16;
@@ -95,8 +108,10 @@ export class Pip {
       const x = ex + s * 4.6;
       if (a.mood === "happy") { g.arc(x, ey + 1.5, 2.8, Math.PI * 1.1, Math.PI * 1.9).stroke({ width: 1.6, color: T.ink, cap: "round" }); continue; }
       if (blink) { g.moveTo(x - 2.6, ey).lineTo(x + 2.6, ey).stroke({ width: 1.6, color: T.ink, cap: "round" }); continue; }
-      const ry = a.mood === "focused" ? 3 : 4.3;
-      g.ellipse(x, ey, 3.4, ry).fill(0xffffff);
+      if (T.eyes === "visor") { if (s < 0) { g.roundRect(ex - 8.5, ey - 3, 17, 6, 3).fill(0xffffff); g.roundRect(ex - 7 + (a.look === "up" ? 0 : 1), ey - 1.5, 5, 3, 1.5).fill(T.ink); g.roundRect(ex + 2 + (a.look === "up" ? 0 : 1), ey - 1.5, 5, 3, 1.5).fill(T.ink); } continue; }
+      const ry = T.eyes === "dot" ? 2.6 : T.eyes === "sleepy" ? 2.4 : a.mood === "focused" ? 3 : 4.3;
+      g.ellipse(x, ey, T.eyes === "dot" ? 2.6 : 3.4, ry).fill(0xffffff);
+      if (T.eyes === "sleepy") g.moveTo(x - 3.4, ey - 2.2).lineTo(x + 3.4, ey - 2.2).stroke({ width: 2, color: T.body });
       const glance = !a.moving && !this.reducedMotion && (t % 4.1) > 3.3 ? Math.sin(((t % 4.1) - 3.3) / 0.8 * Math.PI) : 0;
       let px = a.face * 1.1 + glance * 1.6, py = (a.look === "up" ? -1.6 : a.look === "down" ? 1.4 : 0.3) - glance * 0.8;
       if (a.mood === "lost") { px = Math.sin(t * 3) * 1.4; py = -1.2; }
@@ -111,13 +126,15 @@ export class Pip {
     else if (a.mood === "lost" || a.mood === "uneasy") g.arc(ex, -8.4, 2.2, Math.PI * 1.15, Math.PI * 1.85).stroke({ width: 1.6, color: T.ink, cap: "round" });
     else g.arc(ex, -11.2, 1.9, Math.PI * 0.15, Math.PI * 0.85).stroke({ width: 1.6, color: T.ink, cap: "round" });
 
-    // antenna with mood-coloured bulb and glow
+    // mood light: an antenna bulb for antenna characters, a small glow at the crown for the rest
     const sway = (this.reducedMotion ? 0 : Math.sin(t * 5) * 2) - a.lean * 10;
-    g.moveTo(0, -26.5).quadraticCurveTo(sway * 0.5, -32, sway + 1.5, -36).stroke({ width: 1.4, color: T.ear });
     const bc = this.theme.mood[a.mood];
-    g.circle(sway + 1.5, -37, 9).fill({ color: bc, alpha: 0.28 });
-    g.circle(sway + 1.5, -37, 5.5).fill({ color: bc, alpha: 0.35 });
-    g.circle(sway + 1.5, -37, 2.8).fill(bc);
+    if (T.topper === "antenna") {
+      g.moveTo(0, crown + 0.5).quadraticCurveTo(sway * 0.5, crown - 5, sway + 1.5, crown - 9).stroke({ width: 1.4, color: T.ear });
+      g.circle(sway + 1.5, crown - 10, 9).fill({ color: bc, alpha: 0.28 }); g.circle(sway + 1.5, crown - 10, 5.5).fill({ color: bc, alpha: 0.35 }); g.circle(sway + 1.5, crown - 10, 2.8).fill(bc);
+    } else if (T.topper !== "halo") {
+      g.circle(0, crown - 2, 7).fill({ color: bc, alpha: 0.22 }); g.circle(0, crown - 2, 2.2).fill({ color: bc, alpha: 0.9 });
+    }
 
     // hiding something: a nervous sideways glance, slightly hunched
     if (a.hiding > 0) {

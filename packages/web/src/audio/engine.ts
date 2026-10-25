@@ -14,6 +14,9 @@ export class AudioEngine {
   private duck = 0;
   private _muted = false;
   private _volume = 0.6;
+  private _ambience = true;
+  get ambienceEnabled(): boolean { return this._ambience; }
+  setAmbienceEnabled(on: boolean): void { this._ambience = on; if (this.ambBus && this.ctx) this.ambBus.gain.setTargetAtTime(on ? 0.35 : 0, this.ctx.currentTime, 0.1); }
   private noiseBuf: AudioBuffer | null = null;
 
   get ready(): boolean { return !!this.ctx && this.ctx.state === "running"; }
@@ -30,7 +33,7 @@ export class AudioEngine {
       this.sfxBus = this.ctx.createGain();
       this.ambBus = this.ctx.createGain();
       this.sfxBus.connect(this.master); this.ambBus.connect(this.master); this.master.connect(this.ctx.destination);
-      this.ambBus.gain.value = 0.35;
+      this.ambBus.gain.value = this._ambience ? 0.35 : 0;
       this.applyGain();
       const len = this.ctx.sampleRate * 2;
       this.noiseBuf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
@@ -48,6 +51,7 @@ export class AudioEngine {
     if (!this.ambBus || !this.ctx) return;
     const t = this.ctx.currentTime;
     this.ambBus.gain.cancelScheduledValues(t);
+    if (!this._ambience) return;
     this.ambBus.gain.setTargetAtTime(0.35 * (1 - amount), t, 0.01);
     this.ambBus.gain.setTargetAtTime(0.35, t + ms / 1000, 0.12);
     this.duck++;

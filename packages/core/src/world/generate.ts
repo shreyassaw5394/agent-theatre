@@ -1,6 +1,7 @@
 import { hashString, mulberry32 } from "./prng.js";
 import { footprintOf, heightClass, scoreFiles, type Scored } from "./relevance.js";
 import type { District, GenerateOptions, Path, Place, Rect, World } from "./types.js";
+import { profileRepo } from "./profile.js";
 
 /**
  * Deterministic world layout. Same repoId + same file list → identical World.
@@ -13,7 +14,9 @@ import type { District, GenerateOptions, Path, Place, Rect, World } from "./type
 export function generateWorld(opts: GenerateOptions): World {
   const cap = opts.cap ?? 60;
   const beaconCap = opts.beaconCap ?? 8;
-  const touched = new Set((opts.touched ?? []).map(norm));
+  // Force-include only the first `touchedCap` touched files (callers pass them most-active first); the rest get an overflow building per district.
+  const touchedCap = opts.touchedCap ?? 48;
+  const touched = new Set((opts.touched ?? []).map(norm).slice(0, touchedCap));
   const seed = hashString(opts.repoId);
   const rnd = mulberry32(seed);
   const files = opts.files.map((f) => ({ ...f, path: norm(f.path) }));
@@ -96,8 +99,20 @@ export function generateWorld(opts: GenerateOptions): World {
   const paths: Path[] = districts.map((d) => ({ from: d.id, to: "forge", points: [[d.cx, d.cy], [Math.round(d.cx / 2), Math.round(d.cy / 2)], [0, 0]] }));
   paths.push({ from: "dock", to: "forge", points: [[dock.gx, dock.gy], [0, 0]] });
 
+  // overflow: one shared building per district that had files cut, so unplaced activity still lands in the right area
+  if (capped) {
+    for (const d of districts) {
+      const top = d.id.slice(2);
+      const total = scored.filter((s) => s.kind !== "beacon" && topDir(s.file.path) === top).length;
+      if (total <= d.placeIds.length) continue;
+      const spot = spiralSpot(occupied, d.cx, d.cy, 1, d.bounds);
+      const p: Place = { id: `p:${top ? top + "/" : ""}…`, kind: "overflow", path: `${top ? top + "/" : ""}…`, label: `+${total - d.placeIds.length} more`, district: d.id, gx: spot[0], gy: spot[1], footprint: 1, height: 2, score: 0, touched: false };
+      claim(occupied, p); places.push(p); d.placeIds.push(p.id);
+    }
+  }
   const bounds = boundsOf(places, 2);
-  return { repoId: opts.repoId, seed, districts, places, paths, bounds, stats: { files: scored.length, placed: selected.length, capped } };
+  const profile = profileRepo(files, opts.manifests ?? {});
+  return { repoId: opts.repoId, seed, profile, districts, places, paths, bounds, stats: { files: scored.length, placed: selected.length, capped } };
 }
 
 // ---- helpers ----
