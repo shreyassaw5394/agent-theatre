@@ -122,7 +122,10 @@ export class Theatre {
     return out;
   }
 
+  /** In-process subscribers (the VS Code extension relays these to its webview). */
+  readonly listeners = new Set<(msg: unknown) => void>();
   private broadcast(msg: unknown): void {
+    for (const l of this.listeners) { try { l(msg); } catch { /* listener's problem */ } }
     const data = JSON.stringify(msg);
     for (const ws of this.wss?.clients ?? []) if (ws.readyState === 1) ws.send(data);
   }
@@ -159,6 +162,8 @@ export class Theatre {
     await new Promise<void>((res) => (this.server ? this.server.close(() => res()) : res()));
   }
 
+  /** The live scene as /api/scene returns it. */
+  scene(): unknown { return { mode: "live", repoId: this.opts.repoId, world: this.live.world, events: this.live.events, beats: this.live.beats, signal: this.signal }; }
   get url(): string { return `http://127.0.0.1:${this.port}/`; }
   get name(): string { return basename(this.opts.cwd); }
 }

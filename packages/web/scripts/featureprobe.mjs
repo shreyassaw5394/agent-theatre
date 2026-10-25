@@ -13,7 +13,9 @@ const z1 = await p.evaluate(() => globalThis.__agentTheatre.player.camera.scale)
 const dl = p.waitForEvent("download", { timeout: 15000 });
 await p.getByRole("button", { name: "Export clip" }).click(); await p.waitForTimeout(3500);
 await p.getByRole("button", { name: /Stop & save/ }).click();
+await p.waitForSelector(".share"); const sheetBtns = await p.$$eval(".share .btn", (b) => b.map((x) => x.textContent.trim()));
+await p.click(".share a.btn.primary");
 const d = await dl; const path = await d.path();
 const { statSync } = await import("node:fs");
-console.log(JSON.stringify({ overviewZoom: +z0.toFixed(3), afterWheel: +z1.toFixed(3), download: d.suggestedFilename(), bytes: path ? statSync(path).size : 0, errs }));
+console.log(JSON.stringify({ sheetBtns, overviewZoom: +z0.toFixed(3), afterWheel: +z1.toFixed(3), download: d.suggestedFilename(), bytes: path ? statSync(path).size : 0, errs }));
 await b.close();

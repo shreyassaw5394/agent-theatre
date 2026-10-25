@@ -74,14 +74,29 @@ async function open(ctx: vscode.ExtensionContext, mode: "live" | { session: stri
     panel.iconPath = vscode.Uri.joinPath(ctx.extensionUri, "media", "icon.png");
     panel.onDidDispose(() => { panel = null; });
     // the page asks to bring Claude Code forward when the agent is waiting on the person
-    panel.webview.onDidReceiveMessage(async (m: { type?: string }) => {
+    const relay = (msg: unknown) => { void panel?.webview.postMessage(msg); };
+    t.listeners.add(relay);
+    panel.onDidDispose(() => t.listeners.delete(relay));
+    // the webview never talks to the network itself: everything goes through here
+    panel.webview.onDidReceiveMessage(async (m: { type?: string; id?: string; text?: string }) => {
+      if (m?.type === "scene") { void panel?.webview.postMessage({ type: "scene", payload: t.scene() }); return; }
+      if (m?.type === "replay" && m.id) {
+        try { const r = await fetch(`${t.url}api/replay/${encodeURIComponent(m.id)}`); void panel?.webview.postMessage({ type: "scene", payload: await r.json() }); }
+        catch (e) { void vscode.window.showErrorMessage(`Agent Theatre: could not load the session (${String(e)})`); }
+        return;
+      }
+      if (m?.type === "prompt" && m.text) {
+        try { const r = await fetch(`${t.url}api/prompt`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: m.text }) }); const j = await r.json() as { ok?: boolean; error?: string }; if (!j.ok) void vscode.window.showWarningMessage(`Agent Theatre: ${j.error ?? "could not send the prompt"}`); }
+        catch (e) { void vscode.window.showErrorMessage(`Agent Theatre: ${String(e)}`); }
+        return;
+      }
       if (m?.type !== "focus-agent") return;
       for (const cmd of ["claude-vscode.focus", "claude-vscode.editor.openLast", "workbench.action.terminal.focus"]) {
         try { await vscode.commands.executeCommand(cmd); return; } catch { /* next */ }
       }
     });
   }
-  panel.webview.html = html(ctx, panel.webview, `?${query}&base=${encodeURIComponent(t.url.replace(/\/$/, ""))}`);
+  panel.webview.html = html(ctx, panel.webview, `?${query}`);
   panel.reveal(vscode.ViewColumn.Beside, true);
 }
 

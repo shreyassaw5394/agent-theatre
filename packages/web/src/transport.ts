@@ -54,6 +54,32 @@ export class WsTransport implements Transport {
   onSignal(cb: (s: "ok" | "lost") => void): void { this.signalCb = cb; }
 }
 
+/** Inside a VS Code webview: the extension host fetches from the local server and relays its broadcasts. */
+export interface HostApi { postMessage(m: unknown): void }
+export class HostTransport implements Transport {
+  readonly mode = "live" as const;
+  private readyCb: ((p: ScenePayload) => void) | null = null;
+  private beatsCb: ((beats: Beat[], events: AgentEvent[]) => void) | null = null;
+  private signalCb: ((s: "ok" | "lost") => void) | null = null;
+  private pending: ScenePayload | null = null;
+  constructor(private readonly host: HostApi, private readonly session: string | null) {
+    addEventListener("message", (ev: MessageEvent) => {
+      const m = ev.data as { type?: string; payload?: ScenePayload & { signal?: "ok" | "lost"; title?: string }; beats?: Beat[]; events?: AgentEvent[]; state?: "ok" | "lost" };
+      if (m?.type === "scene" && m.payload) {
+        const p = m.payload, payload = { world: p.world, events: p.events, beats: p.beats, repoId: p.title ? `${p.repoId} — ${p.title}` : p.repoId };
+        if (this.readyCb) this.readyCb(payload); else this.pending = payload;
+        if (p.signal) this.signalCb?.(p.signal);
+      }
+      if (m?.type === "beats" && m.beats) this.beatsCb?.(m.beats, m.events ?? []);
+      if (m?.type === "signal" && m.state) this.signalCb?.(m.state);
+    });
+    host.postMessage(session ? { type: "replay", id: session } : { type: "scene" });
+  }
+  onReady(cb: (p: ScenePayload) => void): void { this.readyCb = cb; if (this.pending) { const p = this.pending; this.pending = null; cb(p); } }
+  onBeats(cb: (beats: Beat[], events: AgentEvent[]) => void): void { this.beatsCb = cb; }
+  onSignal(cb: (s: "ok" | "lost") => void): void { this.signalCb = cb; }
+}
+
 /** Replay of a real session served by the CLI. */
 export async function replayTransport(sessionId: string, base = ""): Promise<Transport> {
   const r = await fetch(`${base}/api/replay/${encodeURIComponent(sessionId)}`);

@@ -17,6 +17,25 @@ export interface PanelHandlers { onPlayPause(): void; onSeek(ms: number): void; 
 export class Panel {
   readonly root: HTMLElement;
   readonly stageEl: HTMLElement;
+  private readonly nudge: HTMLElement;
+  showNudge(): void { this.nudge.hidden = false; }
+  /** After an export: download, system share, post intents, caption. */
+  showShare(clip: { blob: Blob; name: string; caption: string }): void {
+    const url = URL.createObjectURL(clip.blob);
+    const file = new File([clip.blob], clip.name, { type: clip.blob.type });
+    const canShare = typeof navigator.share === "function" && typeof navigator.canShare === "function" && navigator.canShare({ files: [file] });
+    const sheet = el("div", "share", `<div class="sh-head"><b>Your clip is ready</b><span>${(clip.blob.size / 1048576).toFixed(1)} MB · ${clip.name.split(".").pop()}</span></div>
+      <div class="sh-row"><a class="btn primary" download="${clip.name}" href="${url}">Download</a>${canShare ? '<button type="button" class="btn ghost" data-act="share">Share…</button>' : ""}<a class="btn ghost" target="_blank" rel="noopener" href="https://x.com/intent/post?text=${encodeURIComponent(clip.caption)}">Post on X</a><a class="btn ghost" target="_blank" rel="noopener" href="https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(clip.caption)}">Post on LinkedIn</a><button type="button" class="btn ghost" data-act="caption">Copy caption</button><button type="button" class="btn ghost" data-act="close">Close</button></div>
+      <p class="sh-note">Posts open with the caption; attach the downloaded clip there.</p>`);
+    sheet.addEventListener("click", (ev) => {
+      const act = (ev.target as HTMLElement).closest("[data-act]")?.getAttribute("data-act");
+      if (act === "share") void navigator.share({ files: [file], title: "Agent Theatre", text: clip.caption }).catch(() => {});
+      if (act === "caption") void navigator.clipboard?.writeText(clip.caption);
+      if (act === "close") { sheet.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
+    });
+    this.stageEl.append(sheet);
+  }
+  nudgeSeen(): void { this.nudge.hidden = true; try { localStorage.setItem("at:nudged", "1"); } catch { /* fine */ } }
   private readonly overviewBtn: HTMLButtonElement; private overviewOn = false; readonly exportBtn: HTMLButtonElement;
   private readonly prompt: HTMLElement;
   private readonly waiting: HTMLElement; private readonly vscode: { postMessage: (m: unknown) => void } | null; private notifiedFor = "";
@@ -40,6 +59,7 @@ export class Panel {
     this.overviewBtn = el("button", "btn ghost", "Whole repo"); this.overviewBtn.type = "button"; this.overviewBtn.title = "Pull back to see every building (follow camera off)"; this.overviewBtn.onclick = () => { this.overviewOn = !this.overviewOn; this.overviewBtn.textContent = this.overviewOn ? "Follow" : "Whole repo"; this.overviewBtn.setAttribute("aria-pressed", String(this.overviewOn)); h.onOverview(this.overviewOn); };
     this.exportBtn = el("button", "btn ghost", "Export clip"); this.exportBtn.type = "button"; this.exportBtn.title = "Record the stage (with sound) to a .webm you can share"; this.exportBtn.onclick = () => h.onExport();
     tb.append(this.setBtn, this.overviewBtn, this.muteBtn, this.ambBtn, this.exportBtn);
+    this.nudge = el("div", "nudge", "Sound is off — turn on effects and ambience to hear the stage"); this.nudge.hidden = true; tb.append(this.nudge);
     header.append(brand, tb);
     const grid = el("div", "grid");
     const col = el("div", "stage-col");
@@ -54,8 +74,7 @@ export class Panel {
     this.picker = el("div", "picker"); this.picker.hidden = true;
     // when the agent is waiting on the person, say so where they are looking and give them a way back to it
     this.waiting = el("div", "waiting", `<div class="wt"><b></b><span></span></div><button type="button" class="go"></button>`); this.waiting.hidden = true;
-    const vsHost = (globalThis as { acquireVsCodeApi?: () => { postMessage: (m: unknown) => void } }).acquireVsCodeApi;
-    this.vscode = vsHost ? vsHost() : null;
+    this.vscode = (globalThis as { __vsapi?: { postMessage: (m: unknown) => void } | null }).__vsapi ?? null;
     (this.waiting.querySelector(".go") as HTMLButtonElement).onclick = () => { if (this.vscode) this.vscode.postMessage({ type: "focus-agent" }); else void this.notify(); };
     // your turn: say what's next from here (resumes the session headlessly through the local server)
     this.prompt = el("form", "prompt", `<input type="text" placeholder="" autocomplete="off" spellcheck="false"><button type="submit">Send</button><span class="st"></span>`); this.prompt.hidden = true;
