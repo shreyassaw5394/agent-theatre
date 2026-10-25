@@ -166,6 +166,11 @@ export class Panel {
       (this.waiting.querySelector(".go") as HTMLElement).textContent = this.vscode ? "Go to Claude Code" : "Notify me next time";
       if (this.notifiedFor !== cur.id) { this.notifiedFor = cur.id; if (!this.vscode && "Notification" in globalThis && Notification.permission === "granted") void new Notification("Agent Theatre", { body: `${this.leadName || "The agent"} ${reason}.` }); }
     }
+    // live with nothing to perform yet: say what the stage is waiting for instead of sitting on a title card
+    if (this.liveMode && s.duration === 0) {
+      const short = (this.repoId || "this folder").split(/[/\\]/).filter(Boolean).pop();
+      this.caption.hidden = false; (this.caption.firstElementChild as HTMLElement).textContent = `Waiting for a Claude Code session in ${short}. Run \`claude\` in that folder and the stage comes alive.`;
+    }
     this.signal.hidden = s.signal === "ok" || !this.liveMode; this.signal.className = `signal ${s.signal}`; (this.signal.lastElementChild as HTMLElement).textContent = s.signal === "lost" ? "quiet — no events for 90 s" : "live";
     // acts
     let ai = 0; this.acts.forEach((a, i) => { if (s.t >= a.fromMs) ai = i; });
