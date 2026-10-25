@@ -173,4 +173,4 @@ async function portrait(id: string): Promise<void> {
 const host = document.getElementById("app")!;
 const boot = q.has("portrait") ? Promise.resolve<Transport>(new StaticTransport({ world: null as never, events: [], beats: [], repoId: "" })) : q.has("live") ? Promise.resolve<Transport>(new WsTransport(BASE)) : q.get("session") ? replayTransport(q.get("session")!, BASE) : loadDemo(q.get("demo") ?? "episode-1");
 if (q.has("portrait")) portrait(q.get("portrait")!).catch((err) => { host.textContent = `Could not start: ${err}`; });
-else boot.then((t) => mount(host, t)).catch((err) => { host.textContent = `Could not start: ${err}`; });
+else boot.then((t) => mount(host, t)).catch((err) => { host.textContent = `Could not start: ${err}${BASE ? ` (server: ${BASE})` : ""}`; });
