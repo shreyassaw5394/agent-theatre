@@ -130,7 +130,7 @@ export class ScenePlayer {
     // place pip
     const spot = this.worldLayer.standingSpot(this.actorAt.get("pip") ?? "forge");
     this.pip.pose.x = spot.x; this.pip.pose.y = spot.y;
-    this.fitCamera(); this.camera.follow(spot.x, spot.y - 24, 1); this.camera.snap();
+    this.fitCamera(); this.cameraStep(this.currentBeat(), 0); this.camera.snap();
   }
   private triggerBetween(a: number, b: number): void {
     for (const beat of this.beats) {
@@ -291,27 +291,37 @@ export class ScenePlayer {
     for (const p of this.world.places) if (p.kind === "beacon" && this.worldLayer.lampOf(p.id) === "pass" && this.t - this.lastPass > 12_000) this.worldLayer.setLamp(p.id, "idle");
   }
 
-  private fitCamera(): void {
-    const b = this.world.bounds; const c = [iso(b.x, b.y), iso(b.x + b.w, b.y), iso(b.x + b.w, b.y + b.h), iso(b.x, b.y + b.h)];
-    const xs = c.map((p) => p.x), ys = c.map((p) => p.y);
-    const w = Math.max(...xs) - Math.min(...xs), h = Math.max(...ys) - Math.min(...ys) + 120;
-    this.camera.fit(w, h, this.app.renderer.width / this.app.renderer.resolution, this.app.renderer.height / this.app.renderer.resolution, 1.15);
-    this.baseZoom = this.camera.scale;
-  }
+  private fitCamera(): void { this.camera.setZoomFactor(this.fitZoom()); this.baseZoom = this.fitZoom(); }
   private baseZoom = 1;
   private cameraStep(cur: Beat | null, dtMs: number): void {
     const view = { w: this.app.renderer.width / this.app.renderer.resolution, h: this.app.renderer.height / this.app.renderer.resolution };
     const narrow = view.w < 640;
     // follow Pip loosely; weight ramps in after the curtain
-    const w = narrow ? 0.5 : 0.28;
-    const b = this.world.bounds; const centre = iso(b.x + b.w / 2, b.y + b.h / 2);
-    this.camera.follow(lerp(centre.x, this.pip.pose.x, w), lerp(centre.y, this.pip.pose.y - 24, w * 0.8), 1);
+    const w = narrow ? 0.45 : 0.22;
+    const pts = this.world.places.map((p) => iso(p.gx + p.footprint / 2, p.gy + p.footprint / 2));
+    const minX = Math.min(...pts.map((p) => p.x)) - 70, maxX = Math.max(...pts.map((p) => p.x)) + 70;
+    const minY = Math.min(...pts.map((p) => p.y)) - 110, maxY = Math.max(...pts.map((p) => p.y)) + 50;
+    const centre = { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
+    const z = this.fitZoom() * (cur?.kind === "celebrate" ? 1.07 : 1);
+    const halfW = view.w / z / 2, halfH = view.h / z / 2;
+    const clampAxis = (v: number, lo: number, hi: number) => (lo + halfW > hi - halfW ? (lo + hi) / 2 : Math.max(lo + halfW, Math.min(hi - halfW, v)));
+    const clampY = (v: number, lo: number, hi: number) => (lo + halfH > hi - halfH ? (lo + hi) / 2 : Math.max(lo + halfH, Math.min(hi - halfH, v)));
+    const tx = clampAxis(lerp(centre.x, this.pip.pose.x, w), minX, maxX);
+    const ty = clampY(lerp(centre.y, this.pip.pose.y - 24, w * 0.8), minY, maxY);
+    this.camera.follow(tx, ty, 1);
     this.camera.setDrift(this.mood === "lost");
     if (cur?.kind === "curtain_up") { const u = seg(this.t, cur.atMs, cur.atMs + cur.durationMs); this.camera.setZoomFactor(this.fitZoom() * lerp(1.14, 1, walkEase(u))); }
     else this.camera.setZoomFactor(this.fitZoom() * (cur?.kind === "celebrate" ? 1.07 : 1));
     this.camera.update(dtMs, view.w, view.h);
   }
-  private fitZoom(): number { const b = this.world.bounds; const c = [iso(b.x, b.y), iso(b.x + b.w, b.y), iso(b.x + b.w, b.y + b.h), iso(b.x, b.y + b.h)]; const xs = c.map((p) => p.x), ys = c.map((p) => p.y); const w = Math.max(...xs) - Math.min(...xs), h = Math.max(...ys) - Math.min(...ys) + 120; const vw = this.app.renderer.width / this.app.renderer.resolution, vh = this.app.renderer.height / this.app.renderer.resolution; return Math.min(vw / (w * 1.15), vh / (h * 1.15)); }
+  /** Zoom so the inhabited part of the world (places, not the whole terrain) fills the view. */
+  private fitZoom(): number {
+    const pts = this.world.places.flatMap((p) => [iso(p.gx, p.gy), iso(p.gx + p.footprint, p.gy + p.footprint)]);
+    const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
+    const w = Math.max(60, Math.max(...xs) - Math.min(...xs) + 140), h = Math.max(60, Math.max(...ys) - Math.min(...ys) + 150);
+    const vw = this.app.renderer.width / this.app.renderer.resolution, vh = this.app.renderer.height / this.app.renderer.resolution;
+    return Math.min(vw / (w * 1.05), vh / (h * 1.05), 2.2);
+  }
 
   // ---------- overlays (DOM layer reads these) ----------
   private bubble(cur: Beat | null): PlayerState["bubble"] {

@@ -11,11 +11,13 @@ const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const store = { get: (k: string) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k: string, v: string) => { try { localStorage.setItem(k, v); } catch { /* private mode */ } } };
 
 async function loadDemo(name: string): Promise<Transport> {
-  const text = await (await fetch(`/${name}.jsonl`)).text();
+  const text = await (await fetch(`/demo/${name}.jsonl`)).text();
   const { events } = parseTranscript(text);
-  const { files, touched } = filesFromEvents(events);
-  const repoId = events.find((e) => e.kind === "session_start")?.kind === "session_start" ? (events[0] as any).repoId ?? name : name;
-  const world = generateWorld({ repoId, files, touched });
+  const inferred = filesFromEvents(events);
+  // A real file tree when the host provides one (CLI/extension scan the repo); events-only otherwise.
+  let files = inferred.files, repoId = (events[0] as { repoId?: string } | undefined)?.repoId ?? name;
+  try { const extra = await (await fetch(`/demo/${name}.files.json`)).json() as { repoId?: string; files: typeof files }; if (Array.isArray(extra.files)) { const known = new Set(extra.files.map((f) => f.path)); files = [...extra.files, ...inferred.files.filter((f) => !known.has(f.path))]; if (extra.repoId) repoId = extra.repoId; } } catch { /* no tree; events-only world */ }
+  const world = generateWorld({ repoId, files, touched: inferred.touched });
   const beats = direct(events, world);
   return new StaticTransport({ world, events, beats, repoId });
 }

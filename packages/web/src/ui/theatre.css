@@ -5,6 +5,7 @@
   color-scheme:dark;
 }
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html,body{margin:0;background:var(--sea);color:var(--fg);font:15px/1.55 var(--body)}
 #app{min-height:100vh;padding:20px max(16px,env(safe-area-inset-right)) 32px max(16px,env(safe-area-inset-left))}
 .wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:18px}

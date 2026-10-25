@@ -138,7 +138,8 @@ export class Panel {
     // tags
     const r = this.stageEl.getBoundingClientRect();
     const narrow = r.width < 600;
-    const shown = s.labels.filter((l) => l.active || !narrow);
+    const shown = s.labels.filter((l) => l.active || !narrow).sort((a, b) => a.screen.y - b.screen.y || a.screen.x - b.screen.x);
+    for (let i = 0; i < shown.length; i++) for (let j = 0; j < i; j++) { const a = shown[j]!, b = shown[i]!; if (Math.abs(a.screen.x - b.screen.x) < 76 && Math.abs(a.screen.y - b.screen.y) < 20) b.screen = { x: b.screen.x, y: a.screen.y - 20 }; }
     while (this.tagPool.length < shown.length) { const t = el("div", "tag"); this.overlay.append(t); this.tagPool.push(t); }
     this.tagPool.forEach((t, i) => { const l = shown[i]; if (!l) { t.hidden = true; return; } t.hidden = false; t.textContent = l.text; const pid = world.places.find((p) => p.label === l.text)?.id ?? ""; const lamp = lampOf(pid); t.className = `tag${l.active ? " active" : ""}${lamp !== "idle" ? ` lamp-${lamp}` : ""}`; t.style.left = `${l.screen.x}px`; t.style.top = `${l.screen.y}px`; });
     // bubble

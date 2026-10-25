@@ -34,6 +34,7 @@ export class Pip {
 
   constructor(private theme: SetTheme, private reducedMotion: boolean) {
     this.container.addChild(this.shadow, this.body);
+    this.container.scale.set(1.18);
   }
   setTheme(t: SetTheme): void { this.theme = t; }
 

@@ -1,6 +1,6 @@
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import type { Place, World } from "@agent-theatre/core";
-import { mulberry32 } from "@agent-theatre/core";
+import { hashString, mulberry32 } from "@agent-theatre/core";
 import { corners, depthOf, flat, iso, lerpP, up, type Pt } from "./iso.js";
 import type { Palette, SetTheme } from "../sets/types.js";
 
@@ -62,7 +62,13 @@ export class WorldLayer {
     const g = new Graphics();
     g.zIndex = depthOf(p.gx, p.gy, p.footprint);
     const districtIndex = Math.max(0, this.world.districts.findIndex((d) => d.id === p.district));
-    const palette = p.kind === "beacon" ? this.theme.beacon : p.kind === "archive" ? this.theme.archive : p.kind === "forge" ? this.theme.forge : this.theme.palettes[districtIndex % this.theme.palettes.length]!;
+    const base = p.kind === "beacon" ? this.theme.beacon : p.kind === "archive" ? this.theme.archive : p.kind === "forge" ? this.theme.forge : this.theme.palettes[districtIndex % this.theme.palettes.length]!;
+    // every building in a district shares a family but not a face: seeded tint and an occasional borrowed roof
+    const k = p.kind === "building" ? hashString(p.path) : 0;
+    const tint = p.kind === "building" ? ((k % 5) - 2) * 0.05 : 0;
+    const roofFrom = p.kind === "building" && k % 3 === 0 ? this.theme.palettes[(districtIndex + 1 + (k % 2)) % this.theme.palettes.length]! : base;
+    const shade = (c: number) => (tint >= 0 ? mix(c, 0xffffff, tint) : mix(c, 0x000000, -tint));
+    const palette: Palette = { top: shade(base.top), left: shade(base.left), right: shade(base.right), roof: roofFrom.roof, roofD: roofFrom.roofD, win: base.win };
     const d: Drawn = { place: p, g, palette, extraH: 0, glow: 0, lamp: "idle", scaffold: 0, dirty: true };
     this.drawn.set(p.id, d);
     this.objects.addChild(g);
@@ -75,7 +81,7 @@ export class WorldLayer {
     this.drawRipples();
     for (const pr of this.props) if (pr.canopy) pr.canopy.x = Math.sin(this.time * 1.4 + pr.phase) * 1.2;
     for (const d of this.drawn.values()) {
-      if (d.glow > 0 || d.lamp === "scan" || d.lamp === "fail" || d.lamp === "pass") d.dirty = true;
+      if (d.glow > 0 || d.lamp === "scan" || d.lamp === "fail" || d.lamp === "pass" || d.place.kind === "dock" || d.place.kind === "forge") d.dirty = true;
       if (d.dirty) this.redraw(d);
     }
   }
@@ -83,7 +89,7 @@ export class WorldLayer {
   // ---------- drawing ----------
   private heightPx(d: Drawn): number {
     const p = d.place;
-    const base = p.kind === "beacon" ? 70 : p.kind === "forge" ? 26 : p.kind === "dock" ? 4 : p.kind === "archive" ? 28 : 16 + p.height * 7;
+    const base = p.kind === "beacon" ? 70 : p.kind === "forge" ? 34 : p.kind === "dock" ? 4 : p.kind === "archive" ? 30 : 18 + p.height * 8;
     return base + d.extraH;
   }
 
@@ -102,17 +108,32 @@ export class WorldLayer {
     const pulse = d.glow > 0 ? 0.6 + 0.4 * Math.sin(this.time * 10) : 0;
     const win = d.glow > 0 ? mix(P.win, 0xffe9a8, 0.5 + 0.5 * pulse) : P.win;
     if (p.kind !== "archive" && p.kind !== "forge") {
-      const rows = Math.max(1, Math.round(h / 16)), cols = fp >= 2 ? 3 : 2;
+      const rows = Math.max(1, Math.round(h / 22)), cols = fp >= 3 ? 3 : 2;
       this.windows(g, c[3], c[2], h, rows, cols, win, d.glow > 0 ? 1 : 0.9);
       this.windows(g, c[2], c[1], h, rows, cols, win, d.glow > 0 ? 1 : 0.8);
+      // a door on the near face grounds the building
+      const door = lerpP(c[3], c[2], 0.3);
+      g.poly([door.x - 3, door.y - 1, door.x + 3, door.y + 1, door.x + 3, door.y - 9, door.x - 3, door.y - 11]).fill({ color: P.roofD, alpha: 0.9 });
     }
-    if (p.kind === "building" && fp === 1) this.pyramid(g, c.map((q) => up(q, h)) as [Pt, Pt, Pt, Pt], up(iso(p.gx + 0.5, p.gy + 0.5), h + 20), P.roof, P.roofD);
-    if (p.kind === "building" && fp >= 2) {
-      // flat roof with mast + lantern (tower)
-      g.poly(flat(c.map((q) => up(q, h)))).stroke({ width: 1, color: 0xffffff, alpha: 0.35 });
-      const ap = up(iso(p.gx + fp / 2, p.gy + fp / 2), h);
+    if (p.kind === "building" && fp <= 2) {
+      const apex = up(iso(p.gx + fp / 2, p.gy + fp / 2), h + 14 + fp * 8);
+      this.pyramid(g, c.map((q) => up(q, h)) as [Pt, Pt, Pt, Pt], apex, P.roof, P.roofD);
+      // eave line
+      g.poly(flat(c.map((q) => up(q, h)))).stroke({ width: 1.2, color: P.roofD, alpha: 0.5 });
+    }
+    if (p.kind === "building" && fp >= 3) {
+      // tower: parapet band, a stepped penthouse, mast + lantern
+      const t = c.map((q) => up(q, h)) as [Pt, Pt, Pt, Pt];
+      g.poly(flat([t[3], t[2], up(t[2], 4), up(t[3], 4)])).fill(P.roofD);
+      g.poly(flat([t[2], t[1], up(t[1], 4), up(t[2], 4)])).fill(mix(P.roofD, 0x000000, 0.2));
+      g.poly(flat(t.map((q) => up(q, 4)))).fill(P.roof);
+      const pc = corners(p.gx + 0.8, p.gy + 0.8, fp - 1.6, h + 4);
+      g.poly(flat([pc[3], pc[2], up(pc[2], 10), up(pc[3], 10)])).fill(P.left);
+      g.poly(flat([pc[2], pc[1], up(pc[1], 10), up(pc[2], 10)])).fill(P.right);
+      g.poly(flat(pc.map((q) => up(q, 10)))).fill(P.top);
+      const ap = up(iso(p.gx + fp / 2, p.gy + fp / 2), h + 14);
       g.moveTo(ap.x, ap.y).lineTo(ap.x, ap.y - 12).stroke({ width: 1.6, color: P.roofD });
-      g.circle(ap.x, ap.y - 13, 2.2).fill(d.glow > 0 ? 0xffd66b : P.roof);
+      g.circle(ap.x, ap.y - 13 - 14, 2.2).fill(d.glow > 0 ? 0xffd66b : P.roof);
     }
     if (p.kind === "archive") {
       // columns on the two visible faces
@@ -121,13 +142,18 @@ export class WorldLayer {
       this.pyramid(g, c.map((q) => up(q, h)) as [Pt, Pt, Pt, Pt], up(iso(p.gx + fp / 2, p.gy + fp / 2), h + 10), P.roof, P.roofD);
     }
     if (p.kind === "forge") {
-      // chimney + ember glow
-      const top = up(iso(p.gx + fp / 2 + 0.3, p.gy + fp / 2 - 0.3), h);
-      g.rect(top.x - 4, top.y - 18, 8, 18).fill(P.roofD);
       const ember = this.theme.forge.ember;
+      // warm open doorway on the near face + glowing windows
+      const door = lerpP(c[3], c[2], 0.5);
+      g.poly([door.x - 7, door.y - 2, door.x + 7, door.y + 2, door.x + 7, door.y - 18, door.x - 7, door.y - 22]).fill({ color: ember, alpha: 0.85 });
+      this.windows(g, c[2], c[1], h, 2, 2, ember, 0.9);
+      // pitched roof + chimney with drifting smoke
+      this.pyramid(g, c.map((q) => up(q, h)) as [Pt, Pt, Pt, Pt], up(iso(p.gx + fp / 2, p.gy + fp / 2), h + 16), P.roof, P.roofD);
+      const top = up(iso(p.gx + fp * 0.75, p.gy + fp * 0.3), h + 6);
+      g.rect(top.x - 4, top.y - 16, 8, 16).fill(P.roofD);
+      for (let i = 0; i < 3; i++) { const u = (this.time * 0.35 + i / 3) % 1; g.circle(top.x + Math.sin(u * 6 + i) * 4, top.y - 18 - u * 26, 3 + u * 6).fill({ color: 0xffffff, alpha: 0.22 * (1 - u) }); }
       const k = 0.5 + 0.5 * Math.sin(this.time * 3);
-      g.circle(top.x, top.y - 20, 6 + k * 3).fill({ color: ember, alpha: 0.25 + 0.2 * k });
-      g.circle(top.x, top.y - 20, 2.5).fill({ color: ember, alpha: 0.9 });
+      g.circle(door.x, door.y - 8, 12 + k * 4).fill({ color: ember, alpha: 0.12 + 0.08 * k });
     }
     if (d.glow > 0) this.outline(g, c, h, 0xffc85a, 0.4 + 0.4 * pulse);
     if (d.scaffold > 0) this.scaffold(g, p, h, d.scaffold);
@@ -188,12 +214,18 @@ export class WorldLayer {
   }
   private drawDock(g: Graphics, p: Place): void {
     const c = corners(p.gx, p.gy, p.footprint);
+    // planked deck on posts
+    g.poly(flat([c[3], c[2], up(c[2], -5), up(c[3], -5)])).fill(this.theme.dock.post);
+    g.poly(flat([c[2], c[1], up(c[1], -5), up(c[2], -5)])).fill(mix(this.theme.dock.post, 0x000000, 0.2));
     g.poly(flat(c)).fill(this.theme.dock.deck);
-    for (const q of c) { g.rect(q.x - 1.5, q.y - 8, 3, 8).fill(this.theme.dock.post); }
-    // a small vessel moored at the far edge
-    const m = lerpP(c[1], c[2], 0.5);
-    g.ellipse(m.x + 14, m.y + 4, 12, 5).fill(this.theme.dock.vessel);
-    g.rect(m.x + 10, m.y - 6, 8, 8).fill(this.theme.dock.post);
+    for (let k = 1; k < 5; k++) { const a = lerpP(c[0], c[3], k / 5), b = lerpP(c[1], c[2], k / 5); g.moveTo(a.x, a.y).lineTo(b.x, b.y).stroke({ width: 1, color: 0x000000, alpha: 0.12 }); }
+    for (const q of [c[0], c[1], c[2], c[3]]) g.rect(q.x - 2, q.y - 12, 4, 12).fill(this.theme.dock.post);
+    // the vessel, bobbing
+    const m = lerpP(c[1], c[2], 0.5), bob = Math.sin(this.time * 1.6) * 1.5;
+    g.ellipse(m.x + 22, m.y + 6 + bob, 16, 6).fill(this.theme.dock.vessel);
+    g.ellipse(m.x + 22, m.y + 3 + bob, 13, 4).fill(mix(this.theme.dock.vessel, 0x000000, 0.12));
+    g.rect(m.x + 20, m.y - 12 + bob, 3, 15).fill(this.theme.dock.post);
+    g.poly([m.x + 23, m.y - 12 + bob, m.x + 34, m.y - 6 + bob, m.x + 23, m.y - 2 + bob]).fill({ color: 0xffffff, alpha: 0.9 });
   }
 
   private blobPath(g: Graphics, k: number, dy: number): Graphics {
@@ -283,9 +315,11 @@ export class WorldLayer {
       // keep props off district interiors so buildings read clearly
       if (this.world.districts.some((d) => gx >= d.bounds.x && gx < d.bounds.x + d.bounds.w && gy >= d.bounds.y && gy < d.bounds.y + d.bounds.h)) continue;
       occupied.add(`${gx},${gy}`);
+      const node = new Container();
+      node.zIndex = depthOf(gx, gy);
       const g = new Graphics();
-      g.zIndex = depthOf(gx, gy);
-      const p = iso(gx + 0.5, gy + 0.5), s = 0.85 + rnd() * 0.4;
+      node.addChild(g);
+      const p = iso(gx + 0.5, gy + 0.5), s = (0.85 + rnd() * 0.4) * 1.5;
       const [c1, c2, c3] = this.theme.propColors;
       let canopy: Graphics | undefined;
       if (this.theme.prop === "tree") {
@@ -294,7 +328,7 @@ export class WorldLayer {
         canopy = new Graphics();
         canopy.ellipse(p.x, p.y - 16 * s, 9 * s, 8.5 * s).fill(c1);
         canopy.ellipse(p.x - 2.5 * s, p.y - 18.5 * s, 6 * s, 5.5 * s).fill(c2);
-        g.addChild(canopy);
+        node.addChild(canopy);
       } else if (this.theme.prop === "antenna") {
         g.rect(p.x - 1, p.y - 18 * s, 2, 18 * s).fill(c1);
         g.circle(p.x, p.y - 20 * s, 2.5).fill(c2);
@@ -304,7 +338,7 @@ export class WorldLayer {
         g.circle(p.x, p.y - 17 * s, 3).fill(c1);
         g.circle(p.x, p.y - 17 * s, 7).fill({ color: c2, alpha: 0.18 });
       }
-      this.objects.addChild(g);
+      this.objects.addChild(node);
       this.props.push({ g, gx, gy, phase: rnd() * 6.28, ...(canopy ? { canopy } : {}) });
       placed++;
     }

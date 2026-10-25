@@ -1,0 +1,8 @@
+{ "repoId": "acme-shop", "files": [
+  { "path": "src/auth/session.ts", "loc": 180 }, { "path": "src/auth/tokens.ts", "loc": 120 }, { "path": "src/auth/password.ts", "loc": 95 },
+  { "path": "src/api/login.ts", "loc": 240 }, { "path": "src/api/users.ts", "loc": 210 }, { "path": "src/api/router.ts", "loc": 140 }, { "path": "src/api/middleware.ts", "loc": 90 },
+  { "path": "src/ui/LoginForm.tsx", "loc": 160 }, { "path": "src/ui/App.tsx", "loc": 300 }, { "path": "src/ui/Button.tsx", "loc": 60 }, { "path": "src/ui/theme.ts", "loc": 45 },
+  { "path": "db/schema.sql", "loc": 220 }, { "path": "db/migrations/001_users.sql", "loc": 40 },
+  { "path": "tests/login.spec.ts", "loc": 130 }, { "path": "tests/app.spec.ts", "loc": 110 },
+  { "path": "package.json", "loc": 40 }, { "path": "README.md", "loc": 60 }
+] }
