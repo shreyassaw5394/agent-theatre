@@ -27,9 +27,14 @@ function demoFixtures(): Plugin {
   };
 }
 
+import { homedir } from "node:os";
+let cliPort = 0;
+try { cliPort = Number(readFileSync(join(process.env.AGENT_THEATRE_HOME || join(homedir(), ".agent-theatre"), "port"), "utf8").trim()); } catch { /* CLI not running */ }
+const proxy = cliPort ? { "/api": `http://127.0.0.1:${cliPort}`, "/hook": `http://127.0.0.1:${cliPort}`, "/live": { target: `ws://127.0.0.1:${cliPort}`, ws: true } } : undefined;
+
 export default defineConfig({
   plugins: [demoFixtures()],
-  server: { port: 5173, strictPort: true, host: "127.0.0.1" },
+  server: { port: 5173, strictPort: true, host: "127.0.0.1", ...(proxy ? { proxy } : {}) },
   build: { target: "es2022", sourcemap: true },
   test: { include: ["tests/**/*.test.ts"], environment: "node" },
 });

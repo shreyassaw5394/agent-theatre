@@ -44,21 +44,21 @@ export function generateWorld(opts: GenerateOptions): World {
   places.push(forge);
 
   // district patches around the hub, ring-packed deterministically
-  let ring = 4;
+  let ring = 3;
   const placedRects: Rect[] = [{ x: -2, y: -2, w: 4, h: 4 }];
   const jitter = rnd() * Math.PI * 2;
   names.forEach((name, i) => {
     const items = groups.get(name)!.sort((a, b) => b.score - a.score || a.file.path.localeCompare(b.file.path));
     const cells = items.reduce((n, s) => n + footprintOf(heightClass(s.loc, maxLoc)) ** 2, 0);
-    const side = Math.max(3, Math.ceil(Math.sqrt(cells * 1.8)));
+    const side = Math.max(3, Math.ceil(Math.sqrt(cells * 1.45)));
     const angle = jitter + (i / Math.max(1, names.length)) * Math.PI * 2;
     let r = ring + side / 2;
     let rect: Rect;
     for (;;) {
       const cx = Math.round(Math.cos(angle) * r);
-      const cy = Math.round(Math.sin(angle) * r * 0.85);
+      const cy = Math.round(Math.sin(angle) * r * 0.8);
       rect = { x: cx - Math.floor(side / 2), y: cy - Math.floor(side / 2), w: side, h: side };
-      if (!placedRects.some((o) => overlaps(o, rect, 1))) break;
+      if (!placedRects.some((o) => overlaps(o, rect, 0))) break;
       r += 1;
     }
     placedRects.push(rect);
@@ -77,7 +77,7 @@ export function generateWorld(opts: GenerateOptions): World {
   });
 
   // outer ring: beacons near their district (or hub), dock at a seeded angle
-  const outer = Math.ceil(maxExtent(placedRects)) + 3;
+  const outer = Math.ceil(maxExtent(placedRects)) + 1;
   for (const s of beacons) {
     const home = districts.find((d) => d.id === `d:${topDir(s.file.path)}`);
     const ang = home ? Math.atan2(home.cy, home.cx) : rnd() * Math.PI * 2;

@@ -129,7 +129,7 @@ export class ScenePlayer {
     this.pip.pose.mood = this.mood;
     // place pip
     const spot = this.worldLayer.standingSpot(this.actorAt.get("pip") ?? "forge");
-    this.pip.pose.x = spot.x; this.pip.pose.y = spot.y;
+    this.pip.pose.x = spot.x; this.pip.pose.y = spot.y; this.pip.snap();
     this.fitCamera(); this.cameraStep(this.currentBeat(), 0); this.camera.snap();
   }
   private triggerBetween(a: number, b: number): void {
@@ -230,17 +230,27 @@ export class ScenePlayer {
       switch (mine.kind) {
         case "curtain_up": { const k = backOut(seg(u, 0.35, 0.8)); a.lift = (1 - Math.min(1, u / 0.5)) ** 2 * 150; a.sy = u < 0.5 ? 1.1 : 1 - 0.25 * bump(seg(u, 0.5, 0.75)); a.sx = 1 / a.sy; void k; break; }
         case "walk_to": {
-          const from = this.walkFrom.get(actor) ?? standing; const e = walkEase(u);
-          a.x = lerp(from.x, target.x, e); a.y = lerp(from.y, target.y, e); a.moving = u > 0 && u < 1;
+          const from = this.walkFrom.get(actor) ?? standing;
+          const ANT = Math.min(0.22, 140 / mine.durationMs); // anticipation: crouch and lean back before launching
+          const e = u < ANT ? 0 : walkEase((u - ANT) / (1 - ANT));
+          a.x = lerp(from.x, target.x, e); a.y = lerp(from.y, target.y, e); a.moving = u >= ANT && u < 0.98;
           a.face = target.x >= from.x ? 1 : -1;
-          const ph = this.t / 1000 * (this.mood === "lost" ? 16 : 11); a.lift = Math.abs(Math.sin(ph)) * 3.5;
-          const k = Math.cos(ph * 2); a.sy = 1 + 0.05 * k; a.sx = 1 - 0.05 * k; a.lean = a.face * 0.07;
+          if (u < ANT) { const k = bump(u / ANT); a.sy = 1 - 0.1 * k; a.sx = 1 + 0.08 * k; a.lean = -a.face * 0.12 * k; }
+          else {
+            const ph = this.t / 1000 * (this.mood === "lost" ? 16 : 11); a.lift = Math.abs(Math.sin(ph)) * 3.5;
+            const k = Math.cos(ph * 2); a.sy = 1 + 0.05 * k; a.sx = 1 - 0.05 * k; a.lean = a.face * 0.07;
+            if (u > 0.86) { const f = bump((u - 0.86) / 0.14); a.lean = a.face * 0.16 * f; a.sy = 1 - 0.06 * f; a.sx = 1 + 0.05 * f; } // follow-through on arrival
+          }
           if (actor === "pip" && this._playing) { this.footT += dt; if (this.footT > 0.19 && Sfx.plays("footstep", this.rate)) { this.footT = 0; this.sfx.play("footstep", { theme: this.theme, pan: Math.max(-0.8, Math.min(0.8, a.x / 600)) }); } }
           break;
         }
-        case "read": a.lean = -0.17 + Math.sin(this.t / 1000 * 3) * 0.03; a.face = this.facing(a, mine.target); break;
+        case "read": { const nod = bump(((this.t / 1000) % 1.4) / 0.25); a.lean = -0.17 + Math.sin(this.t / 1000 * 3) * 0.03 - nod * 0.05; a.sy = 1 - nod * 0.03; a.face = this.facing(a, mine.target); break; }
         case "build": case "forge": {
-          const k = Math.sin(this.t / 1000 * 13); a.lift = Math.abs(k) * 2.5; a.lean = 0.07 * k;
+          // hammer rhythm: slow wind-up, fast strike (asymmetric), not a sine
+          const period = mine.kind === "build" ? 0.28 - mine.intensity * 0.1 : 0.34;
+          const ph = ((this.t / 1000) % period) / period;
+          const wind = ph < 0.7 ? ph / 0.7 : 1 - (ph - 0.7) / 0.3;
+          a.lift = wind * 4; a.lean = (ph < 0.7 ? -0.06 * wind : 0.12 * (1 - wind)); a.sy = ph < 0.7 ? 1 + 0.04 * wind : 1 - 0.08 * (1 - wind); a.sx = 1 / a.sy;
           if ("target" in mine) a.face = this.facing(a, mine.target);
           if (actor === "pip" && this._playing && !this.reducedMotion) { this.hammerT += dt; const period = mine.kind === "build" ? 0.28 - mine.intensity * 0.1 : 0.34; if (this.hammerT > period) { this.hammerT = 0; if (Sfx.plays("hammer", this.rate)) this.sfx.play(mine.kind === "build" ? "hammer" : "spark", { theme: this.theme, intensity: mine.kind === "build" ? mine.intensity : 0.5 }); const p = "target" in mine ? this.worldLayer.positionOf(mine.target) : this.worldLayer.positionOf("forge"); if (p && Math.random() < 0.7) this.particles.burst(p.top.x + (Math.random() * 24 - 12), p.top.y + 10, 2, [0xffd66b, 0xfff3c4], 50, 60); } }
           break;
@@ -249,7 +259,7 @@ export class ScenePlayer {
         case "search": a.look = "up"; a.lean = Math.sin(this.t / 1000 * 1.5) * 0.12; break;
         case "run_tests": a.look = "up"; a.lean = Math.sin(this.t / 1000 * 2) * 0.04; break;
         case "test_outcome": if (mine.outcome === "fail") { const k = bump(seg(u, 0, 0.5)); a.lean = -0.25 * k; a.sy = 1 - 0.1 * k; a.sx = 1 + 0.08 * k; } else { a.lift = bump(u) * 14; } break;
-        case "spawn_gremlin": { const k = bump(seg(u, 0, 0.6)); a.lean = -0.2 * k; a.sx = 1 + 0.1 * k; a.sy = 1 - 0.1 * k; a.look = "down"; break; }
+        case "spawn_gremlin": { const k = bump(seg(u, 0, 0.5)); a.lift = Math.sin(Math.PI * seg(u, 0.05, 0.45)) * 12; a.lean = -0.22 * k; a.sx = 1 + 0.1 * k; a.sy = 1 - 0.1 * k; a.look = "down"; a.x = standing.x - a.face * 10 * k; break; }
         case "chase": { const g = this.gremlins.get(mine.gremlinId); const base = target; const ang = u * Math.PI * 2 * 1.5; const r = 26;
           const gx = base.x + Math.cos(ang) * r, gy = base.y + Math.sin(ang) * r * 0.5;
           if (g) { g.x = gx; g.y = gy; g.panic = 1; }

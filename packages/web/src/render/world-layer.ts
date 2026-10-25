@@ -230,7 +230,7 @@ export class WorldLayer {
 
   private blobPath(g: Graphics, k: number, dy: number): Graphics {
     const b = this.world.bounds;
-    const cx = b.x + b.w / 2, cy = b.y + b.h / 2, R = Math.max(b.w, b.h) / 2 + 1.5;
+    const cx = b.x + b.w / 2, cy = b.y + b.h / 2, R = Math.max(b.w, b.h) / 2 + 0.6;
     const pts: number[] = [];
     for (let i = 0; i < 80; i++) {
       const a = (i / 80) * Math.PI * 2;
@@ -291,14 +291,15 @@ export class WorldLayer {
     }
   }
   private drawLabels(): void {
-    const style = new TextStyle({ fontFamily: "Fredoka, Trebuchet MS, sans-serif", fontSize: 13, fontWeight: "700", fill: this.theme.labelColor });
+    const style = new TextStyle({ fontFamily: "Fredoka, Trebuchet MS, sans-serif", fontSize: 30, fontWeight: "700", fill: 0xffffff, letterSpacing: 2, stroke: { color: this.theme.vignette, width: 5, join: "round" } });
     for (const d of this.world.districts) {
       const t = new Text({ text: d.label, style });
-      t.anchor.set(0.5);
-      const p = iso(d.cx + 0.5, d.bounds.y - 0.6);
+      t.anchor.set(0.5, 0.5);
+      // painted on the grass just in front of the patch, where buildings never cover it
+      const p = iso(d.bounds.x + d.bounds.w / 2 + 0.5, d.bounds.y + d.bounds.h + 0.55);
       t.position.set(p.x, p.y);
-      t.alpha = 0.55;
-      t.skew.set(-0.46, 0.46 * 0.5);
+      t.alpha = 0.85;
+      t.skew.set(-0.35, 0.17);
       this.labels.addChild(t);
     }
   }
@@ -308,8 +309,8 @@ export class WorldLayer {
     for (const p of this.world.places) for (let dx = 0; dx < p.footprint; dx++) for (let dy = 0; dy < p.footprint; dy++) occupied.add(`${p.gx + dx},${p.gy + dy}`);
     const b = this.world.bounds;
     let tries = 0, placed = 0;
-    const want = Math.min(28, 8 + this.world.places.length / 3);
-    while (placed < want && tries++ < 400) {
+    const want = Math.min(46, 14 + this.world.places.length / 2);
+    while (placed < want && tries++ < 700) {
       const gx = Math.floor(b.x + 1 + rnd() * (b.w - 2)), gy = Math.floor(b.y + 1 + rnd() * (b.h - 2));
       if (occupied.has(`${gx},${gy}`)) continue;
       // keep props off district interiors so buildings read clearly

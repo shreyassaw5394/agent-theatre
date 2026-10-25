@@ -30,7 +30,13 @@ export class Pip {
   private readonly shadow = new Graphics();
   private readonly body = new Graphics();
   private t = 0;
+  /** Target pose, set by the player every frame. */
   pose: CharacterPose = { x: 0, y: 0, lift: 0, sx: 1, sy: 1, lean: 0, face: 1, moving: false, look: "fwd", mood: "curious", hiding: 0 };
+  /** What is actually drawn: eases toward `pose` so beats transition instead of cut. */
+  private shown = { x: 0, y: 0, lift: 0, sx: 1, sy: 1, lean: 0, face: 1 as 1 | -1, faceK: 1 };
+  private snapNext = true;
+  /** Call after a seek so the character doesn't glide from the old spot. */
+  snap(): void { this.snapNext = true; }
 
   constructor(private theme: SetTheme, private reducedMotion: boolean) {
     this.container.addChild(this.shadow, this.body);
@@ -40,12 +46,21 @@ export class Pip {
 
   update(dtMs: number): void {
     this.t += dtMs / 1000;
-    const a = this.pose, T = this.theme.pip, t = this.t;
+    const target = this.pose, T = this.theme.pip, t = this.t;
+    const sh = this.shown, dt = Math.min(0.05, dtMs / 1000);
+    if (this.snapNext) { Object.assign(sh, { x: target.x, y: target.y, lift: target.lift, sx: target.sx, sy: target.sy, lean: target.lean, face: target.face, faceK: 1 }); this.snapNext = false; }
+    // exponential ease toward target; squash/lean are quick, position a touch slower (follow-through)
+    const kq = 1 - Math.pow(0.0005, dt), kp = 1 - Math.pow(0.002, dt);
+    sh.x += (target.x - sh.x) * kp; sh.y += (target.y - sh.y) * kp;
+    sh.lift += (target.lift - sh.lift) * kq; sh.sx += (target.sx - sh.sx) * kq; sh.sy += (target.sy - sh.sy) * kq; sh.lean += (target.lean - sh.lean) * kq;
+    // turning: scale x through zero rather than flipping
+    if (sh.face !== target.face) { sh.faceK -= dt * 9; if (sh.faceK <= 0) { sh.face = target.face; sh.faceK = 0.01; } } else sh.faceK = Math.min(1, sh.faceK + dt * 9);
+    const a = { ...target, x: sh.x, y: sh.y, lift: sh.lift, sx: sh.sx * Math.max(0.15, sh.faceK), sy: sh.sy, lean: sh.lean, face: sh.face };
     this.container.position.set(a.x, a.y);
     this.container.zIndex = 1e6; // player sets a proper depth; this is a fallback
 
-    const sh = 1 - Math.min(0.6, a.lift / 90);
-    this.shadow.clear().ellipse(0, 0, 11 * sh, 5 * sh).fill({ color: 0x0f2d28, alpha: 0.3 });
+    const shadowK = 1 - Math.min(0.6, a.lift / 90);
+    this.shadow.clear().ellipse(0, 0, 11 * shadowK, 5 * shadowK).fill({ color: 0x0f2d28, alpha: 0.3 });
 
     const g = this.body;
     g.clear();
@@ -82,7 +97,8 @@ export class Pip {
       if (blink) { g.moveTo(x - 2.6, ey).lineTo(x + 2.6, ey).stroke({ width: 1.6, color: T.ink, cap: "round" }); continue; }
       const ry = a.mood === "focused" ? 3 : 4.3;
       g.ellipse(x, ey, 3.4, ry).fill(0xffffff);
-      let px = a.face * 1.1, py = a.look === "up" ? -1.6 : a.look === "down" ? 1.4 : 0.3;
+      const glance = !a.moving && !this.reducedMotion && (t % 4.1) > 3.3 ? Math.sin(((t % 4.1) - 3.3) / 0.8 * Math.PI) : 0;
+      let px = a.face * 1.1 + glance * 1.6, py = (a.look === "up" ? -1.6 : a.look === "down" ? 1.4 : 0.3) - glance * 0.8;
       if (a.mood === "lost") { px = Math.sin(t * 3) * 1.4; py = -1.2; }
       g.ellipse(x + px, ey + py, 1.9, a.mood === "focused" ? 1.8 : 2.2).fill(T.ink);
       g.ellipse(x + px + 0.7, ey + py - 0.8, 0.6, 0.6).fill(0xffffff);

@@ -31,29 +31,59 @@ export function captionFor(b: Beat, world: World, helperLabel?: string): string 
 
 export interface Act { label: string; fromMs: number; toMs: number }
 
-/** Acts for the scrubber: split at test outcomes and turn ends, named by what happened. */
-export function deriveActs(beats: Beat[]): Act[] {
-  const end = beats.length ? Math.max(...beats.map((b) => b.atMs + b.durationMs)) : 0;
-  const cuts = [0, ...beats.filter((b) => b.kind === "test_outcome" || b.kind === "your_turn").map((b) => b.atMs + b.durationMs), end].filter((v, i, a) => i === 0 || v > a[i - 1]! + 1500);
-  if (cuts.at(-1) !== end) cuts.push(end);
-  const acts: Act[] = [];
-  for (let i = 0; i < cuts.length - 1; i++) {
-    const from = cuts[i]!, to = cuts[i + 1]!;
-    const inside = beats.filter((b) => b.atMs >= from && b.atMs < to && b.kind !== "idle");
-    acts.push({ label: labelFor(inside, i === 0), fromMs: from, toMs: to });
-  }
-  return acts.length ? acts : [{ label: "Scene", fromMs: 0, toMs: end }];
-}
+type Phase = "Arrive" | "Explore" | "Build" | "Trouble" | "Fix" | "Finale" | "Help" | "Waiting" | "Hmm" | "Curtain";
 
-function labelFor(bs: Beat[], first: boolean): string {
-  const has = (k: Beat["kind"]) => bs.some((b) => b.kind === k);
-  if (has("celebrate")) return "Finale";
-  if (has("unverified_claim")) return "Hmm";
-  if (bs.some((b) => b.kind === "test_outcome" && b.outcome === "fail") || has("spawn_gremlin")) return "Trouble";
-  if (has("chase")) return "Fix";
-  if (has("build") || has("raise")) return has("read") ? "Build" : "Build";
-  if (has("read") || has("search")) return first ? "Arrive" : "Explore";
-  if (has("summon_helper")) return "Help";
-  if (has("blocked_on_you")) return "Waiting";
-  return first ? "Arrive" : "Scene";
+/** Acts for the scrubber: consecutive beats of one story phase, short ones merged into neighbours. */
+export function deriveActs(beats: Beat[]): Act[] {
+  if (!beats.length) return [{ label: "Scene", fromMs: 0, toMs: 0 }];
+  const end = Math.max(...beats.map((b) => b.atMs + b.durationMs));
+  let gremlins = 0, seenRead = false;
+  const phased: Array<{ phase: Phase; at: number; end: number; kind: Beat["kind"] }> = [];
+  for (const b of beats) {
+    let phase: Phase | null = null;
+    switch (b.kind) {
+      case "curtain_up": phase = "Arrive"; break;
+      case "curtain_down": phase = "Curtain"; break;
+      case "read": case "search": phase = gremlins ? "Fix" : seenRead ? "Explore" : "Arrive"; seenRead = true; break;
+      case "build": case "raise": case "forge": phase = gremlins ? "Fix" : "Build"; break;
+      case "run_tests": phase = gremlins ? "Fix" : "Build"; break;
+      case "test_outcome": {
+        phase = b.outcome === "fail" ? "Trouble" : "Finale";
+        // the test run that led to this outcome belongs to the same act
+        const prev = phased.at(-1);
+        if (prev && prev.kind === "run_tests") prev.phase = phase;
+        break;
+      }
+      case "spawn_gremlin": gremlins++; phase = "Trouble"; break;
+      case "chase": phase = "Fix"; break;
+      case "banish": gremlins = Math.max(0, gremlins - 1); phase = "Finale"; break;
+      case "celebrate": phase = "Finale"; break;
+      case "summon_helper": case "dismiss_helper": phase = "Help"; break;
+      case "blocked_on_you": phase = "Waiting"; break;
+      case "unverified_claim": phase = "Hmm"; break;
+      case "stumble": phase = "Trouble"; break;
+      case "your_turn": case "walk_to": case "idle": phase = null; break;
+    }
+    if (phase) phased.push({ phase, at: b.atMs, end: b.atMs + b.durationMs, kind: b.kind });
+  }
+  // runs of the same phase
+  const runs: Array<{ phase: Phase; from: number; to: number }> = [];
+  for (const p of phased) {
+    const last = runs.at(-1);
+    if (last && last.phase === p.phase) last.to = Math.max(last.to, p.end);
+    else runs.push({ phase: p.phase, from: last ? last.to : 0, to: p.end });
+  }
+  if (runs.length) { runs[0]!.from = 0; runs.at(-1)!.to = end; }
+  // merge runs too short to read into their neighbour
+  const MIN = 2200;
+  for (let i = runs.length - 1; i >= 0 && runs.length > 1; i--) {
+    const r = runs[i]!;
+    if (r.to - r.from >= MIN) continue;
+    if (i > 0) { runs[i - 1]!.to = r.to; runs.splice(i, 1); }
+    else { runs[1]!.from = r.from; runs.splice(0, 1); }
+  }
+  // a curtain tail becomes part of the finale
+  const tail = runs.at(-1);
+  if (tail && tail.phase === "Curtain" && runs.length > 1) { runs[runs.length - 2]!.to = tail.to; runs.pop(); }
+  return runs.map((r) => ({ label: r.phase === "Curtain" ? "Finale" : r.phase, fromMs: r.from, toMs: r.to }));
 }

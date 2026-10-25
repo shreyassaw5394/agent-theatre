@@ -22,3 +22,38 @@ export class StaticTransport implements Transport {
   onReady(cb: (p: ScenePayload) => void): void { queueMicrotask(() => cb(this.payload)); }
   onBeats(): void { /* replay has nothing new */ }
 }
+
+/** Live mode over the CLI's WebSocket, with the initial payload from /api/scene. */
+export class WsTransport implements Transport {
+  readonly mode = "live" as const;
+  private readyCb: ((p: ScenePayload) => void) | null = null;
+  private beatsCb: ((beats: Beat[], events: AgentEvent[]) => void) | null = null;
+  private signalCb: ((s: "ok" | "lost") => void) | null = null;
+  constructor(private readonly base = "") { void this.connect(); }
+  private async connect(): Promise<void> {
+    const scene = await (await fetch(`${this.base}/api/scene`)).json() as ScenePayload & { signal?: "ok" | "lost" };
+    this.readyCb?.({ world: scene.world, events: scene.events, beats: scene.beats, repoId: scene.repoId });
+    if (scene.signal) this.signalCb?.(scene.signal);
+    const open = () => {
+      const ws = new WebSocket(`${location.origin.replace(/^http/, "ws")}${this.base}/live`);
+      ws.onmessage = (m) => {
+        const msg = JSON.parse(String(m.data)) as { type: string; beats?: Beat[]; events?: AgentEvent[]; state?: "ok" | "lost" };
+        if (msg.type === "beats" && msg.beats) this.beatsCb?.(msg.beats, msg.events ?? []);
+        if (msg.type === "signal" && msg.state) this.signalCb?.(msg.state);
+      };
+      ws.onclose = () => { this.signalCb?.("lost"); setTimeout(open, 2000); };
+    };
+    open();
+  }
+  onReady(cb: (p: ScenePayload) => void): void { this.readyCb = cb; }
+  onBeats(cb: (beats: Beat[], events: AgentEvent[]) => void): void { this.beatsCb = cb; }
+  onSignal(cb: (s: "ok" | "lost") => void): void { this.signalCb = cb; }
+}
+
+/** Replay of a real session served by the CLI. */
+export async function replayTransport(sessionId: string, base = ""): Promise<Transport> {
+  const r = await fetch(`${base}/api/replay/${encodeURIComponent(sessionId)}`);
+  if (!r.ok) throw new Error(`session not found: ${sessionId}`);
+  const p = await r.json() as ScenePayload & { title?: string };
+  return new StaticTransport({ world: p.world, events: p.events, beats: p.beats, repoId: p.title ? `${p.repoId} — ${p.title}` : p.repoId });
+}

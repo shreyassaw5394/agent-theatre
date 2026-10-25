@@ -95,19 +95,22 @@ export class Panel {
     void t0;
   }
 
+  previews = new Map<string, string>();
+  get pickerOpen(): boolean { return !this.picker.hidden; }
   showPicker(show: boolean, themeId?: string): void {
     this.picker.hidden = !show;
     if (!show) return;
     this.picker.innerHTML = "";
-    this.picker.append(el("h3", "", "Choose your set"), el("p", "", "Same repo, same story — pick the stage. Shuffle for a different three."));
+    this.picker.append(el("h3", "", "Choose your set"), el("p", "", "Same repo, same story — pick the stage. You can change it any time."));
     const cards = el("div", "setcards");
     for (const s of SETS) {
       const c = el("button", "setcard"); c.type = "button";
-      c.innerHTML = `<div class="sw" style="--a:${hex(s.sky[0])};--b:${hex(s.palettes[0]!.left)}"></div><div class="nm">${s.name}${s.id === themeId ? " ·" : ""}</div><div class="tg">${s.tagline}</div>`;
+      const img = this.previews.get(s.id);
+      c.innerHTML = `<div class="sw" style="--a:${hex(s.sky[0])};--b:${hex(s.palettes[0]!.left)}">${img ? `<img src="${img}" alt="" />` : ""}</div><div class="nm">${s.name}${s.id === themeId ? " ·" : ""}</div><div class="tg">${s.tagline}</div>`;
       c.onclick = () => { this.h.onPickSet(s.id); this.showPicker(false); };
       cards.append(c);
     }
-    const sh = el("button", "btn ghost", "Shuffle"); sh.type = "button"; sh.onclick = () => this.h.onShuffle();
+    const sh = el("button", "btn ghost", "Surprise me"); sh.type = "button"; sh.onclick = () => this.h.onShuffle();
     this.picker.append(cards, sh);
   }
 

@@ -3,8 +3,9 @@ import { direct, filesFromEvents, generateWorld, parseTranscript, type Beat } fr
 import { AudioEngine } from "./audio/engine.js";
 import { ScenePlayer } from "./scene/player.js";
 import { SETS, setById, type SetTheme } from "./sets/index.js";
-import { StaticTransport, type Transport } from "./transport.js";
+import { StaticTransport, WsTransport, replayTransport, type Transport } from "./transport.js";
 import { Panel } from "./ui/panel.js";
+import { previewSet } from "./render/preview.js";
 
 const q = new URLSearchParams(location.search);
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -24,6 +25,7 @@ async function loadDemo(name: string): Promise<Transport> {
 
 export async function mount(host: HTMLElement, transport: Transport): Promise<void> {
   const audio = new AudioEngine();
+  let wake: () => void = () => {};
   let theme: SetTheme = setById(q.get("set"));
   let player: ScenePlayer | null = null;
   let rate = Number(q.get("rate")) || 1;
@@ -36,7 +38,7 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
     onRate: () => { rate = rate >= 4 ? 1 : rate * 2; player?.setRate(rate); panel.setRate(rate); },
     onMute: () => { muted = !muted; audio.setMuted(muted); store.set("at:muted", muted ? "1" : "0"); panel.setMuted(muted); void audio.arm(); },
     onPickSet: (id) => { theme = setById(id); if (player) { store.set(`at:set:${player.world.repoId}`, id); rebuild(); } },
-    onShuffle: () => { const others = SETS.filter((s) => s.id !== theme.id); theme = others[Math.floor(Math.random() * others.length)]!; panel.showPicker(true, theme.id); },
+    onShuffle: () => { const others = SETS.filter((s) => s.id !== theme.id); theme = others[Math.floor(Math.random() * others.length)]!; if (player) { store.set(`at:set:${player.world.repoId}`, theme.id); rebuild(); } panel.showPicker(false); },
   });
   panel.setMuted(muted); panel.setRate(rate);
   panel.liveMode = transport.mode === "live";
@@ -64,26 +66,46 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
     panel.loadTimeline(p.beats, p.events, p.world);
     rebuild();
     const t = Number(q.get("t")); if (t > 0 && player) player.seek(t * 1000);
+    // real previews for the picker, rendered from this repo's world in each set
+    void (async () => { for (const s of SETS) { try { panel.previews.set(s.id, await previewSet(app, p.world, s)); } catch (err) { console.warn("set preview failed", s.id, err); } } if (panel.pickerOpen) panel.showPicker(true, theme.id); wake(); })();
     if (!chosen && !q.has("t")) panel.showPicker(true, theme.id);
     if (q.get("paused") !== "1" && !reducedMotion) { player?.play(); }
     if (reducedMotion && !q.has("t")) player?.seek(Math.min(player.state.duration, 25_400));
   });
-  transport.onBeats((beats: Beat[]) => { player?.append(beats); });
+  transport.onBeats((beats: Beat[], events) => {
+    if (!player || !payload) return;
+    payload.beats.push(...beats); payload.events.push(...events);
+    player.append(beats);
+    panel.loadTimeline(payload.beats, payload.events, payload.world);
+    if (!player.playing) player.play();
+    wake();
+  });
   transport.onSignal?.((s) => player?.setSignal(s));
 
-  // Render loop: only while playing or something is animating; paused + hidden = zero work.
-  let last = performance.now();
+  // Render loop with a scheduler: runs while playing or settling; a paused, settled scene costs nothing.
+  // `?step=<ms>` advances the scene by a fixed amount per frame (deterministic capture for clips/GIFs).
+  const fixedStep = Number(q.get("step")) || 0;
+  let last = performance.now(), settle = 0, scheduled = false;
   const frame = (now: number) => {
-    const dt = Math.min(50, now - last); last = now;
+    scheduled = false;
+    const dt = fixedStep || Math.min(50, now - last); last = now;
     if (player && !document.hidden) {
       player.update(dt);
       panel.update(player.state, player.world, (id) => player!.worldLayer.lampOf(id));
+      if (player.playing) settle = 45; else settle--;
     }
-    requestAnimationFrame(frame);
+    if ((player?.playing || settle > 0) && !document.hidden) schedule();
   };
-  requestAnimationFrame(frame);
-  document.addEventListener("visibilitychange", () => { if (document.hidden) app.ticker.stop(); else { app.ticker.start(); last = performance.now(); } });
+  const schedule = () => { if (!scheduled) { scheduled = true; requestAnimationFrame(frame); } };
+  wake = () => { settle = 45; last = performance.now(); schedule(); };
+  wake();
+  for (const ev of ["pointerdown", "keydown", "resize"]) addEventListener(ev, wake, { passive: true });
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) wake(); });
+  const origPlay = ScenePlayer.prototype.play; ScenePlayer.prototype.play = function (this: ScenePlayer) { origPlay.call(this); wake(); };
+  const origSeek = ScenePlayer.prototype.seek; ScenePlayer.prototype.seek = function (this: ScenePlayer, ms: number) { origSeek.call(this, ms); wake(); };
 }
 
-const demo = q.get("demo") ?? "episode-1";
-loadDemo(demo).then((t) => mount(document.getElementById("app")!, t)).catch((err) => { document.getElementById("app")!.textContent = `Could not load ${demo}: ${err}`; });
+// Mode: ?live=1 (CLI live), ?session=<id> (CLI replay), else a bundled demo.
+const host = document.getElementById("app")!;
+const boot = q.has("live") ? Promise.resolve<Transport>(new WsTransport()) : q.get("session") ? replayTransport(q.get("session")!) : loadDemo(q.get("demo") ?? "episode-1");
+boot.then((t) => mount(host, t)).catch((err) => { host.textContent = `Could not start: ${err}`; });

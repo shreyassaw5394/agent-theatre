@@ -1,0 +1,51 @@
+{
+  "name": "agent-theatre",
+  "version": "0.1.0",
+  "description": "Watch your coding agent work \u2014 as a film, not a log. Local, honest visualiser for Claude Code sessions.",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shreyassaw5394/agent-theatre"
+  },
+  "homepage": "https://agenttheatre.dev",
+  "keywords": [
+    "claude-code",
+    "agent",
+    "visualization",
+    "replay",
+    "hooks",
+    "devtools"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "agent-theatre": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "web",
+    "hooks",
+    "README.md"
+  ],
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json",
+    "test": "vitest run",
+    "build": "tsup && node scripts/copy-web.mjs",
+    "dev": "tsx src/cli.ts"
+  },
+  "dependencies": {
+    "@agent-theatre/core": "workspace:*",
+    "@hono/node-server": "^1.13.0",
+    "commander": "^12.1.0",
+    "hono": "^4.6.0",
+    "open": "^10.1.0",
+    "picocolors": "^1.1.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.5.13",
+    "@agent-theatre/web": "workspace:*"
+  }
+}
