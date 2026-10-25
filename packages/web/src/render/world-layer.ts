@@ -498,12 +498,31 @@ export class WorldLayer {
 
 const d_glow = (c: number) => mix(c, 0xffffff, 0.25);
 
+/**
+ * Gradients are cached: every FillGradient owns a GPU texture, and animated
+ * buildings (forge smoke, dock bob, glowing windows, lamps) redraw each frame.
+ * Uncached, that leaked ~30 textures a second until the context died and the
+ * stage went white. Keys quantise coordinates so a growing building reuses
+ * the same handful of textures.
+ */
+const GRADIENTS = new Map<string, FillGradient>();
+function cachedGradient(key: string, make: () => FillGradient): FillGradient {
+  let g = GRADIENTS.get(key);
+  if (!g) {
+    if (GRADIENTS.size > 1500) { for (const old of GRADIENTS.values()) old.destroy(); GRADIENTS.clear(); }
+    g = make(); GRADIENTS.set(key, g);
+  }
+  return g;
+}
+const q2 = (v: number) => Math.round(v / 2) * 2;
 /** Vertical two-stop gradient in world px (Pixi 8 FillGradient, global coordinates). */
 function vGrad(top: number, bottom: number, y0: number, y1: number): FillGradient {
-  return new FillGradient({ start: { x: 0, y: y0 }, end: { x: 0, y: y1 }, colorStops: [{ offset: 0, color: top }, { offset: 1, color: bottom }], textureSpace: "global" });
+  const a = q2(y0), b = q2(y1);
+  return cachedGradient(`v${top}|${bottom}|${a}|${b}`, () => new FillGradient({ start: { x: 0, y: a }, end: { x: 0, y: b }, colorStops: [{ offset: 0, color: top }, { offset: 1, color: bottom }], textureSpace: "global" }));
 }
 function hGrad(left: number, right: number, x0: number, x1: number): FillGradient {
-  return new FillGradient({ start: { x: x0, y: 0 }, end: { x: x1, y: 0 }, colorStops: [{ offset: 0, color: left }, { offset: 1, color: right }], textureSpace: "global" });
+  const a = q2(x0), b = q2(x1);
+  return cachedGradient(`h${left}|${right}|${a}|${b}`, () => new FillGradient({ start: { x: a, y: 0 }, end: { x: b, y: 0 }, colorStops: [{ offset: 0, color: left }, { offset: 1, color: right }], textureSpace: "global" }));
 }
 
 export function mix(a: number, b: number, u: number): number {

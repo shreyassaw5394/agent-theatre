@@ -121,7 +121,7 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
     scheduled = false;
     const dt = fixedStep || Math.min(50, now - last); last = now;
     if (player && !document.hidden) {
-      if ((cinema || q.has("loop")) && player.state.t >= player.state.duration - 1 && player.state.duration > 0) { if (!loopTimer) loopTimer = setTimeout(() => { loopTimer = null; player?.seek(0); player?.play(); }, 1800); }
+      if ((cinema || q.has("loop")) && player.state.t >= player.state.duration - 1 && player.state.duration > 0) { if (!loopTimer) loopTimer = setTimeout(() => { loopTimer = null; player?.seek(0); player?.play(); }, 600); }
       player.update(dt);
       panel.update(player.state, player.world, (id) => player!.worldLayer.lampOf(id));
       if (player.playing) settle = 45; else settle--;

@@ -86,4 +86,5 @@ html.cinema #app { padding: 0; min-height: 100vh; display: block; }
 html.cinema .wrap > header, html.cinema .controls, html.cinema aside, html.cinema .picker, html.cinema .wrap > footer, html.cinema .wrap > p { display: none !important; }
 html.cinema .wrap, html.cinema .grid, html.cinema .stage-col { display: block; padding: 0; margin: 0; max-width: none; gap: 0; }
 html.cinema .stage { position: fixed; inset: 0; aspect-ratio: auto; border-radius: 0; box-shadow: none; }
-html.cinema .card { font-size: 1.4em; }
+/* the host page has its own headline; the stage alone is the picture */
+html.cinema .card { display: none !important; }
