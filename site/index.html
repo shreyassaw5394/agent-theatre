@@ -169,7 +169,7 @@
 <script>
 (() => {
   const btn = document.getElementById("copy");
-  btn?.addEventListener("click", () => { navigator.clipboard?.writeText("npx agent-theatre").then(() => { btn.classList.add("ok"); setTimeout(() => btn.classList.remove("ok"), 1400); }); });
+  btn?.addEventListener("click", () => { navigator.clipboard?.writeText("npx agent-theatre").then(() => { const s = btn.querySelector("span"); s.textContent = "copied"; btn.classList.add("ok"); setTimeout(() => { btn.classList.remove("ok"); s.textContent = "copy"; }, 1400); }); });
   // reveal on scroll; without IntersectionObserver (or if it never fires) everything simply shows
   document.documentElement.classList.add("js");
   const show = (el) => el.classList.add("in");

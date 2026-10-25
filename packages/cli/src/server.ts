@@ -1,7 +1,8 @@
 import { createServer, type Server } from "node:http";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync, realpathSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, basename, resolve, sep } from "node:path";
+import { spawn, spawnSync } from "node:child_process";
 import { Hono } from "hono";
 import { getRequestListener } from "@hono/node-server";
 import { WebSocketServer, type WebSocket } from "ws";
@@ -34,6 +35,8 @@ export class Theatre {
   private wss: WebSocketServer | null = null;
   private live: Live;
   private signal: "ok" | "lost" = "ok";
+  /** The most recent Claude Code session that spoke to this stage; what a prompt from the stage resumes. */
+  private lastSessionId: string | null = null;
   private timer: NodeJS.Timeout | null = null;
   port = 0;
 
@@ -51,6 +54,7 @@ export class Theatre {
       // hooks are global to Claude Code: only this repo's sessions belong on this stage
       const cwd = typeof (payload as { cwd?: unknown })?.cwd === "string" ? (payload as { cwd: string }).cwd : "";
       if (cwd && !isWithin(cwd, this.opts.cwd)) return c.body(null, 204);
+      const sid = (payload as { session_id?: unknown }).session_id; if (typeof sid === "string" && sid) this.lastSessionId = sid;
       const { events } = hookPayloadToEvents(payload, { home: homedir() });
       if (events.length) this.ingest(events);
       return c.body(null, 204);
@@ -73,6 +77,19 @@ export class Theatre {
       const world = generateWorld({ repoId: this.opts.repoId, files, touched: inferred.touched });
       const beats = direct(events, world);
       return c.json({ mode: "replay", repoId: this.opts.repoId, title: s.title, world, events, beats, warnings: warnings.length });
+    });
+    // Prompt from the stage: resumes the last session headlessly (`claude -p --resume <id>`); its hooks feed the stage.
+    a.get("/api/prompt", (c) => c.json({ available: !!claudeBinary() && !!this.lastSessionId, session: this.lastSessionId }));
+    a.post("/api/prompt", async (c) => {
+      const body = await c.req.json().catch(() => ({})) as { text?: unknown };
+      const text = typeof body.text === "string" ? body.text.trim() : "";
+      const bin = claudeBinary();
+      if (!text) return c.json({ ok: false, error: "empty prompt" }, 400);
+      if (!bin) return c.json({ ok: false, error: "Claude Code 2.x not found on PATH" }, 503);
+      if (!this.lastSessionId) return c.json({ ok: false, error: "no session to resume yet" }, 409);
+      const child = spawn(bin, ["-p", "--resume", this.lastSessionId, text], { cwd: this.opts.cwd, stdio: "ignore", detached: true, env: process.env });
+      child.unref();
+      return c.json({ ok: true, session: this.lastSessionId });
     });
     a.get("/healthz", (c) => c.json({ ok: true, port: this.port, events: this.live.events.length }));
     if (this.opts.webDir) {
@@ -151,4 +168,17 @@ export function isWithin(dir: string, root: string): boolean {
   const norm = (p: string) => { try { return realpathSync(p); } catch { return resolve(p); } };
   const d = norm(dir), r = norm(root);
   return d === r || d.startsWith(r.endsWith(sep) ? r : r + sep);
+}
+
+/** Claude Code 2.x on PATH, or the binary the VS Code extension ships; null if neither. Overridable with AGENT_THEATRE_CLAUDE. */
+export function claudeBinary(): string | null {
+  const cands = [process.env.AGENT_THEATRE_CLAUDE, "claude"].filter((x): x is string => !!x);
+  try {
+    const ext = join(homedir(), ".vscode", "extensions");
+    for (const d of (existsSync(ext) ? readdirSync(ext) : []).filter((n) => n.startsWith("anthropic.claude-code-")).sort().reverse()) cands.push(join(ext, d, "resources", "native-binary", "claude"));
+  } catch { /* no VS Code */ }
+  for (const c of cands) {
+    try { const r = spawnSync(c, ["--version"], { encoding: "utf8", timeout: 4000 }); const m = /^(\d+)\./.exec(r.stdout.trim()); if (r.status === 0 && m && Number(m[1]) >= 2) return c; } catch { /* next */ }
+  }
+  return null;
 }

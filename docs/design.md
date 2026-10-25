@@ -630,3 +630,12 @@ ambience bus (soft attack, long release, a detuned pair and a quiet octave).
 **Hook routing.** Claude Code hooks are global, so a running stage used to
 receive events from every session on the machine. The server now ignores hook
 payloads whose `cwd` is outside the repo it was started in.
+
+**Your turn, from the stage (1.2.0).** When a live session ends its turn, the stage shows a prompt box.
+Sending resumes that session headlessly through the local server (`claude -p --resume <id>`); the
+resumed run's hooks feed the stage, so the reply plays out as beats. The interactive terminal does not
+see that exchange — it is a fork from the same transcript — so the box is for "what's next" after the
+agent is done, not for mid-turn chat. Permission prompts cannot be answered this way (headless runs have
+no permission dialog), which is why the waiting banner redirects instead. Also: **Whole repo** toggle
+(follow camera off, fit the stage) and wheel zoom; **Export clip** records the canvas plus the synthesized
+sound with MediaRecorder to a .webm, entirely in the browser.

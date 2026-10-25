@@ -11,12 +11,14 @@ const PLAY = '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 2.8v10.
 const PAUSE = '<svg viewBox="0 0 16 16" fill="currentColor"><rect x="3.5" y="3" width="3" height="10" rx="1"/><rect x="9.5" y="3" width="3" height="10" rx="1"/></svg>';
 const CHECK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3L13 4.5"/></svg>';
 
-export interface PanelHandlers { onPlayPause(): void; onSeek(ms: number): void; onRate(): void; onMute(): void; onAmbience(): void; onPickSet(id: SetTheme["id"]): void; onShuffle(): void }
+export interface PanelHandlers { onPlayPause(): void; onSeek(ms: number): void; onRate(): void; onMute(): void; onAmbience(): void; onPickSet(id: SetTheme["id"]): void; onShuffle(): void; onOverview(on: boolean): void; onZoom(factor: number): void; onExport(): void; onPrompt(text: string): Promise<string> }
 
 /** All DOM. Reads PlayerState every frame; never touches Pixi. */
 export class Panel {
   readonly root: HTMLElement;
   readonly stageEl: HTMLElement;
+  private readonly overviewBtn: HTMLButtonElement; private overviewOn = false; readonly exportBtn: HTMLButtonElement;
+  private readonly prompt: HTMLElement;
   private readonly waiting: HTMLElement; private readonly vscode: { postMessage: (m: unknown) => void } | null; private notifiedFor = "";
   private readonly overlay: HTMLElement; private readonly caption: HTMLElement; private readonly chip: HTMLElement; private readonly signal: HTMLElement;
   private readonly title: HTMLElement; private readonly end: HTMLElement; private readonly picker: HTMLElement;
@@ -35,7 +37,9 @@ export class Panel {
     this.setBtn = el("button", "btn ghost", "Set"); this.setBtn.type = "button"; this.setBtn.onclick = () => this.showPicker(true);
     this.muteBtn = el("button", "btn ghost", "Effects on"); this.muteBtn.type = "button"; this.muteBtn.title = "Sound effects"; this.muteBtn.onclick = () => h.onMute();
     this.ambBtn = el("button", "btn ghost", "Ambience on"); this.ambBtn.type = "button"; this.ambBtn.title = "Background sound"; this.ambBtn.onclick = () => h.onAmbience();
-    tb.append(this.setBtn, this.muteBtn, this.ambBtn);
+    this.overviewBtn = el("button", "btn ghost", "Whole repo"); this.overviewBtn.type = "button"; this.overviewBtn.title = "Pull back to see every building (follow camera off)"; this.overviewBtn.onclick = () => { this.overviewOn = !this.overviewOn; this.overviewBtn.textContent = this.overviewOn ? "Follow" : "Whole repo"; this.overviewBtn.setAttribute("aria-pressed", String(this.overviewOn)); h.onOverview(this.overviewOn); };
+    this.exportBtn = el("button", "btn ghost", "Export clip"); this.exportBtn.type = "button"; this.exportBtn.title = "Record the stage (with sound) to a .webm you can share"; this.exportBtn.onclick = () => h.onExport();
+    tb.append(this.setBtn, this.overviewBtn, this.muteBtn, this.ambBtn, this.exportBtn);
     header.append(brand, tb);
     const grid = el("div", "grid");
     const col = el("div", "stage-col");
@@ -53,7 +57,12 @@ export class Panel {
     const vsHost = (globalThis as { acquireVsCodeApi?: () => { postMessage: (m: unknown) => void } }).acquireVsCodeApi;
     this.vscode = vsHost ? vsHost() : null;
     (this.waiting.querySelector(".go") as HTMLButtonElement).onclick = () => { if (this.vscode) this.vscode.postMessage({ type: "focus-agent" }); else void this.notify(); };
-    this.stageEl.append(el("div", "vignette"), this.overlay, this.signal, this.chip, this.caption, this.title, this.end, this.picker, this.waiting);
+    // your turn: say what's next from here (resumes the session headlessly through the local server)
+    this.prompt = el("form", "prompt", `<input type="text" placeholder="" autocomplete="off" spellcheck="false"><button type="submit">Send</button><span class="st"></span>`); this.prompt.hidden = true;
+    this.prompt.addEventListener("submit", (ev) => { ev.preventDefault(); const inp = this.prompt.querySelector("input") as HTMLInputElement, st = this.prompt.querySelector(".st") as HTMLElement; const text = inp.value.trim(); if (!text) return; st.textContent = "sending…"; void h.onPrompt(text).then((r) => { st.textContent = r; inp.value = ""; }); });
+    this.stageEl.append(el("div", "vignette"), this.overlay, this.signal, this.chip, this.caption, this.title, this.end, this.picker, this.waiting, this.prompt);
+    // wheel = zoom
+    this.stageEl.addEventListener("wheel", (ev) => { if (!ev.ctrlKey && Math.abs(ev.deltaY) < 1) return; ev.preventDefault(); h.onZoom(Math.exp(-ev.deltaY * 0.0015)); }, { passive: false });
     const controls = el("div", "controls");
     this.playBtn = el("button", "btn", `${PAUSE}<span>Pause</span>`); this.playBtn.type = "button"; this.playBtn.onclick = () => h.onPlayPause();
     const track = el("div", "track"); this.actsEl = el("div", "acts"); this.labelsEl = el("div", "actlabels"); this.head = el("div", "head"); track.append(this.actsEl, this.labelsEl, this.head);
@@ -73,6 +82,8 @@ export class Panel {
   }
   private durationMs = 0;
   repoId = "";
+  /** Set by the host when the local server can resume the session (`claude -p --resume`). */
+  promptEnabled = false;
 
   setTitle(repoId: string, episode?: string): void {
     // "github.com/org/repo" → "repo", "/Users/me/projects/x" → "x"; the full id stays in the tooltip
@@ -156,6 +167,10 @@ export class Panel {
     if (s.evidence) { this.chip.hidden = false; this.chip.className = "chip ok"; this.chip.innerHTML = `${CHECK}Evidence · ${s.evidence.passed} tests passed`; }
     else if (cur?.kind === "unverified_claim" || (cur?.kind === "curtain_down" && !cur.verified)) { this.chip.hidden = false; this.chip.className = "chip warn"; this.chip.textContent = "No test evidence"; }
     else this.chip.hidden = true;
+    // your turn (live only): a prompt box on the stage
+    const yourTurn = this.liveMode && cur?.kind === "your_turn" && this.promptEnabled;
+    this.prompt.hidden = !yourTurn;
+    if (yourTurn) (this.prompt.querySelector("input") as HTMLInputElement).placeholder = `${this.leadName || "The agent"} is done. What's next?`;
     // waiting banner (live only): permission or question → the person is the next actor
     const waitingNow = this.liveMode && cur?.kind === "blocked_on_you";
     this.waiting.hidden = !waitingNow;

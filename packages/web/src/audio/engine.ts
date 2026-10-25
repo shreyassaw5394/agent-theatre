@@ -104,6 +104,11 @@ export class AudioEngine {
     return () => { const tt = c.currentTime; g.gain.setTargetAtTime(0.0001, tt, 0.5); src.stop(tt + 2.5); lfo.stop(tt + 2.5); };
   }
   now(): number { return this.ctx?.currentTime ?? 0; }
+  /** A stream of everything the person hears, for recording. */
+  captureStream(): MediaStream | null {
+    if (!this.ctx || !this.master) return null;
+    const dest = this.ctx.createMediaStreamDestination(); this.master.connect(dest); return dest.stream;
+  }
 
   /** One soft melodic note on the ambience bus: gentle attack, long release, a touch of detuned shimmer. */
   note(freq: number, dur: number, gain: number, type: OscillatorType = "sine", pan = 0): void {

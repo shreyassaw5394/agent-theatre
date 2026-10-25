@@ -314,6 +314,12 @@ export class ScenePlayer {
   private baseZoom = 1;
   /** Where the camera is currently told to look; moves only when the subject leaves the dead zone. */
   private camTarget: { x: number; y: number } | null = null;
+  /** Whole-repo framing on; the follow camera off. */
+  overview = false;
+  /** Wheel/pinch multiplier on top of the director's zoom. */
+  userZoom = 1;
+  setOverview(on: boolean): void { this.overview = on; this.userZoom = 1; }
+  zoomBy(factor: number): void { this.userZoom = Math.max(0.4, Math.min(3, this.userZoom * factor)); }
   private cameraStep(cur: Beat | null, dtMs: number): void {
     // renderer.screen is the logical (CSS-pixel) view; renderer.width already is too in Pixi 8 — dividing by resolution halved the view on Retina
     const view = { w: this.app.renderer.screen.width, h: this.app.renderer.screen.height };
@@ -346,7 +352,9 @@ export class ScenePlayer {
     const ty = clampY(this.camTarget.y, minY, maxY);
     this.camera.follow(tx, ty, 1);
     this.camera.setDrift(this.mood === "lost");
-    this.camera.setZoomFactor(this.zoomFor(cur, view.h));
+    // the person can pull back to the whole repo, or zoom with the wheel; the director's framing resumes on follow
+    if (this.overview) { this.camTarget = { x: centre.x, y: centre.y }; this.camera.follow(centre.x, centre.y, 1); }
+    this.camera.setZoomFactor((this.overview ? this.fitZoom() * 0.96 : this.zoomFor(cur, view.h)) * this.userZoom);
     this.camera.update(dtMs, view.w, view.h);
   }
   /** Zoom so the inhabited part of the world (places, not the whole terrain) fills the view. */

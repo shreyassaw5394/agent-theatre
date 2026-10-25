@@ -58,6 +58,16 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
     onMute: () => { if (justUnlocked || !audio.ready) { void unlockAudio(); return; } muted = !muted; audio.setMuted(muted); store.set("at:muted", muted ? "1" : "0"); panel.setMuted(muted); },
     onAmbience: () => { if (justUnlocked || !audio.ready) { void unlockAudio(); return; } ambience = !ambience; audio.setAmbienceEnabled(ambience); store.set("at:ambience", ambience ? "1" : "0"); panel.setAmbience(ambience); },
     onPickSet: (id) => { theme = setById(id); if (player) { store.set(`at:set:${player.world.repoId}`, id); rebuild(); } },
+    onOverview: (on) => { player?.setOverview(on); wake(); },
+    onZoom: (f) => { player?.zoomBy(f); wake(); },
+    onExport: () => { void exportClip(); },
+    onPrompt: async (text) => {
+      try {
+        const r = await fetch(`${BASE}/api/prompt`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text }) });
+        const j = await r.json() as { ok?: boolean; error?: string };
+        return j.ok ? "sent — watch the stage" : `couldn't send: ${j.error ?? r.status}`;
+      } catch (e) { return `couldn't send: ${String(e)}`; }
+    },
     onShuffle: () => { const pool = suggestSets(payload?.world.profile).filter((s) => s.id !== theme.id); const pick = pool.slice(0, Math.max(3, Math.min(5, pool.length))); theme = pick[Math.floor(Math.random() * pick.length)] ?? SETS[0]!; if (player) { store.set(`at:set:${player.world.repoId}`, theme.id); rebuild(); } panel.showPicker(false); },
   });
   panel.setMuted(muted); panel.setAmbience(ambience); panel.setRate(rate);
@@ -65,6 +75,29 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
   // ?cinema=1 — the stage alone, full-bleed, muted, looping. Used by the site's hero and for embeds.
   const cinema = q.has("cinema");
   if (cinema) { document.documentElement.classList.add("cinema"); muted = true; audio.setMuted(true); }
+
+  // Export: record the stage canvas plus the synthesized sound to a .webm the person can post
+  let recorder: MediaRecorder | null = null;
+  async function exportClip(): Promise<void> {
+    if (recorder) { recorder.stop(); return; }
+    await unlockAudio();
+    const canvas = app.canvas as HTMLCanvasElement;
+    const stream = canvas.captureStream(30);
+    const a = audio.captureStream(); if (a) for (const t of a.getAudioTracks()) stream.addTrack(t);
+    const chunks: Blob[] = [];
+    const mime = ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"].find((m) => MediaRecorder.isTypeSupported(m)) ?? "";
+    recorder = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 6_000_000 } : undefined);
+    recorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+    recorder.onstop = () => {
+      recorder = null; panel.exportBtn.textContent = "Export clip";
+      const blob = new Blob(chunks, { type: "video/webm" }); const url = URL.createObjectURL(blob);
+      const link = document.createElement("a"); link.href = url; link.download = `agent-theatre-${(payload?.repoId ?? "stage").split(/[/\\]/).pop()}-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.webm`; link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    };
+    recorder.start(500);
+    panel.exportBtn.textContent = "■ Stop & save";
+    if (player && !player.playing) player.play();
+  }
 
   const app = new Application();
   await app.init({ resizeTo: panel.stageEl, antialias: true, backgroundAlpha: 1, background: theme.sky[1], preference: "webgl", resolution: Math.min(2, devicePixelRatio || 1), autoDensity: true });
@@ -98,6 +131,7 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
     // default: the stage that fits what this repo is, chosen deterministically per repo
     if (chosen) theme = setById(chosen); else theme = suggestSets(p.world.profile, p.world.seed)[0] ?? SETS[0]!;
     panel.setTitle(p.repoId, q.get("episode") ?? undefined);
+    if (transport.mode === "live") { void fetch(`${BASE}/api/prompt`).then((r) => r.json()).then((j: { available?: boolean }) => { panel.promptEnabled = !!j.available; }).catch(() => {}); }
     panel.loadTimeline(p.beats, p.events, p.world);
     rebuild();
     const t = Number(q.get("t")); if (t > 0 && player) player.seek(t * 1000);

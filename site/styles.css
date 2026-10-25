@@ -32,7 +32,7 @@ code{font:500 .9em var(--mono)}
 .button{display:inline-flex;align-items:center;gap:10px;padding:15px 26px;border-radius:999px;background:var(--ink);color:#000;font-size:18px;font-weight:700;border:0;cursor:pointer;transition:transform .35s var(--ease),background .2s}
 .button:hover{transform:translateY(-2px)}
 .button.ghost{background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.28);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);font-family:var(--mono);font-weight:500;font-size:16px;box-shadow:inset 0 1px 0 rgba(255,255,255,.25)}
-.button.ghost span{font:600 12px var(--text);color:rgba(255,255,255,.75);text-transform:uppercase;letter-spacing:.1em}.button.ghost.ok span{color:#7fe08a}.button.ghost.ok span::after{content:"ied"}
+.button.ghost span{font:600 12px var(--text);color:rgba(255,255,255,.75);text-transform:uppercase;letter-spacing:.1em}.button.ghost.ok span{color:#7fe08a}
 .down{position:absolute;bottom:28px;left:50%;width:22px;height:36px;margin-left:-11px;border:2px solid rgba(255,255,255,.5);border-radius:12px}
 .down::after{content:"";position:absolute;left:50%;top:7px;width:3px;height:7px;margin-left:-1.5px;border-radius:2px;background:#fff;animation:scroll 1.8s var(--ease) infinite}
 @keyframes scroll{0%{transform:translateY(0);opacity:1}70%{transform:translateY(12px);opacity:0}100%{opacity:0}}
