@@ -20,6 +20,7 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<void> {
   status.show();
   ctx.subscriptions.push(status,
     vscode.commands.registerCommand("agentTheatre.open", () => open(ctx, "live")),
+    vscode.commands.registerCommand("agentTheatre.switchFolder", async () => { await theatre?.close(); theatre = null; panel?.dispose(); panel = null; await open(ctx, "live"); }),
     vscode.commands.registerCommand("agentTheatre.replay", () => replay(ctx)),
     vscode.commands.registerCommand("agentTheatre.openInBrowser", async () => { const t = await ensureServer(ctx); if (t) void vscode.env.openExternal(vscode.Uri.parse(`${t.url}?live=1`)); }),
     vscode.commands.registerCommand("agentTheatre.installHooks", () => {
@@ -36,13 +37,21 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<void> {
 
 export async function deactivate(): Promise<void> { await theatre?.close(); theatre = null; }
 
-function workspaceRoot(): string | null {
-  return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? null;
+async function workspaceRoot(): Promise<string | null> {
+  const folders = vscode.workspace.workspaceFolders ?? [];
+  if (!folders.length) return null;
+  if (folders.length === 1) return folders[0]!.uri.fsPath;
+  // several folders: prefer the one holding the active file, otherwise ask
+  const active = vscode.window.activeTextEditor?.document.uri;
+  const own = active && vscode.workspace.getWorkspaceFolder(active);
+  if (own) return own.uri.fsPath;
+  const pick = await vscode.window.showQuickPick(folders.map((f) => ({ label: f.name, description: f.uri.fsPath, path: f.uri.fsPath })), { placeHolder: "Which folder is the stage for?" });
+  return pick?.path ?? null;
 }
 
 async function ensureServer(ctx: vscode.ExtensionContext): Promise<Theatre | null> {
   if (theatre) return theatre;
-  const cwd = workspaceRoot();
+  const cwd = await workspaceRoot();
   if (!cwd) { void vscode.window.showWarningMessage("Agent Theatre needs an open folder."); return null; }
   const webDir = [join(ctx.extensionPath, "web"), join(ctx.extensionPath, "..", "web", "dist")].find((d) => existsSync(join(d, "index.html")));
   const files = scanRepo(cwd);
@@ -61,7 +70,7 @@ async function open(ctx: vscode.ExtensionContext, mode: "live" | { session: stri
   const set = vscode.workspace.getConfiguration("agentTheatre").get<string>("set") || "";
   const query = (mode === "live" ? "live=1" : `session=${encodeURIComponent(mode.session)}`) + (set ? `&set=${encodeURIComponent(set)}` : "");
   if (!panel) {
-    panel = vscode.window.createWebviewPanel("agentTheatre", "Agent Theatre", vscode.ViewColumn.Beside, { enableScripts: true, retainContextWhenHidden: true });
+    panel = vscode.window.createWebviewPanel("agentTheatre", `Agent Theatre — ${t.name}`, vscode.ViewColumn.Beside, { enableScripts: true, retainContextWhenHidden: true });
     panel.iconPath = vscode.Uri.joinPath(ctx.extensionUri, "media", "icon.png");
     panel.onDidDispose(() => { panel = null; });
     // the page asks to bring Claude Code forward when the agent is waiting on the person
@@ -77,7 +86,7 @@ async function open(ctx: vscode.ExtensionContext, mode: "live" | { session: stri
 }
 
 async function replay(ctx: vscode.ExtensionContext): Promise<void> {
-  const cwd = workspaceRoot();
+  const cwd = await workspaceRoot();
   if (!cwd) return;
   const sessions = listSessions(cwd);
   if (!sessions.length) { void vscode.window.showInformationMessage("No Claude Code sessions found for this folder."); return; }

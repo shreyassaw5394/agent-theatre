@@ -159,16 +159,6 @@ function spiralSpot(occ: Set<string>, cx: number, cy: number, fp: number, rect: 
 }
 
 /** Free spot on a ring of given radius, scanning angles outward from `ang`. */
-function ringSpot(occ: Set<string>, ang: number, radius: number, fp: number): [number, number] {
-  for (let r = radius; r < radius + 40; r++) {
-    for (let k = 0; k < 64; k++) {
-      const a = ang + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * (Math.PI / 32);
-      const gx = Math.round(Math.cos(a) * r), gy = Math.round(Math.sin(a) * r * 0.85);
-      if (free(occ, gx, gy, fp)) return [gx, gy];
-    }
-  }
-  return [radius, 0];
-}
 
 function maxExtent(rects: Rect[]): number {
   return Math.max(...rects.map((r) => Math.max(Math.abs(r.x), Math.abs(r.x + r.w), Math.abs(r.y), Math.abs(r.y + r.h))));

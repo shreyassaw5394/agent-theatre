@@ -74,7 +74,12 @@ export class Panel {
   private durationMs = 0;
   repoId = "";
 
-  setTitle(repoId: string, episode?: string): void { (this.root.querySelector("#title") as HTMLElement).textContent = repoId; (this.root.querySelector("#titleBig") as HTMLElement).textContent = episode ?? repoId; }
+  setTitle(repoId: string, episode?: string): void {
+    // "github.com/org/repo" → "repo", "/Users/me/projects/x" → "x"; the full id stays in the tooltip
+    const short = repoId.replace(/\/+$/, "").split(/[\/\\]/).filter(Boolean).pop() ?? repoId;
+    const t = this.root.querySelector("#title") as HTMLElement; t.textContent = short; t.title = repoId;
+    (this.root.querySelector("#titleBig") as HTMLElement).textContent = episode ?? short;
+  }
   setMuted(m: boolean): void { this.muteBtn.textContent = m ? "Effects off" : "Effects on"; this.muteBtn.setAttribute("aria-pressed", String(!m)); }
   setAmbience(on: boolean): void { this.ambBtn.textContent = on ? "Ambience on" : "Ambience off"; this.ambBtn.setAttribute("aria-pressed", String(on)); }
   setRate(r: number): void { this.rateBtn.textContent = `${r}×`; }
@@ -159,7 +164,7 @@ export class Panel {
       (this.waiting.querySelector("b") as HTMLElement).textContent = `${this.leadName || "The agent"} ${reason}.`;
       (this.waiting.querySelector("span") as HTMLElement).textContent = this.vscode ? "Answer in Claude Code." : "Answer in the terminal or editor where Claude Code is running.";
       (this.waiting.querySelector(".go") as HTMLElement).textContent = this.vscode ? "Go to Claude Code" : "Notify me next time";
-      if (this.notifiedFor !== cur.id) { this.notifiedFor = cur.id; if (!this.vscode && "Notification" in globalThis && Notification.permission === "granted") new Notification("Agent Theatre", { body: `${this.leadName || "The agent"} ${reason}.` }); }
+      if (this.notifiedFor !== cur.id) { this.notifiedFor = cur.id; if (!this.vscode && "Notification" in globalThis && Notification.permission === "granted") void new Notification("Agent Theatre", { body: `${this.leadName || "The agent"} ${reason}.` }); }
     }
     this.signal.hidden = s.signal === "ok" || !this.liveMode; this.signal.className = `signal ${s.signal}`; (this.signal.lastElementChild as HTMLElement).textContent = s.signal === "lost" ? "quiet — no events for 90 s" : "live";
     // acts
@@ -183,7 +188,7 @@ export class Panel {
   private async notify(): Promise<void> {
     if (!("Notification" in globalThis)) return;
     const p = Notification.permission === "default" ? await Notification.requestPermission() : Notification.permission;
-    if (p === "granted") new Notification("Agent Theatre", { body: "You'll get a notification whenever the agent waits on you." });
+    if (p === "granted") void new Notification("Agent Theatre", { body: "You'll get a notification whenever the agent waits on you." });
   }
 }
 

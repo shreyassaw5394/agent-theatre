@@ -2,7 +2,7 @@
   "name": "agent-theatre-vscode",
   "displayName": "Agent Theatre",
   "description": "Watch your coding agent work \u2014 as a film, not a log. Turns a Claude Code session into an animated scene inside VS Code.",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "publisher": "agenttheatre",
   "license": "MIT",
   "private": true,
@@ -65,6 +65,11 @@
       {
         "command": "agentTheatre.openInBrowser",
         "title": "Open the stage in the browser",
+        "category": "Agent Theatre"
+      },
+      {
+        "command": "agentTheatre.switchFolder",
+        "title": "Switch folder (restart the stage)",
         "category": "Agent Theatre"
       }
     ],
