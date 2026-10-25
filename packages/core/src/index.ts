@@ -14,3 +14,7 @@ export { generateWorld } from "./world/generate.js";
 export { worldToAscii } from "./world/ascii.js";
 export { hashString, mulberry32 } from "./world/prng.js";
 export { scoreFiles, kindOf, isIgnoredPath, heightClass, footprintOf } from "./world/relevance.js";
+export * from "./director/types.js";
+export { Director, direct } from "./director/direct.js";
+export { MoodTracker } from "./director/mood.js";
+export { filesFromEvents } from "./world/from-events.js";

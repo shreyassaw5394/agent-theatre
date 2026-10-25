@@ -14,7 +14,8 @@
     "test": "vitest run",
     "build": "tsup",
     "demo": "tsx scripts/demo.ts",
-    "world": "tsx scripts/world.ts"
+    "world": "tsx scripts/world.ts",
+    "direct": "tsx scripts/direct.ts"
   },
   "devDependencies": {}
 }
