@@ -122,6 +122,10 @@ The server binds to `127.0.0.1` only. Hooks exit 0 and never block or slow your 
 `packages/core` (schema, adapters, island, director — no DOM, no fs) ·
 `packages/cli` · `packages/web` · `packages/vscode` · `fixtures/` (synthetic sessions).
 
+## Community
+
+Questions, stages worth showing off, ideas for v2: **[Discord](https://discord.gg/PPGeQWd7r)** — one server for the whole suite (LastSearch, Debug Anything, Agent Theatre).
+
 ## Site
 
 **[agenttheatre.dev](https://agenttheatre.dev)** — the story, a playable Episode 1, all twenty stages, the cast,

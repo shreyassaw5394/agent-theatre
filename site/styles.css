@@ -17,6 +17,7 @@ code{font:500 .9em var(--mono)}
 .nav{position:fixed;top:0;left:0;right:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:calc(10px + env(safe-area-inset-top,0px)) 24px 10px;background:rgba(0,0,0,.55);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid var(--line);font-size:14px}
 .wordmark{font-family:var(--display);font-weight:700;font-size:16px;letter-spacing:.02em;white-space:nowrap}
 .nav .links{display:flex;gap:26px;color:var(--grey)}.nav .links a:hover{color:var(--ink)}
+.pill.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);margin-right:8px}
 .pill{padding:7px 14px;border-radius:999px;background:var(--ink);color:#000;font-weight:700}
 /* hero */
 .hero{position:relative;box-sizing:border-box;min-height:100svh;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:calc(84px + env(safe-area-inset-top,0px)) 24px 72px;text-align:center;isolation:isolate}

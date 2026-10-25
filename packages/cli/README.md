@@ -45,3 +45,5 @@ await t.listen(0); // t.url → http://127.0.0.1:<port>/
 ```
 
 MIT · source: https://github.com/shreyassaw5394/agent-theatre
+
+Community: https://discord.gg/PPGeQWd7r

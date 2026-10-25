@@ -10,3 +10,5 @@ Watch your coding agent work — as a film, not a log. The same stage as `npx ag
 Everything runs on your machine and talks only to `127.0.0.1`. Events carry paths and counts, never file contents or prompts.
 
 Site: https://agenttheatre.dev · Source: https://github.com/shreyassaw5394/agent-theatre
+
+Community: https://discord.gg/PPGeQWd7r
