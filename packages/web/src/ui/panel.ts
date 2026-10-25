@@ -76,7 +76,7 @@ export class Panel {
 
   setTitle(repoId: string, episode?: string): void {
     // "github.com/org/repo" → "repo", "/Users/me/projects/x" → "x"; the full id stays in the tooltip
-    const short = repoId.replace(/\/+$/, "").split(/[\/\\]/).filter(Boolean).pop() ?? repoId;
+    const short = repoId.replace(/\/+$/, "").split(/[/\\]/).filter(Boolean).pop() ?? repoId;
     const t = this.root.querySelector("#title") as HTMLElement; t.textContent = short; t.title = repoId;
     (this.root.querySelector("#titleBig") as HTMLElement).textContent = episode ?? short;
   }
