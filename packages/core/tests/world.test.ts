@@ -57,10 +57,14 @@ describe("generateWorld", () => {
     expect(w.places.find((p) => p.path.startsWith("tests/"))?.kind).toBe("beacon");
     expect(w.places.find((p) => p.path.startsWith("db/"))?.kind).toBe("archive");
   });
-  it("never overlaps footprints and keeps every place inside bounds", () => {
+  it("never overlaps footprints, keeps every place inside bounds, and the world stays compact", () => {
     for (const n of [5, 60, 400]) {
       const w = generateWorld({ repoId: `r${n}`, files: synth(n) });
       expect(overlapping(w.places), `n=${n}`).toBeNull();
+      // ~60 buildings must fit a readable screen: no straight-line walks to nowhere
+      expect(w.bounds.w, `width n=${n}`).toBeLessThanOrEqual(48);
+      expect(w.bounds.h, `height n=${n}`).toBeLessThanOrEqual(48);
+      for (const p of w.places) expect(Math.hypot(p.gx, p.gy), `${p.id} too far`).toBeLessThanOrEqual(26);
       for (const p of w.places) {
         expect(p.gx).toBeGreaterThanOrEqual(w.bounds.x);
         expect(p.gy).toBeGreaterThanOrEqual(w.bounds.y);

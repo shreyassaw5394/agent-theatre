@@ -128,20 +128,22 @@ function claim(occ: Set<string>, p: Place): void {
   for (const c of cellsOf(p.gx, p.gy, p.footprint)) occ.add(c);
 }
 
-/** Nearest free fp×fp spot to (cx,cy), spiralling outward; prefers inside rect but never fails. */
+/** Nearest free fp×fp spot to (cx,cy), spiralling outward in origin-relative steps; prefers the patch, never fails. */
 function spiralSpot(occ: Set<string>, cx: number, cy: number, fp: number, rect: Rect): [number, number] {
-  let x = cx, y = cy, dx = 0, dy = -1;
+  let x = 0, y = 0, dx = 0, dy = -1;
+  let fallback: [number, number] | null = null;
   for (let i = 0; i < 4096; i++) {
-    const gx = x - Math.floor(fp / 2), gy = y - Math.floor(fp / 2);
-    const inside = gx >= rect.x - 1 && gy >= rect.y - 1 && gx + fp <= rect.x + rect.w + 1 && gy + fp <= rect.y + rect.h + 1;
-    if ((inside || i > 400) && free(occ, gx, gy, fp)) return [gx, gy];
+    const gx = cx + x - Math.floor(fp / 2), gy = cy + y - Math.floor(fp / 2);
+    if (free(occ, gx, gy, fp)) {
+      const inside = gx >= rect.x - 1 && gy >= rect.y - 1 && gx + fp <= rect.x + rect.w + 1 && gy + fp <= rect.y + rect.h + 1;
+      if (inside) return [gx, gy];
+      fallback ??= [gx, gy];
+      if (i > 600) return fallback;
+    }
     if (x === y || (x < 0 && x === -y) || (x > 0 && x === 1 - y)) [dx, dy] = [-dy, dx];
     x += dx; y += dy;
-    if (i > 400 && inside === false) { /* allow spill outside the patch */ }
-    // re-centre spiral on (cx,cy)
-    if (i === 0) { x = cx; y = cy; }
   }
-  return [cx, cy];
+  return fallback ?? [cx, cy];
 }
 
 /** Free spot on a ring of given radius, scanning angles outward from `ang`. */
