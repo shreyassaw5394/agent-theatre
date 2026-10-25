@@ -61,7 +61,8 @@ export class Pip {
     this.container.zIndex = 1e6; // player sets a proper depth; this is a fallback
 
     const shadowK = 1 - Math.min(0.6, a.lift / 90);
-    this.shadow.clear().ellipse(0, 0, 11 * shadowK, 5 * shadowK).fill({ color: 0x0f2d28, alpha: 0.3 });
+    this.shadow.clear().ellipse(0, 0, 11 * shadowK, 5 * shadowK).fill({ color: 0x000000, alpha: 0.28 });
+    this.shadow.ellipse(0, 0, 14 * shadowK, 7 * shadowK).fill({ color: 0x000000, alpha: 0.1 });
 
     const g = this.body;
     g.clear();

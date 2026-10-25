@@ -7,6 +7,8 @@ describe("argv0Of", () => {
     expect(argv0Of("cd /x/y && pnpm build")).toBe("pnpm");
     expect(argv0Of("/usr/local/bin/node -e 1")).toBe("node");
     expect(argv0Of("")).toBe("sh");
+    expect(argv0Of("(node packages/cli/dist/cli.js --no-open &)")).toBe("node");
+    expect(argv0Of("{ cat a; } > b")).toBe("cat");
   });
 });
 

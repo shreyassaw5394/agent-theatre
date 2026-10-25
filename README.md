@@ -2,27 +2,44 @@
 
 **Watch your coding agent work — as a film, not a log.**
 
-Agent Theatre turns a Claude Code session into an animated scene. Your repo becomes a small
-island: folders are districts, files are buildings, test files are lighthouses. The agent is
-**Pip**, a character who walks to the files it reads, builds on the files it edits, runs tests
-at the lighthouses, and chases bug gremlins when they fail. Live, or replayed from any past
-session.
+Agent Theatre turns a Claude Code session into an animated scene. Your repo becomes a stage:
+folders are districts, files are buildings, test files are beacons. The agent is a character —
+one of a cast of twelve — who walks to the files it reads, builds on the files it edits, runs
+tests at the beacons, and chases bug gremlins when they fail. Subagents arrive at the dock as
+other members of the cast. Live, or replayed from any past session.
 
-And one honest detail no other visualiser has: **if Pip says the job is done but no test has
-passed since the last edit, a gremlin hides behind it.**
+**Twenty stages.** Agent Theatre reads what your repo is — a web app, a backend, a CLI, data
+work, a game, infrastructure — and suggests the stages that suit it: Island, Orbit, Metropolis,
+Harbour, Observatory, Greenhouse, Workshop, Arcade, Kingdom, Outpost, Snowfield, Canopy,
+Lagoon, Volcano, Cloudtop, Reef, Bazaar, Monastery, Moonbase, Lanterns. Or hit *Surprise me*.
 
-![First light: the Island set, two tests failing, a gremlin loose on login.ts](docs/img/first-light-island.png)
+And one honest detail no other visualiser has: **if the agent says the job is done but no test
+has passed since the last edit, a gremlin hides behind it.**
 
-*First light of the real renderer (milestone 4). Animated GIF coming once the motion pass is done.*
+![Orbit: Rook working on login.ts](docs/img/orbit-rook.png)
+
+| | | |
+|---|---|---|
+| ![Lanterns, Juno](docs/img/lanterns-juno.png) | ![Volcano, Ember](docs/img/volcano-ember.png) | ![Harbour, Mo and a helper at the dock](docs/img/harbour-mo-helper.png) |
+
+*Same session, different stages, different leads. The picker reads your repo and suggests three.*
+
+![The set picker](docs/img/picker.png)
 
 ## Status
 
-Milestone 4 of 6 — core schema + adapters, world generator, director and the PixiJS renderer
-(three sets, synthesized sound) all work end-to-end on the demo session. Not yet installable;
-the CLI (live + replay) is milestone 5, the VS Code extension milestone 6. See
-[docs/design.md](docs/design.md).
+Milestone 5 of 6 — core, world, director, renderer and the CLI (live via hooks, replay of real
+sessions) work end-to-end; the live path is verified with a real Claude Code session. Not on npm
+yet; the VS Code extension is milestone 6. See [docs/design.md](docs/design.md).
 
-To see it today: `npx pnpm install && cd packages/web && npx vite` → http://127.0.0.1:5173/?demo=episode-1
+To run it today from a checkout:
+
+```sh
+npx pnpm install && npx pnpm build
+node packages/cli/dist/cli.js hooks install     # once
+cd ~/your-repo && node ~/agent-theatre/packages/cli/dist/cli.js          # live
+node ~/agent-theatre/packages/cli/dist/cli.js replay --latest            # replay
+```
 
 ## Install (soon)
 
@@ -49,11 +66,14 @@ Claude Code ──hooks──▶ agent-theatre (local) ──WebSocket──▶ 
    capped to ~60 buildings by relevance; every file the session touches is always placed.
 3. **Director.** Events become scene beats — `walk_to`, `build`, `run_tests`, `spawn_gremlin`,
    `chase`, `celebrate`, `unverified_claim` — with a mood: curious, focused, lost, happy.
-4. **Renderer.** PixiJS, isometric, soft lighting, easing everywhere, 60 fps with 60 buildings,
-   `prefers-reduced-motion` respected. Three selectable **sets** — Island, Orbit, Metropolis —
-   same story, different stage.
+4. **Renderer.** PixiJS, isometric, soft lighting, easing everywhere — no linear tween exists
+   in the codebase, a test makes sure. The camera frames the action; the whole stage appears
+   only to open, celebrate and close, so it never gets cluttered. `prefers-reduced-motion`
+   respected. Twenty stages on shared geometry; a cast of twelve characters from one procedural
+   routine.
 5. **Sound.** Every beat has a sound, all synthesized at runtime with the Web Audio API — no
-   audio files, no licences to worry about. The "Pip needs you" chime is the one you'll notice.
+   audio files, no licences to worry about. Effects and background ambience toggle separately.
+   The "needs your permission" chime is the one you'll notice.
 
 ## Privacy
 

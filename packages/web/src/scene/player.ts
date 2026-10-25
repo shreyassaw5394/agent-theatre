@@ -58,7 +58,7 @@ export class ScenePlayer {
   constructor(private readonly app: Application, public world: World, public theme: SetTheme, private readonly audio: AudioEngine, private readonly reducedMotion: boolean, leadId?: string | null) {
     this.worldLayer = new WorldLayer(world, theme);
     this.particles = new Particles(reducedMotion);
-    this.company = pickCompany(world.seed, leadId);
+    this.company = pickCompany(world.seed, leadId, theme.ground.fill);
     this.pip = new Pip(theme, reducedMotion, this.company.lead);
     this.camera = new Camera(this.stage, reducedMotion);
     this.sfx = new Sfx(audio); this.amb = new Ambience(audio);

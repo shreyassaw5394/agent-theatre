@@ -37,10 +37,16 @@ export const CAST: readonly CharacterSpec[] = [
 
 export const castById = (id: string | null | undefined): CharacterSpec | undefined => CAST.find((c) => c.id === id);
 
-/** Lead for a repo: seeded so a repo keeps its character; helpers are the next distinct ones. */
-export function pickCompany(seed: number, leadId?: string | null): { lead: CharacterSpec; helpers: CharacterSpec[] } {
-  const lead = castById(leadId) ?? CAST[seed % CAST.length]!;
-  const rest = CAST.filter((c) => c.id !== lead.id);
-  const start = (seed >>> 3) % rest.length;
+const lum = (c: number) => (0.2126 * ((c >> 16) & 255) + 0.7152 * ((c >> 8) & 255) + 0.0722 * (c & 255)) / 255;
+/** A character must read against the ground it stands on (Nimbus on Cloudtop snow was invisible). */
+export const readableOn = (c: CharacterSpec, groundFill: number): boolean => Math.abs(lum(c.body) - lum(groundFill)) > 0.22;
+
+/** Lead for a repo: seeded so a repo keeps its character; helpers are the next distinct ones. Low-contrast picks are skipped. */
+export function pickCompany(seed: number, leadId?: string | null, groundFill?: number): { lead: CharacterSpec; helpers: CharacterSpec[] } {
+  const ok = (c: CharacterSpec) => groundFill === undefined || readableOn(c, groundFill);
+  let lead = castById(leadId) ?? CAST[seed % CAST.length]!;
+  if (!ok(lead)) lead = CAST.find((c, i) => i >= seed % CAST.length && ok(c)) ?? CAST.find(ok) ?? lead;
+  const rest = CAST.filter((c) => c.id !== lead.id && ok(c));
+  const start = rest.length ? (seed >>> 3) % rest.length : 0;
   return { lead, helpers: [...rest.slice(start), ...rest.slice(0, start)] };
 }
