@@ -11,13 +11,18 @@ session.
 And one honest detail no other visualiser has: **if Pip says the job is done but no test has
 passed since the last edit, a gremlin hides behind it.**
 
-> ![Episode 1 — The Login Timeout](docs/episode-1.gif)
-> *(GIF placeholder — rendered by the real renderer in milestone 4)*
+![First light: the Island set, two tests failing, a gremlin loose on login.ts](docs/img/first-light-island.png)
+
+*First light of the real renderer (milestone 4). Animated GIF coming once the motion pass is done.*
 
 ## Status
 
-Milestone 1 of 6 — core event schema and adapters (hooks + transcripts), fully tested.
-Not yet installable. Follow the milestones in [docs/design.md](docs/design.md).
+Milestone 4 of 6 — core schema + adapters, world generator, director and the PixiJS renderer
+(three sets, synthesized sound) all work end-to-end on the demo session. Not yet installable;
+the CLI (live + replay) is milestone 5, the VS Code extension milestone 6. See
+[docs/design.md](docs/design.md).
+
+To see it today: `npx pnpm install && cd packages/web && npx vite` → http://127.0.0.1:5173/?demo=episode-1
 
 ## Install (soon)
 
