@@ -38,7 +38,8 @@ export class WsTransport implements Transport {
     if (this.readyCb) this.readyCb(payload); else this.pending = payload;
     if (scene.signal) this.signalCb?.(scene.signal);
     const open = () => {
-      const ws = new WebSocket(`${location.origin.replace(/^http/, "ws")}${this.base}/live`);
+      const origin = /^https?:/.test(this.base) ? this.base : location.origin + this.base;
+      const ws = new WebSocket(`${origin.replace(/^http/, "ws")}/live`);
       ws.onmessage = (m) => {
         const msg = JSON.parse(String(m.data)) as { type: string; beats?: Beat[]; events?: AgentEvent[]; state?: "ok" | "lost" };
         if (msg.type === "beats" && msg.beats) this.beatsCb?.(msg.beats, msg.events ?? []);

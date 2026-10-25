@@ -7,7 +7,8 @@ import { StaticTransport, WsTransport, replayTransport, type Transport } from ".
 import { Panel } from "./ui/panel.js";
 import { previewSet } from "./render/preview.js";
 
-const q = new URLSearchParams(location.search);
+const q = new URLSearchParams(location.search || (globalThis as { __AT_QUERY?: string }).__AT_QUERY || "");
+const BASE = q.get("base") ?? "";
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const store = { get: (k: string) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k: string, v: string) => { try { localStorage.setItem(k, v); } catch { /* private mode */ } } };
 
@@ -38,8 +39,10 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
   const audio = new AudioEngine();
   let wake: () => void = () => {};
   const unlockAudio = async () => { await audio.arm(); if (audio.ready) player?.audioReady(); };
-  // any first gesture on the page unlocks audio and starts the stage's ambience
-  for (const ev of ["pointerdown", "keydown"]) addEventListener(ev, () => { if (!audio.ready) void unlockAudio(); }, { passive: true });
+  // any first gesture on the page unlocks audio and starts the stage's ambience. The gesture that unlocks
+  // may itself be a click on a sound toggle: that click must not also flip the toggle (it read "on" — keep it on).
+  let justUnlocked = false;
+  for (const ev of ["pointerdown", "keydown"]) addEventListener(ev, () => { if (!audio.ready) { justUnlocked = true; setTimeout(() => { justUnlocked = false; }, 700); void unlockAudio(); } }, { passive: true });
   let theme: SetTheme = setById(q.get("set"));
   let player: ScenePlayer | null = null;
   let rate = Number(q.get("rate")) || 1;
@@ -52,8 +55,8 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
     onSeek: (ms) => { player?.seek(ms); },
     onRate: () => { rate = rate >= 4 ? 1 : rate * 2; player?.setRate(rate); panel.setRate(rate); },
     // The first click on either toggle may be the gesture that unlocks audio: honour the state it already shows instead of flipping it.
-    onMute: () => { if (!audio.ready) { void unlockAudio(); return; } muted = !muted; audio.setMuted(muted); store.set("at:muted", muted ? "1" : "0"); panel.setMuted(muted); },
-    onAmbience: () => { if (!audio.ready) { void unlockAudio(); return; } ambience = !ambience; audio.setAmbienceEnabled(ambience); store.set("at:ambience", ambience ? "1" : "0"); panel.setAmbience(ambience); },
+    onMute: () => { if (justUnlocked || !audio.ready) { void unlockAudio(); return; } muted = !muted; audio.setMuted(muted); store.set("at:muted", muted ? "1" : "0"); panel.setMuted(muted); },
+    onAmbience: () => { if (justUnlocked || !audio.ready) { void unlockAudio(); return; } ambience = !ambience; audio.setAmbienceEnabled(ambience); store.set("at:ambience", ambience ? "1" : "0"); panel.setAmbience(ambience); },
     onPickSet: (id) => { theme = setById(id); if (player) { store.set(`at:set:${player.world.repoId}`, id); rebuild(); } },
     onShuffle: () => { const pool = suggestSets(payload?.world.profile).filter((s) => s.id !== theme.id); const pick = pool.slice(0, Math.max(3, Math.min(5, pool.length))); theme = pick[Math.floor(Math.random() * pick.length)] ?? SETS[0]!; if (player) { store.set(`at:set:${player.world.repoId}`, theme.id); rebuild(); } panel.showPicker(false); },
   });
@@ -168,6 +171,6 @@ async function portrait(id: string): Promise<void> {
 
 // Mode: ?live=1 (CLI live), ?session=<id> (CLI replay), else a bundled demo.
 const host = document.getElementById("app")!;
-const boot = q.has("portrait") ? Promise.resolve<Transport>(new StaticTransport({ world: null as never, events: [], beats: [], repoId: "" })) : q.has("live") ? Promise.resolve<Transport>(new WsTransport()) : q.get("session") ? replayTransport(q.get("session")!) : loadDemo(q.get("demo") ?? "episode-1");
+const boot = q.has("portrait") ? Promise.resolve<Transport>(new StaticTransport({ world: null as never, events: [], beats: [], repoId: "" })) : q.has("live") ? Promise.resolve<Transport>(new WsTransport(BASE)) : q.get("session") ? replayTransport(q.get("session")!, BASE) : loadDemo(q.get("demo") ?? "episode-1");
 if (q.has("portrait")) portrait(q.get("portrait")!).catch((err) => { host.textContent = `Could not start: ${err}`; });
 else boot.then((t) => mount(host, t)).catch((err) => { host.textContent = `Could not start: ${err}`; });

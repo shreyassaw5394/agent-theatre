@@ -11,6 +11,7 @@ export class Ambience {
   private padMood: Mood | null = null;
   private extraTimer: ReturnType<typeof setTimeout> | null = null;
   private tuneTimer: ReturnType<typeof setTimeout> | null = null;
+  private moodTimer: ReturnType<typeof setTimeout> | null = null;
   constructor(private readonly a: AudioEngine) {}
 
   start(theme: SetTheme): void {
@@ -54,6 +55,23 @@ export class Ambience {
       this.tuneTimer = setTimeout(phrase, (at + tune.every * (0.6 + Math.random() * 0.9)) * 1000);
     };
     this.tuneTimer = setTimeout(phrase, 4000 + Math.random() * 4000);
+    // the mood layer
+    const chord = r.pad?.chord ?? [tune.root / 2, tune.root * 0.75, tune.root];
+    if (r.mood === "focus") {
+      // a steady pulse at 56–66 bpm: a soft low tick you stop hearing and start working to
+      const bpm = 56 + Math.random() * 10, lowF = chord[0]! / 2;
+      const tick = () => { if (this.current !== theme.id) return; this.a.note(lowF, 0.18, 0.035, "sine", 0); this.moodTimer = setTimeout(tick, 60000 / bpm); };
+      this.moodTimer = setTimeout(tick, 1500);
+    } else if (r.mood === "fun") {
+      // a bouncing arpeggio over the pad chord every so often, up then down, a little swing
+      const arp = () => {
+        if (this.current !== theme.id) return;
+        const notes = [...chord, ...chord.slice(0, -1).reverse()].map((f) => f * (Math.random() < 0.5 ? 2 : 4));
+        notes.forEach((f, i) => setTimeout(() => { if (this.current === theme.id) this.a.note(f, 0.22, 0.03, "triangle", (i / notes.length - 0.5) * 0.8); }, i * (150 + (i % 2) * 40)));
+        this.moodTimer = setTimeout(arp, 9000 + Math.random() * 12000);
+      };
+      this.moodTimer = setTimeout(arp, 3000 + Math.random() * 3000);
+    }
   }
   /** A barely-there chord that follows mood: major when happy, slightly sour when lost. */
   setMood(m: Mood): void {
@@ -63,5 +81,5 @@ export class Ambience {
     const chord = m === "happy" ? [261.6, 329.6, 392] : m === "lost" ? [261.6, 311.1, 370] : m === "uneasy" ? [261.6, 311.1, 392] : m === "focused" ? [261.6, 392] : [261.6, 329.6];
     this.padStop = this.a.pad(chord.map((f) => f / 2), 0.022, "sine");
   }
-  stop(): void { if (this.extraTimer) clearTimeout(this.extraTimer); this.extraTimer = null; if (this.tuneTimer) clearTimeout(this.tuneTimer); this.tuneTimer = null; for (const s of this.stops) s(); this.stops = []; this.padStop?.(); this.padStop = null; this.padMood = null; this.current = null; }
+  stop(): void { if (this.extraTimer) clearTimeout(this.extraTimer); this.extraTimer = null; if (this.tuneTimer) clearTimeout(this.tuneTimer); this.tuneTimer = null; if (this.moodTimer) clearTimeout(this.moodTimer); this.moodTimer = null; for (const s of this.stops) s(); this.stops = []; this.padStop?.(); this.padStop = null; this.padMood = null; this.current = null; }
 }

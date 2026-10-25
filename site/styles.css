@@ -23,14 +23,16 @@ code{font:500 .9em var(--mono)}
 .screen{position:absolute;inset:0;z-index:-1;overflow:hidden;background:#000}
 .screen iframe{position:absolute;inset:-2px;width:calc(100% + 4px);height:calc(100% + 4px);border:0;pointer-events:none}
 .veil{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.55) 0%,rgba(0,0,0,.05) 35%,rgba(0,0,0,.35) 70%,#000 100%);opacity:.35}
-.hero .copy{max-width:980px;will-change:transform,opacity}
+.hero .copy{max-width:980px;will-change:transform,opacity;padding:clamp(22px,4vh,40px) clamp(22px,4vw,48px);border-radius:32px;background:linear-gradient(180deg,rgba(14,18,28,.34),rgba(14,18,28,.22));backdrop-filter:blur(20px) saturate(150%);-webkit-backdrop-filter:blur(22px) saturate(150%);border:1px solid rgba(255,255,255,.14);box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(0,0,0,.25),0 30px 80px rgba(0,0,0,.35)}
+.hero .copy::before{content:"";position:absolute;inset:0;border-radius:inherit;background:radial-gradient(120% 80% at 20% 0%,rgba(255,255,255,.14),transparent 55%);pointer-events:none}
+.hero .copy{position:relative}
 .hero h1{font-size:clamp(32px,min(7.2vw,8.5vh),96px);line-height:1;margin:0 0 .35em;font-weight:700;text-shadow:0 2px 40px rgba(0,0,0,.6)}
-.hero p{font-size:clamp(16px,min(1.8vw,2.6vh),24px);color:#e6e6ea;max-width:60ch;margin:0 auto;text-shadow:0 1px 20px rgba(0,0,0,.7)}
+.hero p{font-size:clamp(16px,min(1.8vw,2.6vh),24px);color:#f2f4f8;max-width:60ch;margin:0 auto;text-shadow:0 1px 20px rgba(0,0,0,.7)}
 .actions{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:min(34px,4vh)}
 .button{display:inline-flex;align-items:center;gap:10px;padding:15px 26px;border-radius:999px;background:var(--ink);color:#000;font-size:18px;font-weight:700;border:0;cursor:pointer;transition:transform .35s var(--ease),background .2s}
 .button:hover{transform:translateY(-2px)}
-.button.ghost{background:rgba(255,255,255,.1);color:var(--ink);border:1px solid var(--line);backdrop-filter:blur(10px);font-family:var(--mono);font-weight:500;font-size:16px}
-.button.ghost span{font:600 12px var(--text);color:var(--grey);text-transform:uppercase;letter-spacing:.1em}.button.ghost.ok span{color:#7fe08a}.button.ghost.ok span::after{content:"ied"}
+.button.ghost{background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.28);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);font-family:var(--mono);font-weight:500;font-size:16px;box-shadow:inset 0 1px 0 rgba(255,255,255,.25)}
+.button.ghost span{font:600 12px var(--text);color:rgba(255,255,255,.75);text-transform:uppercase;letter-spacing:.1em}.button.ghost.ok span{color:#7fe08a}.button.ghost.ok span::after{content:"ied"}
 .down{position:absolute;bottom:28px;left:50%;width:22px;height:36px;margin-left:-11px;border:2px solid rgba(255,255,255,.5);border-radius:12px}
 .down::after{content:"";position:absolute;left:50%;top:7px;width:3px;height:7px;margin-left:-1.5px;border-radius:2px;background:#fff;animation:scroll 1.8s var(--ease) infinite}
 @keyframes scroll{0%{transform:translateY(0);opacity:1}70%{transform:translateY(12px);opacity:0}100%{opacity:0}}

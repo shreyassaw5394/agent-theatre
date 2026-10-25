@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Theatre, hooksStatus, installHooks, listSessions, repoIdFor, scanRepo, uninstallHooks } from "agent-theatre";
 
@@ -60,13 +60,19 @@ async function open(ctx: vscode.ExtensionContext, mode: "live" | { session: stri
   if (!t) return;
   const set = vscode.workspace.getConfiguration("agentTheatre").get<string>("set") || "";
   const query = (mode === "live" ? "live=1" : `session=${encodeURIComponent(mode.session)}`) + (set ? `&set=${encodeURIComponent(set)}` : "");
-  const url = `${t.url}?${query}`;
   if (!panel) {
     panel = vscode.window.createWebviewPanel("agentTheatre", "Agent Theatre", vscode.ViewColumn.Beside, { enableScripts: true, retainContextWhenHidden: true });
     panel.iconPath = vscode.Uri.joinPath(ctx.extensionUri, "media", "icon.png");
     panel.onDidDispose(() => { panel = null; });
+    // the page asks to bring Claude Code forward when the agent is waiting on the person
+    panel.webview.onDidReceiveMessage(async (m: { type?: string }) => {
+      if (m?.type !== "focus-agent") return;
+      for (const cmd of ["claude-vscode.focus", "claude-vscode.editor.openLast", "workbench.action.terminal.focus"]) {
+        try { await vscode.commands.executeCommand(cmd); return; } catch { /* next */ }
+      }
+    });
   }
-  panel.webview.html = html(url, panel.webview.cspSource);
+  panel.webview.html = html(ctx, panel.webview, `?${query}&base=${encodeURIComponent(t.url.replace(/\/$/, ""))}`);
   panel.reveal(vscode.ViewColumn.Beside, true);
 }
 
@@ -80,10 +86,17 @@ async function replay(ctx: vscode.ExtensionContext): Promise<void> {
   if (pick) await open(ctx, { session: pick.id });
 }
 
-/** The webview is a frame onto the local server; VS Code forwards 127.0.0.1 ports in remote setups. */
-function html(url: string, csp: string): string {
-  return `<!doctype html><html><head><meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; frame-src http://127.0.0.1:* http://localhost:*; style-src 'unsafe-inline' ${csp};">
-<style>html,body{margin:0;height:100%;background:#0d1829;overflow:hidden}iframe{border:0;width:100%;height:100%}</style>
-</head><body><iframe src="${url}" allow="autoplay" title="Agent Theatre"></iframe></body></html>`;
+/**
+ * The web app runs inside the webview itself (its bundle is shipped with the extension, built with a relative
+ * base); only the API and the WebSocket go to the local server. Framing http://127.0.0.1 inside a webview
+ * rendered blank, so nothing is framed.
+ */
+function html(ctx: vscode.ExtensionContext, webview: vscode.Webview, query: string): string {
+  const root = vscode.Uri.joinPath(ctx.extensionUri, "web");
+  const webRoot = webview.asWebviewUri(root).toString();
+  let page = readFileSync(vscode.Uri.joinPath(root, "index.html").fsPath, "utf8");
+  page = page.replace(/(src|href)="\.\//g, `$1="${webRoot}/`);
+  const csp = `default-src 'none'; img-src ${webview.cspSource} data: blob:; style-src ${webview.cspSource} 'unsafe-inline'; font-src ${webview.cspSource}; script-src ${webview.cspSource} 'unsafe-inline'; connect-src http://127.0.0.1:* ws://127.0.0.1:* http://localhost:* ws://localhost:*; worker-src blob:; media-src blob:;`;
+  page = page.replace("<head>", `<head><meta http-equiv="Content-Security-Policy" content="${csp}"><script>window.__AT_QUERY=${JSON.stringify(query)};</script>`);
+  return page;
 }

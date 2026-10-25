@@ -55,6 +55,8 @@ export class Theatre {
       if (events.length) this.ingest(events);
       return c.body(null, 204);
     });
+    a.use("/api/*", async (c, next) => { await next(); c.header("access-control-allow-origin", "*"); });
+    a.options("/api/*", (c) => c.body(null, 204, { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type" }));
     a.get("/api/scene", (c) => c.json({ mode: "live", repoId: this.opts.repoId, world: this.live.world, events: this.live.events, beats: this.live.beats, signal: this.signal }));
     a.get("/api/sessions", (c) => c.json(listSessions(this.opts.cwd).map((s) => ({ id: s.id, title: s.title, mtime: s.mtime, bytes: s.bytes }))));
     a.get("/api/replay/:id", (c) => {

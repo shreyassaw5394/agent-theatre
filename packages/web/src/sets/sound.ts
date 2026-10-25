@@ -9,9 +9,14 @@ import type { SetId } from "./types.js";
 export type Surface = "grass" | "stone" | "metal" | "sand" | "snow" | "wood" | "water" | "neon";
 export type Extra = "gull" | "cricket" | "bell" | "bubble" | "wind" | "horn" | "hum" | "chime" | "owl" | "rumble" | "drip" | "market";
 
+/** How a stage's effects are struck: this is what makes Harbour sound like wood and Lanterns like bells. */
+export type Instrument = "pluck" | "bell" | "marimba" | "blip" | "glass" | "wood" | "synth" | "drop";
+/** What the ambience is for: `focus` keeps a steady pulse under you, `relax` breathes, `fun` bounces. */
+export type Mood = "focus" | "relax" | "fun";
 export interface SetVoice {
   /** Oscillator family for melodic effects. */
   wave: OscillatorType;
+  instrument: Instrument;
   /** Multiplies every effect's pitch (0.8 = warmer, 1.25 = brighter). */
   pitch: number;
   /** Multiplies decays (1.6 = roomy, 0.7 = tight). */
@@ -26,6 +31,7 @@ export interface SetAmbience {
   extras: Extra[];
   /** Mean seconds between extras. */
   every: number;
+  mood: Mood;
 }
 /** A generative jingle: short phrases on a scale, never the same twice. */
 export interface SetTune {
@@ -66,11 +72,13 @@ export const TUNES: Record<SetId, SetTune> = {
   lanterns:    { scale: PENT, root: 523.3, wave: "sine", gain: 0.04, every: 14, len: [0.3, 0.7] },
 };
 
-const organic: SetVoice = { wave: "triangle", pitch: 1, decay: 1, tone: 3200, surface: "grass" };
-const electric: SetVoice = { wave: "square", pitch: 1.18, decay: 0.8, tone: 2600, surface: "metal" };
-const urban: SetVoice = { wave: "sawtooth", pitch: 0.95, decay: 1.1, tone: 2200, surface: "stone" };
+const organic: Omit<SetVoice, "instrument"> = { wave: "triangle", pitch: 1, decay: 1, tone: 3200, surface: "grass" };
+const electric: Omit<SetVoice, "instrument"> = { wave: "square", pitch: 1.18, decay: 0.8, tone: 2600, surface: "metal" };
+const urban: Omit<SetVoice, "instrument"> = { wave: "sawtooth", pitch: 0.95, decay: 1.1, tone: 2200, surface: "stone" };
+const INSTRUMENT: Record<SetId, Instrument> = { island: "pluck", orbit: "blip", metropolis: "synth", harbour: "wood", observatory: "glass", greenhouse: "marimba", workshop: "wood", arcade: "blip", kingdom: "bell", outpost: "pluck", snowfield: "glass", canopy: "marimba", lagoon: "drop", volcano: "synth", cloudtop: "glass", reef: "drop", bazaar: "pluck", monastery: "bell", moonbase: "blip", lanterns: "bell" };
+const MOOD: Record<SetId, Mood> = { island: "relax", orbit: "focus", metropolis: "focus", harbour: "relax", observatory: "focus", greenhouse: "relax", workshop: "fun", arcade: "fun", kingdom: "fun", outpost: "focus", snowfield: "relax", canopy: "fun", lagoon: "relax", volcano: "focus", cloudtop: "relax", reef: "relax", bazaar: "fun", monastery: "focus", moonbase: "focus", lanterns: "fun" };
 
-const BASE: Record<SetId, Omit<SetSound, "tune">> = {
+const BASE: Record<SetId, { voice: Omit<SetVoice, "instrument">; ambience: Omit<SetAmbience, "mood"> }> = {
   island:      { voice: organic, ambience: { washes: [{ hz: 520, q: 0.6, gain: 0.09, lfoHz: 0.11, depth: 0.6 }, { hz: 240, q: 0.9, gain: 0.05, lfoHz: 0.07, depth: 0.8 }], extras: ["gull", "cricket"], every: 9 } },
   orbit:       { voice: electric, ambience: { washes: [{ hz: 900, q: 2, gain: 0.015, lfoHz: 0.05, depth: 0.9 }], pad: { chord: [55, 110, 164.8], gain: 0.05, wave: "sine" }, extras: ["hum", "chime"], every: 11 } },
   metropolis:  { voice: urban, ambience: { washes: [{ hz: 380, q: 0.5, gain: 0.07, lfoHz: 0.2, depth: 0.5 }], pad: { chord: [65.4, 98], gain: 0.03, wave: "triangle" }, extras: ["horn", "hum"], every: 10 } },
@@ -93,4 +101,4 @@ const BASE: Record<SetId, Omit<SetSound, "tune">> = {
   lanterns:    { voice: { ...urban, wave: "triangle", pitch: 1.1, decay: 1.2, tone: 3000, surface: "stone" }, ambience: { washes: [{ hz: 400, q: 0.5, gain: 0.05, lfoHz: 0.2, depth: 0.5 }], extras: ["market", "chime", "bell"], every: 6 } },
 };
 
-export const SOUND: Record<SetId, SetSound> = Object.fromEntries(Object.entries(BASE).map(([id, v]) => [id, { ...v, tune: TUNES[id as SetId] }])) as Record<SetId, SetSound>;
+export const SOUND: Record<SetId, SetSound> = Object.fromEntries(Object.entries(BASE).map(([id, v]) => [id, { ...v, voice: { ...v.voice, instrument: INSTRUMENT[id as SetId] }, ambience: { ...v.ambience, mood: MOOD[id as SetId] }, tune: TUNES[id as SetId] }])) as Record<SetId, SetSound>;

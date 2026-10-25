@@ -1,7 +1,8 @@
 import type { Beat, Mood } from "@agent-theatre/core";
 import type { SetTheme } from "../sets/types.js";
 import type { AudioEngine } from "./engine.js";
-import { SOUND } from "../sets/sound.js";
+import { SOUND, type Instrument } from "../sets/sound.js";
+const base_instrument = (i: Instrument): Instrument => i;
 
 /**
  * Every beat kind has a sound. tests/sfx.test.ts fails if one is missing.
@@ -42,7 +43,21 @@ export class Sfx {
     const v = { ...base, pitch: base.pitch * tk.pitch, decay: base.decay * tk.decay, tone: base.tone * tk.tone, wave: tk.swap ? family[base.wave] : base.wave };
     // the stage's voice colours every melodic effect — and no two hits are identical (±3% pitch, ±15% length)
     const a = {
-      tone: (f: number, dur: number, o: Parameters<AudioEngine["tone"]>[2] = {}) => { const j = 0.97 + Math.random() * 0.06, dj = 0.85 + Math.random() * 0.3; return raw.tone(f * v.pitch * j, dur * v.decay * dj, { ...o, type: o.type ?? v.wave, lowpass: Math.min(o.lowpass ?? v.tone, v.tone), ...(o.slideTo ? { slideTo: o.slideTo * v.pitch * j } : {}) }); },
+      tone: (f: number, dur: number, o: Parameters<AudioEngine["tone"]>[2] = {}) => {
+        const j = 0.97 + Math.random() * 0.06, dj = 0.85 + Math.random() * 0.3;
+        const F = f * v.pitch * j, D = dur * v.decay * dj, g = o.gain ?? 0.25, base = { ...o, lowpass: Math.min(o.lowpass ?? v.tone, v.tone), ...(o.slideTo ? { slideTo: o.slideTo * v.pitch * j } : {}) };
+        // the instrument decides the partials and the envelope; the beat only says what note and how long
+        switch (base_instrument(v.instrument)) {
+          case "pluck": raw.tone(F, D * 0.6, { ...base, type: "triangle", attack: 0.003, gain: g }); raw.tone(F * 2, D * 0.25, { ...base, type: "sine", attack: 0.002, gain: g * 0.35 }); raw.noise(0.012, { filter: "highpass", freq: 3000, gain: g * 0.3 }); return;
+          case "bell": raw.tone(F, D * 1.8, { ...base, type: "sine", attack: 0.004, gain: g }); raw.tone(F * 2.76, D * 1.1, { ...base, type: "sine", attack: 0.004, gain: g * 0.3 }); raw.tone(F * 5.4, D * 0.5, { ...base, type: "sine", attack: 0.004, gain: g * 0.12 }); return;
+          case "marimba": raw.tone(F, D * 0.5, { ...base, type: "sine", attack: 0.003, gain: g }); raw.tone(F * 4, D * 0.12, { ...base, type: "sine", attack: 0.002, gain: g * 0.25 }); raw.noise(0.02, { filter: "bandpass", freq: 1800, q: 2, gain: g * 0.25 }); return;
+          case "blip": raw.tone(F, D * 0.35, { ...base, type: "square", attack: 0.002, gain: g * 0.7 }); raw.tone(F * 1.5, D * 0.2, { ...base, type: "square", attack: 0.002, gain: g * 0.2 }); return;
+          case "glass": raw.tone(F, D * 2, { ...base, type: "sine", attack: 0.02, gain: g * 0.9 }); raw.tone(F * 1.005, D * 2, { ...base, type: "sine", attack: 0.02, gain: g * 0.6 }); raw.tone(F * 3, D * 0.8, { ...base, type: "sine", attack: 0.01, gain: g * 0.15 }); return;
+          case "wood": raw.tone(F * 0.5, D * 0.3, { ...base, type: "triangle", attack: 0.002, gain: g * 0.9, slideTo: F * 0.35 }); raw.noise(0.04, { filter: "lowpass", freq: 1200, gain: g * 0.5 }); return;
+          case "drop": raw.tone(F * 0.8, D * 0.7, { ...base, type: "sine", attack: 0.006, gain: g, slideTo: F * 1.6 }); raw.noise(0.05, { filter: "bandpass", freq: 900, q: 1.5, gain: g * 0.25, sweepTo: 2400 }); return;
+          default: raw.tone(F, D, { ...base, type: o.type ?? v.wave, gain: g }); raw.tone(F * 0.5, D * 0.8, { ...base, type: "sawtooth", attack: 0.01, gain: g * 0.25, lowpass: 900 }); return; // synth
+        }
+      },
       noise: raw.noise.bind(raw),
     };
     if (name === "footstep") return this.footstep(v.surface, pan);

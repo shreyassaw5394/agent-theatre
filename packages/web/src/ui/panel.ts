@@ -17,6 +17,7 @@ export interface PanelHandlers { onPlayPause(): void; onSeek(ms: number): void; 
 export class Panel {
   readonly root: HTMLElement;
   readonly stageEl: HTMLElement;
+  private readonly waiting: HTMLElement; private readonly vscode: { postMessage: (m: unknown) => void } | null; private notifiedFor = "";
   private readonly overlay: HTMLElement; private readonly caption: HTMLElement; private readonly chip: HTMLElement; private readonly signal: HTMLElement;
   private readonly title: HTMLElement; private readonly end: HTMLElement; private readonly picker: HTMLElement;
   private readonly playBtn: HTMLButtonElement; private readonly rateBtn: HTMLButtonElement; private readonly muteBtn: HTMLButtonElement; private readonly ambBtn: HTMLButtonElement; private readonly setBtn: HTMLButtonElement;
@@ -47,7 +48,12 @@ export class Panel {
     this.title = el("div", "card", `<div class="small">Agent Theatre</div><div class="big" id="titleBig">…</div>`);
     this.end = el("div", "card", `<div class="big">Every agent run has a story.</div><div class="small">Agent Theatre</div>`); this.end.style.opacity = "0";
     this.picker = el("div", "picker"); this.picker.hidden = true;
-    this.stageEl.append(el("div", "vignette"), this.overlay, this.signal, this.chip, this.caption, this.title, this.end, this.picker);
+    // when the agent is waiting on the person, say so where they are looking and give them a way back to it
+    this.waiting = el("div", "waiting", `<div class="wt"><b></b><span></span></div><button type="button" class="go"></button>`); this.waiting.hidden = true;
+    const vsHost = (globalThis as { acquireVsCodeApi?: () => { postMessage: (m: unknown) => void } }).acquireVsCodeApi;
+    this.vscode = vsHost ? vsHost() : null;
+    (this.waiting.querySelector(".go") as HTMLButtonElement).onclick = () => { if (this.vscode) this.vscode.postMessage({ type: "focus-agent" }); else void this.notify(); };
+    this.stageEl.append(el("div", "vignette"), this.overlay, this.signal, this.chip, this.caption, this.title, this.end, this.picker, this.waiting);
     const controls = el("div", "controls");
     this.playBtn = el("button", "btn", `${PAUSE}<span>Pause</span>`); this.playBtn.type = "button"; this.playBtn.onclick = () => h.onPlayPause();
     const track = el("div", "track"); this.actsEl = el("div", "acts"); this.labelsEl = el("div", "actlabels"); this.head = el("div", "head"); track.append(this.actsEl, this.labelsEl, this.head);
@@ -145,7 +151,17 @@ export class Panel {
     if (s.evidence) { this.chip.hidden = false; this.chip.className = "chip ok"; this.chip.innerHTML = `${CHECK}Evidence · ${s.evidence.passed} tests passed`; }
     else if (cur?.kind === "unverified_claim" || (cur?.kind === "curtain_down" && !cur.verified)) { this.chip.hidden = false; this.chip.className = "chip warn"; this.chip.textContent = "No test evidence"; }
     else this.chip.hidden = true;
-    this.signal.hidden = s.signal === "ok" || !this.liveMode; this.signal.className = `signal ${s.signal}`; (this.signal.lastElementChild as HTMLElement).textContent = s.signal === "lost" ? "can't hear the agent" : "live";
+    // waiting banner (live only): permission or question → the person is the next actor
+    const waitingNow = this.liveMode && cur?.kind === "blocked_on_you";
+    this.waiting.hidden = !waitingNow;
+    if (waitingNow && cur?.kind === "blocked_on_you") {
+      const reason = cur.reason === "permission" ? "needs your permission to continue" : "has a question for you";
+      (this.waiting.querySelector("b") as HTMLElement).textContent = `${this.leadName || "The agent"} ${reason}.`;
+      (this.waiting.querySelector("span") as HTMLElement).textContent = this.vscode ? "Answer in Claude Code." : "Answer in the terminal or editor where Claude Code is running.";
+      (this.waiting.querySelector(".go") as HTMLElement).textContent = this.vscode ? "Go to Claude Code" : "Notify me next time";
+      if (this.notifiedFor !== cur.id) { this.notifiedFor = cur.id; if (!this.vscode && "Notification" in globalThis && Notification.permission === "granted") new Notification("Agent Theatre", { body: `${this.leadName || "The agent"} ${reason}.` }); }
+    }
+    this.signal.hidden = s.signal === "ok" || !this.liveMode; this.signal.className = `signal ${s.signal}`; (this.signal.lastElementChild as HTMLElement).textContent = s.signal === "lost" ? "quiet — no events for 90 s" : "live";
     // acts
     let ai = 0; this.acts.forEach((a, i) => { if (s.t >= a.fromMs) ai = i; });
     if (ai !== this.lastAct) { this.lastAct = ai; this.actBtns.forEach((b, i) => { b.classList.toggle("on", i < ai); b.classList.toggle("now", i === ai); }); this.actLabels.forEach((l, i) => l.classList.toggle("now", i === ai)); }
@@ -164,6 +180,11 @@ export class Panel {
     else this.bubbleEl.hidden = true;
   }
   liveMode = false;
+  private async notify(): Promise<void> {
+    if (!("Notification" in globalThis)) return;
+    const p = Notification.permission === "default" ? await Notification.requestPermission() : Notification.permission;
+    if (p === "granted") new Notification("Agent Theatre", { body: "You'll get a notification whenever the agent waits on you." });
+  }
 }
 
 function describe(e: AgentEvent, world: World): [string, string] {
@@ -185,4 +206,4 @@ function describe(e: AgentEvent, world: World): [string, string] {
   void world;
 }
 const hashSeed = (s: string) => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
-const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] ?? c));

@@ -10,3 +10,4 @@ site/dist/
 site/img/stage-*.png
 .vercel
 .env*
+packages/web/dist-vscode/
