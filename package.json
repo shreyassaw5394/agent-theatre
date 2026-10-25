@@ -9,7 +9,7 @@
     "lint": "oxlint packages",
     "test": "pnpm -r test",
     "build": "pnpm -r build",
-    "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm build"
+    "check": "pnpm build && pnpm typecheck && pnpm lint && pnpm test"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
