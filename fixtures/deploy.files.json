@@ -1,0 +1,65 @@
+{
+ "repoId": "beacon-infra",
+ "files": [
+  {
+   "path": "deploy/staging/values.yaml",
+   "loc": 80
+  },
+  {
+   "path": "deploy/staging/main.tf",
+   "loc": 140
+  },
+  {
+   "path": "deploy/staging/variables.tf",
+   "loc": 40
+  },
+  {
+   "path": "deploy/prod/values.yaml",
+   "loc": 85
+  },
+  {
+   "path": "deploy/prod/main.tf",
+   "loc": 150
+  },
+  {
+   "path": "deploy/base/kustomization.yaml",
+   "loc": 30
+  },
+  {
+   "path": "deploy/base/deployment.yaml",
+   "loc": 70
+  },
+  {
+   "path": "deploy/base/service.yaml",
+   "loc": 25
+  },
+  {
+   "path": "Dockerfile",
+   "loc": 35
+  },
+  {
+   "path": "src/server.ts",
+   "loc": 180
+  },
+  {
+   "path": "src/health.ts",
+   "loc": 30
+  },
+  {
+   "path": "src/metrics.ts",
+   "loc": 60
+  },
+  {
+   "path": "scripts/release.sh",
+   "loc": 45
+  },
+  {
+   "path": "README.md",
+   "loc": 50
+  },
+  {
+   "path": "package.json",
+   "loc": 30
+  }
+ ]
+}

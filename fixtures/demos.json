@@ -1,0 +1,44 @@
+[
+ {
+  "id": "episode-1",
+  "title": "The login timeout",
+  "kind": "bug fix",
+  "set": "island",
+  "blurb": "A 15-minute session drop. Two failing tests, one grace window, a green run."
+ },
+ {
+  "id": "research",
+  "title": "The research brief",
+  "kind": "research",
+  "set": "observatory",
+  "blurb": "Four field notes, a data file, two web searches and one written brief. No tests to pass \u2014 none claimed."
+ },
+ {
+  "id": "feature",
+  "title": "The export endpoint",
+  "kind": "new feature",
+  "set": "harbour",
+  "blurb": "Two new buildings rise, a route is wired, the suite is green first time."
+ },
+ {
+  "id": "refactor",
+  "title": "The rename",
+  "kind": "refactor",
+  "set": "metropolis",
+  "blurb": "Six files touched, one test catches a slip, fifty-eight pass."
+ },
+ {
+  "id": "deploy",
+  "title": "Ship 1.4.0",
+  "kind": "deploy",
+  "set": "moonbase",
+  "blurb": "All shell work at the forge: build, plan, a timeout, a retry, a rollout, a tag."
+ },
+ {
+  "id": "subagents",
+  "title": "The audit",
+  "kind": "helpers",
+  "set": "lanterns",
+  "blurb": "Two helpers arrive at the dock and fan out while the lead keeps working."
+ }
+]

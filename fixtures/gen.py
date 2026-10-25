@@ -116,6 +116,102 @@ rows.append(text(7.0, f"{M['text']} — done.", rows[-1]["uuid"]))
 write(rows, "secrets.jsonl")
 json.dump(M, open("secrets.markers.json", "w"), indent=2)
 
+
+# ---------------- more episodes: distinct kinds of work in distinct repos ----------------
+def episode(name, cwd, rows_fn):
+    global CWD
+    saved = CWD; CWD = cwd
+    rows = rows_fn()
+    write(rows, name)
+    CWD = saved
+
+def rd(sec, tid, path, parent, lines=40):
+    a = tool_use(sec, tid, "Read", {"file_path": f"{CWD}/{path}"}, parent)
+    r = tool_result(sec + 0.6, tid, "1\t…", {"type": "text", "file": {"filePath": f"{CWD}/{path}", "content": "…\n" * lines, "numLines": lines, "startLine": 1, "totalLines": lines}}, a["uuid"])
+    return [a, r]
+def ed(sec, tid, path, parent, plus, minus):
+    a = tool_use(sec, tid, "Edit", {"replace_all": False, "file_path": f"{CWD}/{path}", "old_string": "a", "new_string": "b"}, parent)
+    r = tool_result(sec + 0.8, tid, "The file has been updated.", {"filePath": f"{CWD}/{path}", "oldString": "…", "newString": "…", "originalFile": "…", "structuredPatch": patch(1, minus + 2, 1, plus + 2, plus, minus), "userModified": False, "replaceAll": False}, a["uuid"])
+    return [a, r]
+def wr(sec, tid, path, parent, lines):
+    a = tool_use(sec, tid, "Write", {"file_path": f"{CWD}/{path}", "content": "…\n" * lines}, parent)
+    r = tool_result(sec + 0.7, tid, "File created successfully.", {"type": "create", "filePath": f"{CWD}/{path}", "content": "…\n" * lines, "structuredPatch": [], "originalFile": None, "userModified": False}, a["uuid"])
+    return [a, r]
+def web(sec, tid, query, parent, hits=8):
+    a = tool_use(sec, tid, "WebSearch", {"query": query}, parent)
+    r = tool_result(sec + 1.6, tid, "Found results", {"query": query, "results": [{"title": "…", "url": "https://example.invalid/"}] * hits, "durationSeconds": 1.5}, a["uuid"])
+    return [a, r]
+def grep(sec, tid, pattern, parent, n=4):
+    a = tool_use(sec, tid, "Grep", {"pattern": pattern, "path": CWD}, parent)
+    r = tool_result(sec + 0.4, tid, f"Found {n} files", {"mode": "files_with_matches", "numFiles": n, "filenames": ["…"] * n}, a["uuid"])
+    return [a, r]
+def sh(sec, tid, cmd, out, parent, err=False, desc=""):
+    a = tool_use(sec, tid, "Bash", {"command": cmd, "description": desc}, parent)
+    r = tool_result(sec + 1.2, tid, out, bash_result(out if not err else "", out if err else ""), a["uuid"], is_error=err)
+    return [a, r]
+
+PYTEST_PASS = "\n============ 31 passed in 2.41s ============\n"
+PYTEST_FAIL = "\nFAILED tests/test_export.py::test_csv_header - AssertionError\n============ 1 failed, 30 passed in 2.60s ============\n"
+GO_PASS = "ok  \tgithub.com/skylark/api\t0.412s\nok  \tgithub.com/skylark/export\t0.218s\n"
+
+# episode-2: the research brief — reads, searches, one new document. No tests, no claim.
+def ep2():
+    rows = []; u = prompt(0, "what do the field notes say about soil moisture after the June storms? write me a brief"); rows.append(u); p = u["uuid"]
+    for i, f in enumerate(["notes/2026-06-12.md", "notes/2026-06-19.md", "data/moisture.csv", "notes/2026-07-02.md"]):
+        rows += rd(2 + i * 2.2, f"toolu_ep2_r{i}", f, p, 60 + i * 20); p = rows[-1]["uuid"]
+    rows += grep(11.5, "toolu_ep2_g1", "moisture|storm", p, 7); p = rows[-1]["uuid"]
+    rows += web(13.0, "toolu_ep2_w1", "soil moisture recovery after convective storms", p, 9); p = rows[-1]["uuid"]
+    rows += web(15.6, "toolu_ep2_w2", "volumetric water content field sensor drift", p, 6); p = rows[-1]["uuid"]
+    rows += rd(18.5, "toolu_ep2_r5", "scripts/plot_moisture.py", p, 80); p = rows[-1]["uuid"]
+    rows += sh(21.0, "toolu_ep2_b1", f"cd {CWD} && python3 scripts/plot_moisture.py --since 2026-06-01", "wrote figures/moisture-june.png\n", p, desc="Plot the June series"); p = rows[-1]["uuid"]
+    rows += wr(24.0, "toolu_ep2_wr1", "docs/brief-soil-moisture.md", p, 48); p = rows[-1]["uuid"]
+    rows.append(text(26.5, "Brief written to docs/brief-soil-moisture.md with the June plot. Moisture recovered to baseline within 9 days at three of four sites.", p))
+    return rows
+episode("research.jsonl", "/Users/dev/projects/fieldnotes", ep2)
+
+# episode-3: the new feature — two new files rise, a route is wired, tests pass first time, a real celebration.
+def ep3():
+    rows = []; u = prompt(0, "add a CSV export endpoint for orders"); rows.append(u); p = u["uuid"]
+    rows += rd(1.5, "toolu_ep3_r1", "internal/api/orders.go", p, 120); p = rows[-1]["uuid"]
+    rows += rd(3.8, "toolu_ep3_r2", "internal/api/router.go", p, 70); p = rows[-1]["uuid"]
+    rows += wr(6.5, "toolu_ep3_w1", "internal/export/csv.go", p, 64); p = rows[-1]["uuid"]
+    rows += wr(9.5, "toolu_ep3_w2", "internal/export/csv_test.go", p, 52); p = rows[-1]["uuid"]
+    rows += ed(12.5, "toolu_ep3_e1", "internal/api/router.go", p, 6, 0); p = rows[-1]["uuid"]
+    rows += sh(15.0, "toolu_ep3_b1", f"cd {CWD} && go test ./...", GO_PASS, p, desc="Run the Go tests"); p = rows[-1]["uuid"]
+    rows += sh(18.0, "toolu_ep3_b2", f"cd {CWD} && gofmt -l . && go vet ./...", "", p, desc="Format and vet"); p = rows[-1]["uuid"]
+    rows.append(text(20.5, "Added GET /orders/export.csv in internal/export/csv.go and wired it in the router. All tests pass.", p))
+    return rows
+episode("feature.jsonl", "/Users/dev/projects/skylark", ep3)
+
+# episode-4: the refactor — many small edits across a UI, tests stay green, one slip caught by the suite.
+def ep4():
+    rows = []; u = prompt(0, "rename Button variants to size/tone and update every call site"); rows.append(u); p = u["uuid"]
+    rows += grep(1.2, "toolu_ep4_g1", "variant=", p, 9); p = rows[-1]["uuid"]
+    for i, (f, plus, minus) in enumerate([("src/ui/Button.tsx", 18, 22), ("src/ui/Toolbar.tsx", 4, 4), ("src/ui/Dialog.tsx", 6, 6), ("src/pages/Checkout.tsx", 3, 3), ("src/pages/Cart.tsx", 2, 2)]):
+        rows += ed(3 + i * 2.4, f"toolu_ep4_e{i}", f, p, plus, minus); p = rows[-1]["uuid"]
+    rows += sh(15.5, "toolu_ep4_b1", f"cd {CWD} && npx vitest run", "\n ❯ src/ui/Button.test.tsx (12 tests | 1 failed)\n\n Test Files  1 failed | 6 passed (7)\n      Tests  1 failed | 57 passed (58)\n", p, err=True, desc="Run tests"); p = rows[-1]["uuid"]
+    rows += rd(18.5, "toolu_ep4_r1", "src/ui/Button.test.tsx", p, 90); p = rows[-1]["uuid"]
+    rows += ed(21.0, "toolu_ep4_e9", "src/ui/Button.test.tsx", p, 2, 2); p = rows[-1]["uuid"]
+    rows += sh(23.0, "toolu_ep4_b2", f"cd {CWD} && npx vitest run", "\n ✓ src/ui/Button.test.tsx (12 tests)\n\n Test Files  7 passed (7)\n      Tests  58 passed (58)\n", p, desc="Re-run tests"); p = rows[-1]["uuid"]
+    rows.append(text(25.5, "Renamed the Button API to size/tone across five files and updated the test. 58 tests pass.", p))
+    return rows
+episode("refactor.jsonl", "/Users/dev/projects/mosaic", ep4)
+
+# episode-5: the deploy — shell work at the forge, one failure and a retry, a tag; no tests, no claim of done.
+def ep5():
+    rows = []; u = prompt(0, "ship 1.4.0 to staging"); rows.append(u); p = u["uuid"]
+    rows += rd(1.2, "toolu_ep5_r1", "deploy/staging/values.yaml", p, 48); p = rows[-1]["uuid"]
+    rows += sh(3.5, "toolu_ep5_b1", f"cd {CWD} && docker build -t beacon:1.4.0 .", "Successfully built 1a2b3c\n", p, desc="Build the image"); p = rows[-1]["uuid"]
+    rows += sh(7.0, "toolu_ep5_b2", f"cd {CWD} && terraform -chdir=deploy/staging plan -out=plan.tfplan", "Plan: 2 to add, 1 to change, 0 to destroy.\n", p, desc="Plan infra"); p = rows[-1]["uuid"]
+    rows += sh(10.5, "toolu_ep5_b3", f"cd {CWD} && terraform -chdir=deploy/staging apply plan.tfplan", "Error: timeout while waiting for state to become 'available'\n", p, err=True, desc="Apply"); p = rows[-1]["uuid"]
+    rows += sh(14.0, "toolu_ep5_b4", f"cd {CWD} && terraform -chdir=deploy/staging apply plan.tfplan", "Apply complete! Resources: 2 added, 1 changed, 0 destroyed.\n", p, desc="Apply again"); p = rows[-1]["uuid"]
+    rows += ed(17.5, "toolu_ep5_e1", "deploy/staging/values.yaml", p, 1, 1); p = rows[-1]["uuid"]
+    rows += sh(19.5, "toolu_ep5_b5", f"cd {CWD} && kubectl apply -k deploy/staging && kubectl rollout status deploy/beacon", "deployment \"beacon\" successfully rolled out\n", p, desc="Roll out"); p = rows[-1]["uuid"]
+    rows += sh(22.5, "toolu_ep5_b6", f"cd {CWD} && git tag v1.4.0 && git push --tags", "", p, desc="Tag the release"); p = rows[-1]["uuid"]
+    rows.append(text(24.5, "1.4.0 is on staging: image built, infra applied (second attempt after a timeout), rollout complete, tag pushed.", p))
+    return rows
+episode("deploy.jsonl", "/Users/dev/projects/beacon-infra", ep5)
+
 # ---------------- hook payloads (per code.claude.com/docs/en/hooks) ----------------
 import os; os.makedirs("hooks", exist_ok=True)
 common = {"session_id": SID, "transcript_path": f"/Users/dev/.claude/projects/-Users-dev-projects-corner-shop/{SID}.jsonl", "cwd": CWD, "permission_mode": "default"}

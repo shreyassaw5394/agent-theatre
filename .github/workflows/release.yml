@@ -1,0 +1,45 @@
+name: Release
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: write
+  id-token: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 9.15.4 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm, registry-url: "https://registry.npmjs.org" }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+      - name: Verify tag matches package version
+        run: |
+          v=$(node -p "require('./packages/cli/package.json').version")
+          [ "v$v" = "${GITHUB_REF_NAME}" ] || { echo "tag ${GITHUB_REF_NAME} != package v$v"; exit 1; }
+      - name: Publish agent-theatre to npm
+        if: env.NPM_TOKEN != ''
+        working-directory: packages/cli
+        env: { NODE_AUTH_TOKEN: "${{ secrets.NPM_TOKEN }}", NPM_TOKEN: "${{ secrets.NPM_TOKEN }}" }
+        run: pnpm publish --no-git-checks --access public --provenance
+      - name: Package VS Code extension
+        working-directory: packages/vscode
+        run: pnpm package
+      - name: Publish to VS Code Marketplace
+        if: env.VSCE_PAT != ''
+        working-directory: packages/vscode
+        env: { VSCE_PAT: "${{ secrets.VSCE_PAT }}" }
+        run: npx @vscode/vsce publish --no-dependencies --packagePath agent-theatre.vsix
+      - name: Publish to Open VSX
+        if: env.OVSX_PAT != ''
+        working-directory: packages/vscode
+        env: { OVSX_PAT: "${{ secrets.OVSX_PAT }}" }
+        run: npx ovsx publish agent-theatre.vsix -p "$OVSX_PAT"
+      - name: GitHub release with the .vsix
+        uses: softprops/action-gh-release@v2
+        with:
+          files: packages/vscode/agent-theatre.vsix
+          generate_release_notes: true

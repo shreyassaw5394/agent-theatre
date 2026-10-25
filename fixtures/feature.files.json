@@ -1,0 +1,65 @@
+{
+ "repoId": "skylark",
+ "files": [
+  {
+   "path": "cmd/skylark/main.go",
+   "loc": 90
+  },
+  {
+   "path": "internal/api/orders.go",
+   "loc": 240
+  },
+  {
+   "path": "internal/api/router.go",
+   "loc": 110
+  },
+  {
+   "path": "internal/api/users.go",
+   "loc": 180
+  },
+  {
+   "path": "internal/api/orders_test.go",
+   "loc": 160
+  },
+  {
+   "path": "internal/api/users_test.go",
+   "loc": 120
+  },
+  {
+   "path": "internal/store/db.go",
+   "loc": 200
+  },
+  {
+   "path": "internal/store/migrate.go",
+   "loc": 80
+  },
+  {
+   "path": "internal/store/db_test.go",
+   "loc": 90
+  },
+  {
+   "path": "internal/auth/jwt.go",
+   "loc": 140
+  },
+  {
+   "path": "internal/auth/jwt_test.go",
+   "loc": 70
+  },
+  {
+   "path": "deploy/Dockerfile",
+   "loc": 30
+  },
+  {
+   "path": "go.mod",
+   "loc": 20
+  },
+  {
+   "path": "README.md",
+   "loc": 60
+  },
+  {
+   "path": "Makefile",
+   "loc": 25
+  }
+ ]
+}

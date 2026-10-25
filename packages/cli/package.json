@@ -47,5 +47,14 @@
   "devDependencies": {
     "@types/ws": "^8.5.13",
     "@agent-theatre/web": "workspace:*"
-  }
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts"
 }

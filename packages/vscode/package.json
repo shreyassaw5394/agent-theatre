@@ -1,0 +1,114 @@
+{
+  "name": "agent-theatre-vscode",
+  "displayName": "Agent Theatre",
+  "description": "Watch your coding agent work \u2014 as a film, not a log. Turns a Claude Code session into an animated scene inside VS Code.",
+  "version": "0.1.0",
+  "publisher": "agenttheatre",
+  "license": "MIT",
+  "private": true,
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#0d1829",
+    "theme": "dark"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shreyassaw5394/agent-theatre"
+  },
+  "homepage": "https://agenttheatre.dev",
+  "bugs": {
+    "url": "https://github.com/shreyassaw5394/agent-theatre/issues"
+  },
+  "keywords": [
+    "claude code",
+    "agent",
+    "visualization",
+    "replay",
+    "ai"
+  ],
+  "categories": [
+    "Visualization",
+    "Other"
+  ],
+  "engines": {
+    "vscode": "^1.90.0",
+    "node": ">=22"
+  },
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "agentTheatre.open",
+        "title": "Open the stage (live)",
+        "category": "Agent Theatre",
+        "icon": "$(play)"
+      },
+      {
+        "command": "agentTheatre.replay",
+        "title": "Replay a session\u2026",
+        "category": "Agent Theatre",
+        "icon": "$(history)"
+      },
+      {
+        "command": "agentTheatre.installHooks",
+        "title": "Install Claude Code hooks",
+        "category": "Agent Theatre"
+      },
+      {
+        "command": "agentTheatre.uninstallHooks",
+        "title": "Uninstall Claude Code hooks",
+        "category": "Agent Theatre"
+      },
+      {
+        "command": "agentTheatre.openInBrowser",
+        "title": "Open the stage in the browser",
+        "category": "Agent Theatre"
+      }
+    ],
+    "configuration": {
+      "title": "Agent Theatre",
+      "properties": {
+        "agentTheatre.set": {
+          "type": "string",
+          "default": "",
+          "description": "Stage set id to open with (e.g. island, orbit, lanterns). Empty = let the picker suggest."
+        },
+        "agentTheatre.openOnStartup": {
+          "type": "boolean",
+          "default": false,
+          "description": "Open the stage automatically when a workspace opens."
+        }
+      }
+    },
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "agentTheatre.open"
+        },
+        {
+          "command": "agentTheatre.replay"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "build": "tsup && node scripts/copy-web.mjs",
+    "package": "pnpm build && vsce package --no-dependencies --out agent-theatre.vsix"
+  },
+  "dependencies": {
+    "@agent-theatre/core": "workspace:*",
+    "agent-theatre": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^3.2.0",
+    "tsup": "^8.3.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}

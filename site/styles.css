@@ -96,3 +96,11 @@ footer{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;paddin
 .who img{width:150px;height:150px}
 @media(max-width:560px){.parade a{width:56px}.parade img{width:48px;height:48px}.peek{display:none}}
 @media(prefers-reduced-motion:reduce){.parade img,.gremlin{animation:none}}
+
+/* episodes */
+.eps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;max-width:1240px;margin:56px auto 0;text-align:left}
+.ep{display:block;border-radius:24px;overflow:hidden;background:#121214;border:1px solid rgba(255,255,255,.06);transition:transform .5s var(--ease)}
+.ep:hover{transform:translateY(-4px)}.ep img{width:100%;aspect-ratio:11/6;object-fit:cover;display:block}
+.ep div{padding:18px 20px 22px}.ep .kind{font:700 12px var(--text);letter-spacing:.14em;text-transform:uppercase;color:var(--amber)}
+.ep h3{font-size:24px;margin:6px 0 6px}.ep p{color:var(--grey);font-size:15px;margin:0;line-height:1.5}
+@media(max-width:900px){.eps{grid-template-columns:repeat(2,1fr)}}@media(max-width:560px){.eps{grid-template-columns:1fr}}

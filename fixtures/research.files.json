@@ -1,0 +1,69 @@
+{
+ "repoId": "fieldnotes",
+ "files": [
+  {
+   "path": "notes/2026-06-12.md",
+   "loc": 80
+  },
+  {
+   "path": "notes/2026-06-19.md",
+   "loc": 95
+  },
+  {
+   "path": "notes/2026-07-02.md",
+   "loc": 70
+  },
+  {
+   "path": "notes/2026-07-15.md",
+   "loc": 40
+  },
+  {
+   "path": "notes/index.md",
+   "loc": 30
+  },
+  {
+   "path": "data/moisture.csv",
+   "loc": 400
+  },
+  {
+   "path": "data/rain.csv",
+   "loc": 380
+  },
+  {
+   "path": "data/sites.json",
+   "loc": 60
+  },
+  {
+   "path": "scripts/plot_moisture.py",
+   "loc": 120
+  },
+  {
+   "path": "scripts/clean.py",
+   "loc": 90
+  },
+  {
+   "path": "scripts/fetch_rain.py",
+   "loc": 75
+  },
+  {
+   "path": "docs/method.md",
+   "loc": 140
+  },
+  {
+   "path": "docs/sites.md",
+   "loc": 60
+  },
+  {
+   "path": "figures/README.md",
+   "loc": 10
+  },
+  {
+   "path": "README.md",
+   "loc": 45
+  },
+  {
+   "path": "pyproject.toml",
+   "loc": 25
+  }
+ ]
+}

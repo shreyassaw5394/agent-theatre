@@ -18,20 +18,20 @@
 <body>
 <nav class="nav" aria-label="Primary">
   <a class="wordmark" href="/">Agent Theatre</a>
-  <div class="links"><a href="#stages">Stages</a><a href="#cast">Cast</a><a href="#honest">Honesty</a><a href="#privacy">Privacy</a><a href="#install">Install</a></div>
+  <div class="links"><a href="#episodes">Episodes</a><a href="#stages">Stages</a><a href="#cast">Cast</a><a href="#honest">Honesty</a><a href="#privacy">Privacy</a><a href="#install">Install</a></div>
   <a class="pill" href="https://github.com/shreyassaw5394/agent-theatre" rel="noopener">GitHub</a>
 </nav>
 
 <header class="hero">
   <div class="screen">
-    <iframe src="/theatre/?demo=episode-1&amp;set=island&amp;cinema=1&amp;nopreview=1&amp;episode=Episode%201%20%C2%B7%20The%20login%20timeout" title="Agent Theatre, playing" loading="eager" tabindex="-1" aria-hidden="true"></iframe>
+    <iframe src="/theatre/?demo=any&amp;cinema=1&amp;nopreview=1" title="Agent Theatre, playing" loading="eager" tabindex="-1" aria-hidden="true"></iframe>
     <div class="veil"></div>
   </div>
   <div class="copy">
     <h1>Watch your coding agent work.<br><em>As a film, not a log.</em></h1>
     <p>Agent Theatre turns a Claude Code session into an animated scene. Your repo becomes a stage. The agent becomes a character. Every read, edit and test becomes a beat.</p>
     <div class="actions">
-      <a class="button" href="/theatre/?demo=episode-1" target="_blank" rel="noopener">Watch Episode 1</a>
+      <a class="button" href="#episodes">Watch an episode</a>
       <button class="button ghost" id="copy" type="button"><code>npx agent-theatre</code><span>copy</span></button>
     </div>
     <div class="parade" aria-label="The cast">
@@ -62,6 +62,19 @@
     <article class="cell reveal"><div class="n">0</div><h3>Linear tweens.</h3><p>Every motion is eased. A test in the repo makes sure none sneak in.</p></article>
     <article class="cell reveal"><img class="mascot" src="/img/cast-sol.png" alt="" width="150" height="150" aria-hidden="true"><div class="n">0 KB</div><h3>Audio files.</h3><p>Every sound is synthesized at runtime. Every stage has its own voice and ambience.</p></article>
     <article class="cell wide reveal"><img src="/img/stage-lanterns.jpg" alt="Lanterns stage" loading="lazy" width="880" height="520"><div><h3>One key light.</h3><p>Long soft shadows, ambient occlusion, rim light, aerial haze, cloud shadows drifting over the ground. Bloom only where something glows.</p></div></article>
+  </div>
+</section>
+
+<section id="episodes" class="episodes">
+  <h2 class="reveal">Six episodes. Six kinds of work.</h2>
+  <p class="sub reveal">Research, a new feature, a bug fix, a refactor, a deploy, a team of helpers — each a different repo on a different stage. Every one is synthetic: hand-written, never a captured session.</p>
+  <div class="eps">
+      <a class="ep reveal" href="/theatre/?demo=episode-1&amp;set=island" target="_blank" rel="noopener"><img src="/img/ep-episode-1.jpg" alt="" loading="lazy" width="880" height="520"><div><span class="kind">Bug fix</span><h3>The login timeout</h3><p>A 15-minute session drop. Two failing tests, one grace window, a green run — and the evidence chip to prove it.</p></div></a>
+      <a class="ep reveal" href="/theatre/?demo=research&amp;set=observatory" target="_blank" rel="noopener"><img src="/img/ep-research.jpg" alt="" loading="lazy" width="880" height="520"><div><span class="kind">Research</span><h3>The research brief</h3><p>Four field notes, a data file, two web searches, one written brief. No tests to pass, so none claimed.</p></div></a>
+      <a class="ep reveal" href="/theatre/?demo=feature&amp;set=harbour" target="_blank" rel="noopener"><img src="/img/ep-feature.jpg" alt="" loading="lazy" width="880" height="520"><div><span class="kind">New feature</span><h3>The export endpoint</h3><p>Two new buildings rise, a route is wired, the suite is green first time.</p></div></a>
+      <a class="ep reveal" href="/theatre/?demo=refactor&amp;set=metropolis" target="_blank" rel="noopener"><img src="/img/ep-refactor.jpg" alt="" loading="lazy" width="880" height="520"><div><span class="kind">Refactor</span><h3>The rename</h3><p>Six files touched, one test catches a slip, fifty-eight pass.</p></div></a>
+      <a class="ep reveal" href="/theatre/?demo=deploy&amp;set=moonbase" target="_blank" rel="noopener"><img src="/img/ep-deploy.jpg" alt="" loading="lazy" width="880" height="520"><div><span class="kind">Deploy</span><h3>Ship 1.4.0</h3><p>All shell work at the forge: build, plan, a timeout, a retry, a rollout, a tag.</p></div></a>
+      <a class="ep reveal" href="/theatre/?demo=subagents&amp;set=lanterns" target="_blank" rel="noopener"><img src="/img/ep-subagents.jpg" alt="" loading="lazy" width="880" height="520"><div><span class="kind">Helpers</span><h3>The audit</h3><p>Two helpers arrive at the dock and fan out while the lead keeps working.</p></div></a>
   </div>
 </section>
 

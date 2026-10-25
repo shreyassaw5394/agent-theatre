@@ -11,7 +11,18 @@ const q = new URLSearchParams(location.search);
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const store = { get: (k: string) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k: string, v: string) => { try { localStorage.setItem(k, v); } catch { /* private mode */ } } };
 
+interface DemoInfo { id: string; title: string; kind: string; set: string; blurb: string }
+/** The bundled episodes. `any` picks one at random (the site's hero does this). */
+async function demoInfo(name: string): Promise<DemoInfo | null> {
+  try {
+    const list = await (await fetch("/demo/demos.json")).json() as DemoInfo[];
+    if (name === "any") return list[Math.floor(Math.random() * list.length)] ?? null;
+    return list.find((d) => d.id === name) ?? null;
+  } catch { return null; }
+}
 async function loadDemo(name: string): Promise<Transport> {
+  const info = await demoInfo(name);
+  if (info) { name = info.id; if (!q.has("episode")) q.set("episode", `${info.title} · ${info.kind}`); if (!q.has("set") && q.has("cinema")) q.set("set", info.set); }
   const text = await (await fetch(`/demo/${name}.jsonl`)).text();
   const { events } = parseTranscript(text);
   const inferred = filesFromEvents(events);
@@ -26,6 +37,9 @@ async function loadDemo(name: string): Promise<Transport> {
 export async function mount(host: HTMLElement, transport: Transport): Promise<void> {
   const audio = new AudioEngine();
   let wake: () => void = () => {};
+  const unlockAudio = async () => { await audio.arm(); if (audio.ready) player?.audioReady(); };
+  // any first gesture on the page unlocks audio and starts the stage's ambience
+  for (const ev of ["pointerdown", "keydown"]) addEventListener(ev, () => { if (!audio.ready) void unlockAudio(); }, { passive: true });
   let theme: SetTheme = setById(q.get("set"));
   let player: ScenePlayer | null = null;
   let rate = Number(q.get("rate")) || 1;
@@ -34,11 +48,12 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
   audio.setMuted(muted); audio.setAmbienceEnabled(ambience);
 
   const panel = new Panel(host, {
-    onPlayPause: () => { if (!player) return; void audio.arm(); if (player.playing) player.pause(); else { if (player.state.t >= player.state.duration - 1) player.seek(0); player.play(); } },
+    onPlayPause: () => { if (!player) return; void unlockAudio(); if (player.playing) player.pause(); else { if (player.state.t >= player.state.duration - 1) player.seek(0); player.play(); } },
     onSeek: (ms) => { player?.seek(ms); },
     onRate: () => { rate = rate >= 4 ? 1 : rate * 2; player?.setRate(rate); panel.setRate(rate); },
-    onMute: () => { muted = !muted; audio.setMuted(muted); store.set("at:muted", muted ? "1" : "0"); panel.setMuted(muted); void audio.arm(); },
-    onAmbience: () => { ambience = !ambience; audio.setAmbienceEnabled(ambience); store.set("at:ambience", ambience ? "1" : "0"); panel.setAmbience(ambience); void audio.arm(); },
+    // The first click on either toggle may be the gesture that unlocks audio: honour the state it already shows instead of flipping it.
+    onMute: () => { if (!audio.ready) { void unlockAudio(); return; } muted = !muted; audio.setMuted(muted); store.set("at:muted", muted ? "1" : "0"); panel.setMuted(muted); },
+    onAmbience: () => { if (!audio.ready) { void unlockAudio(); return; } ambience = !ambience; audio.setAmbienceEnabled(ambience); store.set("at:ambience", ambience ? "1" : "0"); panel.setAmbience(ambience); },
     onPickSet: (id) => { theme = setById(id); if (player) { store.set(`at:set:${player.world.repoId}`, id); rebuild(); } },
     onShuffle: () => { const pool = suggestSets(payload?.world.profile).filter((s) => s.id !== theme.id); const pick = pool.slice(0, Math.max(3, Math.min(5, pool.length))); theme = pick[Math.floor(Math.random() * pick.length)] ?? SETS[0]!; if (player) { store.set(`at:set:${player.world.repoId}`, theme.id); rebuild(); } panel.showPicker(false); },
   });

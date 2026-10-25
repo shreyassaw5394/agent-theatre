@@ -79,6 +79,8 @@ export class ScenePlayer {
   append(beats: Beat[]): void { this.beats.push(...beats); this.duration = Math.max(this.duration, ...beats.map((b) => b.atMs + b.durationMs)); }
   get playing(): boolean { return this._playing; }
   play(): void { this._playing = true; this.amb.start(this.theme); }
+  /** The browser only lets audio start after a gesture; once it does, (re)start this stage's ambience. */
+  audioReady(): void { this.amb.stop(); if (this._playing) this.amb.start(this.theme); }
   pause(): void { this._playing = false; }
   setRate(r: number): void { this.rate = r; }
   setSignal(s: "ok" | "lost"): void { this.signal = s; }

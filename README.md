@@ -16,15 +16,27 @@ Lagoon, Volcano, Cloudtop, Reef, Bazaar, Monastery, Moonbase, Lanterns. Or hit *
 And one honest detail no other visualiser has: **if the agent says the job is done but no test
 has passed since the last edit, a gremlin hides behind it.**
 
-![Orbit: Rook working on login.ts](docs/img/orbit-rook.png)
+![Lanterns, Juno at login.ts](docs/img/lanterns-juno.png)
 
 | | | |
 |---|---|---|
-| ![Lanterns, Juno](docs/img/lanterns-juno.png) | ![Volcano, Ember](docs/img/volcano-ember.png) | ![Harbour, Mo and a helper at the dock](docs/img/harbour-mo-helper.png) |
+| ![Island, Nimbus](docs/img/first-light-island.png) | ![Orbit, Rook](docs/img/orbit-rook.png) | ![Volcano, Ember](docs/img/volcano-ember.png) |
+| ![Harbour, Mo and a helper at the dock](docs/img/harbour-mo-helper.png) | ![Kingdom, the full app](docs/img/kingdom-app.png) | ![The set picker](docs/img/picker.png) |
 
 *Same session, different stages, different leads. The picker reads your repo and suggests three.*
 
-![The set picker](docs/img/picker.png)
+**Six bundled episodes**, each a different kind of work in a different repo — all synthetic, hand-written, never a captured session:
+
+| Episode | Kind | What happens |
+|---|---|---|
+| The login timeout | bug fix | two failing tests, one grace window, a green run — and the evidence chip |
+| The research brief | research | field notes, a data file, two web searches, one written brief; no tests claimed |
+| The export endpoint | new feature | two new buildings rise, a route is wired, the suite is green first time |
+| The rename | refactor | six files touched, one test catches a slip, fifty-eight pass |
+| Ship 1.4.0 | deploy | all shell work at the forge: build, plan, a timeout, a retry, a rollout, a tag |
+| The audit | helpers | two helpers arrive at the dock and fan out while the lead keeps working |
+
+Watch them at [agenttheatre.dev](https://agenttheatre.dev) or locally with `?demo=research`, `?demo=feature`, `?demo=refactor`, `?demo=deploy`, `?demo=subagents`.
 
 ## Status
 

@@ -1,5 +1,4 @@
 import { Container, FillGradient, Graphics, Text, TextStyle } from "pixi.js";
-import { AdvancedBloomFilter } from "pixi-filters";
 import type { Place, World } from "@agent-theatre/core";
 import { hashString, mulberry32 } from "@agent-theatre/core";
 import { corners, depthOf, flat, iso, lerpP, up, type Pt } from "./iso.js";
@@ -31,8 +30,8 @@ export class WorldLayer {
   constructor(public readonly world: World, public theme: SetTheme) {
     this.container.addChild(this.ripples, this.terrain, this.paths, this.labels, this.shadows, this.clouds, this.objects);
     this.objects.sortableChildren = true;
-    // emissive bloom: only the brightest things (lamps, windows, embers) glow; everything else is untouched
-    this.objects.filters = [new AdvancedBloomFilter({ threshold: 0.9, bloomScale: 0.42, brightness: 1, blur: 5, quality: 4 })];
+    // No full-screen post-process: a bloom filter here went white on some GPUs when the camera pushed in.
+    // Glow is drawn directly (soft additive discs on lamps, embers and lit windows).
     this.shadows.alpha = 0.9;
     this.drawTerrain();
     this.drawPaths();
