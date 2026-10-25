@@ -29,9 +29,6 @@ importers:
 
   packages/cli:
     dependencies:
-      '@agent-theatre/core':
-        specifier: workspace:*
-        version: link:../core
       '@hono/node-server':
         specifier: ^1.13.0
         version: 1.19.17(hono@4.13.13)
@@ -51,6 +48,9 @@ importers:
         specifier: ^8.18.0
         version: 8.22.0
     devDependencies:
+      '@agent-theatre/core':
+        specifier: workspace:*
+        version: link:../core
       '@agent-theatre/web':
         specifier: workspace:*
         version: link:../web

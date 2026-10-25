@@ -1,6 +1,6 @@
 {
   "name": "agent-theatre",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Watch your coding agent work \u2014 as a film, not a log. Local, honest visualiser for Claude Code sessions.",
   "license": "MIT",
   "type": "module",
@@ -36,7 +36,6 @@
     "dev": "tsx src/cli.ts"
   },
   "dependencies": {
-    "@agent-theatre/core": "workspace:*",
     "@hono/node-server": "^1.13.0",
     "commander": "^12.1.0",
     "hono": "^4.6.0",
@@ -46,7 +45,8 @@
   },
   "devDependencies": {
     "@types/ws": "^8.5.13",
-    "@agent-theatre/web": "workspace:*"
+    "@agent-theatre/web": "workspace:*",
+    "@agent-theatre/core": "workspace:*"
   },
   "exports": {
     ".": {
