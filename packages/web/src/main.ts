@@ -70,7 +70,7 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
   let payload: Parameters<Parameters<Transport["onReady"]>[0]>[0] | null = null;
   /** Every set shows the repo in its own arrangement, so twenty stages never read as one island recoloured. */
   const worldFor = (base: World, set: SetTheme): World => relayoutWorld(base, LAYOUTS[(base.seed + SETS.findIndex((s) => s.id === set.id) * 7) % LAYOUTS.length]!);
-  let wasT = 0, wasPlaying = false;
+  let wasT = 0, wasPlaying = false, lastThemeId = "";
   function rebuild(): void {
     if (!payload) return;
     if (player) { wasT = player.state.t; wasPlaying = player.playing; player.destroy(); }
@@ -80,7 +80,10 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
     player = new ScenePlayer(app, world, theme, audio, reducedMotion, q.get("cast") ?? store.get(`at:cast:${payload.repoId}`));
     (globalThis as any).__agentTheatre = { app, get player() { return player; }, panel };
     panel.leadName = player.leadName;
-    player.load(beats); player.setRate(rate); player.seek(wasT); if (wasPlaying) player.play();
+    player.load(beats); player.setRate(rate);
+    // a new set is a new performance: start from the top (a same-set rebuild keeps its place)
+    if (player.theme.id !== lastThemeId) { player.seek(0); player.play(); } else { player.seek(wasT); if (wasPlaying) player.play(); }
+    lastThemeId = player.theme.id;
     panel.loadTimeline(beats, payload.events, world);
   }
 

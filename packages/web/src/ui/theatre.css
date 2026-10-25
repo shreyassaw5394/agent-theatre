@@ -88,3 +88,5 @@ html.cinema .wrap, html.cinema .grid, html.cinema .stage-col { display: block; p
 html.cinema .stage { position: fixed; inset: 0; aspect-ratio: auto; border-radius: 0; box-shadow: none; }
 /* the host page has its own headline; the stage alone is the picture */
 html.cinema .card { display: none !important; }
+
+.brand .eyebrow{display:inline-block;text-decoration:none}.brand .eyebrow:hover{text-decoration:underline}

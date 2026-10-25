@@ -29,7 +29,7 @@ export class Panel {
   constructor(host: HTMLElement, private readonly h: PanelHandlers) {
     this.root = el("div", "wrap");
     const header = el("header");
-    const brand = el("div", "brand", `<div class="eyebrow">Agent Theatre</div><h1 id="title">Loading…</h1>`);
+    const brand = el("div", "brand", `<a class="eyebrow" href="https://agenttheatre.dev/" title="Back to agenttheatre.dev">← Agent Theatre</a><h1 id="title">Loading…</h1>`);
     const tb = el("div", "toolbar");
     this.setBtn = el("button", "btn ghost", "Set"); this.setBtn.type = "button"; this.setBtn.onclick = () => this.showPicker(true);
     this.muteBtn = el("button", "btn ghost", "Effects on"); this.muteBtn.type = "button"; this.muteBtn.title = "Sound effects"; this.muteBtn.onclick = () => h.onMute();

@@ -315,7 +315,8 @@ export class ScenePlayer {
   /** Where the camera is currently told to look; moves only when the subject leaves the dead zone. */
   private camTarget: { x: number; y: number } | null = null;
   private cameraStep(cur: Beat | null, dtMs: number): void {
-    const view = { w: this.app.renderer.width / this.app.renderer.resolution, h: this.app.renderer.height / this.app.renderer.resolution };
+    // renderer.screen is the logical (CSS-pixel) view; renderer.width already is too in Pixi 8 — dividing by resolution halved the view on Retina
+    const view = { w: this.app.renderer.screen.width, h: this.app.renderer.screen.height };
     const narrow = view.w < 640;
     // follow Pip loosely; weight ramps in after the curtain
     // A follow camera, not a centre-lock: the subject may roam a dead zone in the middle of the frame;
@@ -367,7 +368,7 @@ export class ScenePlayer {
     const pts = this.world.places.flatMap((p) => [iso(p.gx, p.gy), iso(p.gx + p.footprint, p.gy + p.footprint)]);
     const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
     const w = Math.max(60, Math.max(...xs) - Math.min(...xs) + 140), h = Math.max(60, Math.max(...ys) - Math.min(...ys) + 150);
-    const vw = this.app.renderer.width / this.app.renderer.resolution, vh = this.app.renderer.height / this.app.renderer.resolution;
+    const vw = this.app.renderer.screen.width, vh = this.app.renderer.screen.height;
     return Math.min(vw / (w * 1.05), vh / (h * 1.05), 2.2);
   }
 
