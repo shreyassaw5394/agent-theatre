@@ -1,7 +1,7 @@
 {
   "session_id": "11111111-2222-3333-4444-555555555555",
-  "transcript_path": "/Users/dev/.claude/projects/-Users-dev-projects-acme-shop/11111111-2222-3333-4444-555555555555.jsonl",
-  "cwd": "/Users/dev/projects/acme-shop",
+  "transcript_path": "/Users/dev/.claude/projects/-Users-dev-projects-corner-shop/11111111-2222-3333-4444-555555555555.jsonl",
+  "cwd": "/Users/dev/projects/corner-shop",
   "permission_mode": "default",
   "hook_event_name": "SomethingNew"
 }

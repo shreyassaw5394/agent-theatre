@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -8,7 +9,7 @@ const walk = (d: string): string[] => readdirSync(d).flatMap((f) => (statSync(jo
 
 describe("web has no Node imports", () => {
   it("every file under src is browser-only", () => {
-    const src = new URL("../src", import.meta.url).pathname;
+    const src = fileURLToPath(new URL("../src", import.meta.url));
     const offenders = walk(src).filter((f) => /\.(ts|js)$/.test(f) && FORBIDDEN.test(readFileSync(f, "utf8")));
     expect(offenders).toEqual([]);
   });

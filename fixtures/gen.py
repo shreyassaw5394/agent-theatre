@@ -5,7 +5,7 @@ import json, itertools
 from datetime import datetime, timedelta, timezone
 
 VER = "2.1.301"
-CWD = "/Users/dev/projects/acme-shop"
+CWD = "/Users/dev/projects/corner-shop"
 SID = "11111111-2222-3333-4444-555555555555"
 T0 = datetime(2026, 10, 24, 10, 0, 0, tzinfo=timezone.utc)
 _n = itertools.count(1)
@@ -118,7 +118,7 @@ json.dump(M, open("secrets.markers.json", "w"), indent=2)
 
 # ---------------- hook payloads (per code.claude.com/docs/en/hooks) ----------------
 import os; os.makedirs("hooks", exist_ok=True)
-common = {"session_id": SID, "transcript_path": f"/Users/dev/.claude/projects/-Users-dev-projects-acme-shop/{SID}.jsonl", "cwd": CWD, "permission_mode": "default"}
+common = {"session_id": SID, "transcript_path": f"/Users/dev/.claude/projects/-Users-dev-projects-corner-shop/{SID}.jsonl", "cwd": CWD, "permission_mode": "default"}
 H = {
  "session-start": {**common, "hook_event_name": "SessionStart", "source": "startup"},
  "post-tool-use-edit": {**common, "hook_event_name": "PostToolUse", "tool_name": "Edit", "tool_use_id": "toolu_hk_1", "duration_ms": 412,
@@ -129,7 +129,7 @@ H = {
  "post-tool-use-bash-heredoc": {**common, "hook_event_name": "PostToolUse", "tool_name": "Bash", "tool_use_id": "toolu_hk_3", "duration_ms": 80,
     "tool_input": {"command": f"cat > {CWD}/src/new.ts <<'EOF'\nexport {{}}\nEOF", "description": "new file"}, "tool_response": bash_result("")},
  "post-tool-use-subagent-tool": {**common, "hook_event_name": "PostToolUse", "tool_name": "Read", "tool_use_id": "toolu_hk_4", "agent_id": "agent_aaa111", "agent_type": "Explore",
-    "tool_input": {"file_path": f"{CWD}/README.md"}, "tool_response": {"type": "text", "file": {"filePath": f"{CWD}/README.md", "content": "# acme\n", "numLines": 1, "startLine": 1, "totalLines": 1}}},
+    "tool_input": {"file_path": f"{CWD}/README.md"}, "tool_response": {"type": "text", "file": {"filePath": f"{CWD}/README.md", "content": "# corner-shop\n", "numLines": 1, "startLine": 1, "totalLines": 1}}},
  "post-tool-use-failure": {**common, "hook_event_name": "PostToolUseFailure", "tool_name": "Bash", "tool_use_id": "toolu_hk_5", "error": "Command timed out"},
  "subagent-start": {**common, "hook_event_name": "SubagentStart", "agent_id": "agent_aaa111", "agent_type": "Explore"},
  "subagent-stop": {**common, "hook_event_name": "SubagentStop", "agent_id": "agent_aaa111", "agent_type": "Explore", "stop_hook_active": False, "agent_transcript_path": "/tmp/x.jsonl", "last_assistant_message": "found 3 todos"},

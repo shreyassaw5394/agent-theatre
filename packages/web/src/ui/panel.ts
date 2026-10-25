@@ -117,7 +117,7 @@ export class Panel {
     for (const s of list) {
       const c = el("button", "setcard"); c.type = "button";
       const img = this.previews.get(s.id);
-      c.innerHTML = `<div class="sw" style="--a:${hex(s.sky[0])};--b:${hex(s.palettes[0]!.left)}">${img ? `<img src="${img}" alt="" />` : ""}</div><div class="nm">${s.name}${s.id === themeId ? " ·" : ""}</div><div class="tg">${s.tagline}</div>`;
+      c.innerHTML = `<div class="sw" style="--a:${hex(s.sky[0])};--b:${hex(s.palettes[0]!.left)}">${img ? `<img src="${img}" alt="" />` : ""}</div><div class="nm">${s.name}${s.id === themeId ? " ✓" : ""}</div><div class="tg">${s.tagline}</div>`;
       c.onclick = () => { this.h.onPickSet(s.id); this.showPicker(false); };
       cards.append(c);
     }

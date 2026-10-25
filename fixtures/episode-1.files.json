@@ -1,4 +1,4 @@
-{ "repoId": "acme-shop", "files": [
+{ "repoId": "corner-shop", "files": [
   { "path": "src/auth/session.ts", "loc": 180 }, { "path": "src/auth/tokens.ts", "loc": 120 }, { "path": "src/auth/password.ts", "loc": 95 },
   { "path": "src/api/login.ts", "loc": 240 }, { "path": "src/api/users.ts", "loc": 210 }, { "path": "src/api/router.ts", "loc": 140 }, { "path": "src/api/middleware.ts", "loc": 90 },
   { "path": "src/ui/LoginForm.tsx", "loc": 160 }, { "path": "src/ui/App.tsx", "loc": 300 }, { "path": "src/ui/Button.tsx", "loc": 60 }, { "path": "src/ui/theme.ts", "loc": 45 },

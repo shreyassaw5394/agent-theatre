@@ -6,7 +6,7 @@ const run = (name: string) => hookPayloadToEvents(readJson(`hooks/${name}.json`)
 
 describe("hookPayloadToEvents", () => {
   it("SessionStart / SessionEnd", () => {
-    expect(run("session-start").events[0]).toMatchObject({ kind: "session_start", repoId: "acme-shop", source: "hook", ts: 1_700_000_000_000 });
+    expect(run("session-start").events[0]).toMatchObject({ kind: "session_start", repoId: "corner-shop", source: "hook", ts: 1_700_000_000_000 });
     expect(run("session-end").events[0]).toMatchObject({ kind: "session_end", reason: "user" });
   });
   it("PostToolUse Edit → edit_file with structuredPatch counts and tool_use_id as id", () => {
@@ -28,7 +28,7 @@ describe("hookPayloadToEvents", () => {
   });
   it("tool events inside a subagent carry agent_id", () => {
     const { events } = run("post-tool-use-subagent-tool");
-    expect(events[0]).toMatchObject({ kind: "read_file", path: "README.md", agentId: "agent_aaa111", bytes: 7 });
+    expect(events[0]).toMatchObject({ kind: "read_file", path: "README.md", agentId: "agent_aaa111", bytes: 14 });
   });
   it("failures, subagents, notifications", () => {
     expect(run("post-tool-use-failure").events[0]).toMatchObject({ kind: "error", where: "Bash", retrying: false });

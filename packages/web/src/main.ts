@@ -44,6 +44,9 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
   });
   panel.setMuted(muted); panel.setAmbience(ambience); panel.setRate(rate);
   panel.liveMode = transport.mode === "live";
+  // ?cinema=1 — the stage alone, full-bleed, muted, looping. Used by the site's hero and for embeds.
+  const cinema = q.has("cinema");
+  if (cinema) { document.documentElement.classList.add("cinema"); muted = true; audio.setMuted(true); }
 
   const app = new Application();
   await app.init({ resizeTo: panel.stageEl, antialias: true, backgroundAlpha: 1, background: theme.sky[1], preference: "webgl", resolution: Math.min(2, devicePixelRatio || 1), autoDensity: true });
@@ -81,6 +84,7 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
     const buildPreviews = (async () => { if (q.has("nopreview")) return; for (const s of SETS) { try { panel.previews.set(s.id, await previewSet(app, worldFor(p.world, s), s)); } catch (err) { console.warn("set preview failed", s.id, err); } } if (panel.pickerOpen) panel.showPicker(true, theme.id); wake(); })();
     if (!chosen && !q.has("t")) void buildPreviews.then(() => panel.showPicker(true, theme.id));
     if (q.get("paused") !== "1" && !reducedMotion) { player?.play(); }
+    if (cinema && player && !reducedMotion) { player.play(); }
     if (reducedMotion && !q.has("t")) player?.seek(Math.min(player.state.duration, 25_400));
   });
   transport.onBeats((beats: Beat[], events) => {
@@ -97,11 +101,12 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
   // Render loop with a scheduler: runs while playing or settling; a paused, settled scene costs nothing.
   // `?step=<ms>` advances the scene by a fixed amount per frame (deterministic capture for clips/GIFs).
   const fixedStep = Number(q.get("step")) || 0;
-  let last = performance.now(), settle = 0, scheduled = false;
+  let last = performance.now(), settle = 0, scheduled = false, loopTimer: ReturnType<typeof setTimeout> | null = null;
   const frame = (now: number) => {
     scheduled = false;
     const dt = fixedStep || Math.min(50, now - last); last = now;
     if (player && !document.hidden) {
+      if ((cinema || q.has("loop")) && player.state.t >= player.state.duration - 1 && player.state.duration > 0) { if (!loopTimer) loopTimer = setTimeout(() => { loopTimer = null; player?.seek(0); player?.play(); }, 1800); }
       player.update(dt);
       panel.update(player.state, player.world, (id) => player!.worldLayer.lampOf(id));
       if (player.playing) settle = 45; else settle--;
@@ -117,7 +122,34 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
   const origSeek = ScenePlayer.prototype.seek; ScenePlayer.prototype.seek = function (this: ScenePlayer, ms: number) { origSeek.call(this, ms); wake(); };
 }
 
+// ?portrait=<castId> — one character, idle, on a transparent canvas. The site renders the cast from this.
+async function portrait(id: string): Promise<void> {
+  const { Application } = await import("pixi.js");
+  const { Pip } = await import("./scene/pip.js");
+  const { castById, CAST } = await import("./scene/cast.js");
+  const spec = castById(id) ?? CAST[0]!;
+  const theme = setById(q.get("set") ?? "island");
+  document.documentElement.style.background = "transparent"; document.body.style.background = "transparent"; document.body.style.margin = "0";
+  const app = new Application();
+  await app.init({ width: 320, height: 320, backgroundAlpha: 0, antialias: true, resolution: 2, autoDensity: true, preference: "webgl" });
+  document.body.replaceChildren(app.canvas);
+  if (id === "gremlin") {
+    const { Gremlin } = await import("./scene/gremlin.js");
+    const g = new Gremlin("g", theme, false);
+    g.scale = 7; g.x = 160; g.y = 250; app.stage.addChild(g.container);
+    app.ticker.add((tk) => g.update(tk.deltaMS));
+  } else {
+    const pip = new Pip(theme, false, spec);
+    pip.container.scale.set(6 * spec.size); pip.pose.x = 160; pip.pose.y = 272;
+    app.stage.addChild(pip.container);
+    pip.pose.mood = (q.get("mood") ?? "curious") as typeof pip.pose.mood;
+    app.ticker.add((tk) => pip.update(tk.deltaMS));
+  }
+  (globalThis as any).__agentTheatre = { app, player: true };
+}
+
 // Mode: ?live=1 (CLI live), ?session=<id> (CLI replay), else a bundled demo.
 const host = document.getElementById("app")!;
-const boot = q.has("live") ? Promise.resolve<Transport>(new WsTransport()) : q.get("session") ? replayTransport(q.get("session")!) : loadDemo(q.get("demo") ?? "episode-1");
-boot.then((t) => mount(host, t)).catch((err) => { host.textContent = `Could not start: ${err}`; });
+const boot = q.has("portrait") ? Promise.resolve<Transport>(new StaticTransport({ world: null as never, events: [], beats: [], repoId: "" })) : q.has("live") ? Promise.resolve<Transport>(new WsTransport()) : q.get("session") ? replayTransport(q.get("session")!) : loadDemo(q.get("demo") ?? "episode-1");
+if (q.has("portrait")) portrait(q.get("portrait")!).catch((err) => { host.textContent = `Could not start: ${err}`; });
+else boot.then((t) => mount(host, t)).catch((err) => { host.textContent = `Could not start: ${err}`; });

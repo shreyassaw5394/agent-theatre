@@ -1,7 +1,7 @@
 {
   "session_id": "11111111-2222-3333-4444-555555555555",
-  "transcript_path": "/Users/dev/.claude/projects/-Users-dev-projects-acme-shop/11111111-2222-3333-4444-555555555555.jsonl",
-  "cwd": "/Users/dev/projects/acme-shop",
+  "transcript_path": "/Users/dev/.claude/projects/-Users-dev-projects-corner-shop/11111111-2222-3333-4444-555555555555.jsonl",
+  "cwd": "/Users/dev/projects/corner-shop",
   "permission_mode": "default",
   "hook_event_name": "PostToolUse",
   "tool_name": "Read",
@@ -9,13 +9,13 @@
   "agent_id": "agent_aaa111",
   "agent_type": "Explore",
   "tool_input": {
-    "file_path": "/Users/dev/projects/acme-shop/README.md"
+    "file_path": "/Users/dev/projects/corner-shop/README.md"
   },
   "tool_response": {
     "type": "text",
     "file": {
-      "filePath": "/Users/dev/projects/acme-shop/README.md",
-      "content": "# acme\n",
+      "filePath": "/Users/dev/projects/corner-shop/README.md",
+      "content": "# corner-shop\n",
       "numLines": 1,
       "startLine": 1,
       "totalLines": 1

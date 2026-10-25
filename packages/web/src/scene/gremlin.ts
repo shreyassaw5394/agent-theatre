@@ -36,7 +36,7 @@ export class Gremlin {
     g.ellipse(-2.6 * s + look, ey + 0.4, 1.2 * s, 1.3 * s).fill(C.eye);
     g.ellipse(3.4 * s + look, ey + 0.4, 1.2 * s, 1.3 * s).fill(C.eye);
     // angry brows + jagged mouth
-    g.moveTo(-5.5 * s, ey - 4).lineTo(-1.2 * s, ey - 2.4).moveTo(5.5 * s, ey - 4).lineTo(1.2 * s, ey - 2.4).stroke({ width: 1.3, color: C.eye, cap: "round" });
-    g.moveTo(-2.6 * s, ey + 4.4).lineTo(-1.2 * s, ey + 3.4).lineTo(0.2 * s, ey + 4.4).lineTo(1.6 * s, ey + 3.4).lineTo(2.9 * s, ey + 4.4).stroke({ width: 1.3, color: C.eye, cap: "round" });
+    g.moveTo(-5.5 * s, ey - 4 * s).lineTo(-1.2 * s, ey - 2.4 * s).moveTo(5.5 * s, ey - 4 * s).lineTo(1.2 * s, ey - 2.4 * s).stroke({ width: 1.3 * s, color: C.eye, cap: "round" });
+    g.moveTo(-2.6 * s, ey + 4.4 * s).lineTo(-1.2 * s, ey + 3.4 * s).lineTo(0.2 * s, ey + 4.4 * s).lineTo(1.6 * s, ey + 3.4 * s).lineTo(2.9 * s, ey + 4.4 * s).stroke({ width: 1.3 * s, color: C.eye, cap: "round" });
   }
 }

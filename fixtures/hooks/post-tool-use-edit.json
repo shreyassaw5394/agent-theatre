@@ -1,20 +1,20 @@
 {
   "session_id": "11111111-2222-3333-4444-555555555555",
-  "transcript_path": "/Users/dev/.claude/projects/-Users-dev-projects-acme-shop/11111111-2222-3333-4444-555555555555.jsonl",
-  "cwd": "/Users/dev/projects/acme-shop",
+  "transcript_path": "/Users/dev/.claude/projects/-Users-dev-projects-corner-shop/11111111-2222-3333-4444-555555555555.jsonl",
+  "cwd": "/Users/dev/projects/corner-shop",
   "permission_mode": "default",
   "hook_event_name": "PostToolUse",
   "tool_name": "Edit",
   "tool_use_id": "toolu_hk_1",
   "duration_ms": 412,
   "tool_input": {
-    "file_path": "/Users/dev/projects/acme-shop/src/api/login.ts",
+    "file_path": "/Users/dev/projects/corner-shop/src/api/login.ts",
     "old_string": "a",
     "new_string": "b\nc",
     "replace_all": false
   },
   "tool_response": {
-    "filePath": "/Users/dev/projects/acme-shop/src/api/login.ts",
+    "filePath": "/Users/dev/projects/corner-shop/src/api/login.ts",
     "oldString": "a",
     "newString": "b\nc",
     "originalFile": "\u2026",

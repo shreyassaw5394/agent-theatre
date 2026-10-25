@@ -7,6 +7,6 @@ packages/web/dist/
 packages/vscode/*.vsix
 docs/competitive.md
 site/dist/
-site/img/*.png
+site/img/stage-*.png
 .vercel
 .env*

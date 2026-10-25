@@ -29,10 +29,13 @@ export class WsTransport implements Transport {
   private readyCb: ((p: ScenePayload) => void) | null = null;
   private beatsCb: ((beats: Beat[], events: AgentEvent[]) => void) | null = null;
   private signalCb: ((s: "ok" | "lost") => void) | null = null;
+  private pending: ScenePayload | null = null;
   constructor(private readonly base = "") { void this.connect(); }
   private async connect(): Promise<void> {
     const scene = await (await fetch(`${this.base}/api/scene`)).json() as ScenePayload & { signal?: "ok" | "lost" };
-    this.readyCb?.({ world: scene.world, events: scene.events, beats: scene.beats, repoId: scene.repoId });
+    const payload = { world: scene.world, events: scene.events, beats: scene.beats, repoId: scene.repoId };
+    // the page may still be initialising its renderer when this lands; hold it until onReady is registered
+    if (this.readyCb) this.readyCb(payload); else this.pending = payload;
     if (scene.signal) this.signalCb?.(scene.signal);
     const open = () => {
       const ws = new WebSocket(`${location.origin.replace(/^http/, "ws")}${this.base}/live`);
@@ -45,7 +48,7 @@ export class WsTransport implements Transport {
     };
     open();
   }
-  onReady(cb: (p: ScenePayload) => void): void { this.readyCb = cb; }
+  onReady(cb: (p: ScenePayload) => void): void { this.readyCb = cb; if (this.pending) { const p = this.pending; this.pending = null; cb(p); } }
   onBeats(cb: (beats: Beat[], events: AgentEvent[]) => void): void { this.beatsCb = cb; }
   onSignal(cb: (s: "ok" | "lost") => void): void { this.signalCb = cb; }
 }

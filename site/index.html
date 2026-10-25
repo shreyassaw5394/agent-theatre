@@ -3,199 +3,174 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Agent Theatre — watch your coding agent work, as a film</title>
-<meta name="description" content="Agent Theatre turns a Claude Code session into an animated scene. Your repo becomes a stage, the agent a character. Twenty stages, a cast of twelve, every claim checked against a passing test. Open source, local only.">
+<title>Agent Theatre</title>
+<meta name="description" content="Watch your coding agent work — as a film, not a log. Agent Theatre turns a Claude Code session into an animated scene. Twenty stages. A cast of twelve. Every claim checked. Open source, and nothing leaves your machine.">
 <meta property="og:title" content="Agent Theatre">
-<meta property="og:description" content="Watch your coding agent work — as a film, not a log. Open source, runs locally, nothing leaves your machine.">
+<meta property="og:description" content="Watch your coding agent work — as a film, not a log.">
 <meta property="og:image" content="https://agenttheatre.dev/img/stage-island.jpg">
 <meta property="og:url" content="https://agenttheatre.dev/">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#000000">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="canonical" href="https://agenttheatre.dev/">
 <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-<header class="top">
-  <a class="brand" href="/"><span class="kicker">Agent Theatre</span></a>
-  <nav>
-    <a href="#watch">Watch</a><a href="#how">How it works</a><a href="#stages">Stages</a><a href="#cast">Cast</a><a href="#privacy">Privacy</a><a href="#install">Install</a>
-    <a class="gh" href="https://github.com/shreyassaw5394/agent-theatre" rel="noopener">GitHub</a>
-  </nav>
+<nav class="nav" aria-label="Primary">
+  <a class="wordmark" href="/">Agent Theatre</a>
+  <div class="links"><a href="#stages">Stages</a><a href="#cast">Cast</a><a href="#honest">Honesty</a><a href="#privacy">Privacy</a><a href="#install">Install</a></div>
+  <a class="pill" href="https://github.com/shreyassaw5394/agent-theatre" rel="noopener">GitHub</a>
+</nav>
+
+<header class="hero">
+  <div class="screen">
+    <iframe src="/theatre/?demo=episode-1&amp;set=island&amp;cinema=1&amp;nopreview=1&amp;episode=Episode%201%20%C2%B7%20The%20login%20timeout" title="Agent Theatre, playing" loading="eager" tabindex="-1" aria-hidden="true"></iframe>
+    <div class="veil"></div>
+  </div>
+  <div class="copy">
+    <h1>Watch your coding agent work.<br><em>As a film, not a log.</em></h1>
+    <p>Agent Theatre turns a Claude Code session into an animated scene. Your repo becomes a stage. The agent becomes a character. Every read, edit and test becomes a beat.</p>
+    <div class="actions">
+      <a class="button" href="/theatre/?demo=episode-1" target="_blank" rel="noopener">Watch Episode 1</a>
+      <button class="button ghost" id="copy" type="button"><code>npx agent-theatre</code><span>copy</span></button>
+    </div>
+    <div class="parade" aria-label="The cast">
+      <a href="/theatre/?demo=episode-1&amp;cast=pip" target="_blank" rel="noopener" style="--i:0"><img src="/img/cast-pip.png" alt="Pip" width="96" height="96"><span>Pip</span></a>
+      <a href="/theatre/?demo=episode-1&amp;cast=mo" target="_blank" rel="noopener" style="--i:1"><img src="/img/cast-mo.png" alt="Mo" width="96" height="96"><span>Mo</span></a>
+      <a href="/theatre/?demo=episode-1&amp;cast=juno" target="_blank" rel="noopener" style="--i:2"><img src="/img/cast-juno.png" alt="Juno" width="96" height="96"><span>Juno</span></a>
+      <a href="/theatre/?demo=episode-1&amp;cast=rook" target="_blank" rel="noopener" style="--i:3"><img src="/img/cast-rook.png" alt="Rook" width="96" height="96"><span>Rook</span></a>
+      <a href="/theatre/?demo=episode-1&amp;cast=fen" target="_blank" rel="noopener" style="--i:4"><img src="/img/cast-fen.png" alt="Fen" width="96" height="96"><span>Fen</span></a>
+      <a href="/theatre/?demo=episode-1&amp;cast=sol" target="_blank" rel="noopener" style="--i:5"><img src="/img/cast-sol.png" alt="Sol" width="96" height="96"><span>Sol</span></a>
+      <a href="/theatre/?demo=episode-1&amp;cast=ivy" target="_blank" rel="noopener" style="--i:6"><img src="/img/cast-ivy.png" alt="Ivy" width="96" height="96"><span>Ivy</span></a>
+      <a href="/theatre/?demo=episode-1&amp;cast=bolt" target="_blank" rel="noopener" style="--i:7"><img src="/img/cast-bolt.png" alt="Bolt" width="96" height="96"><span>Bolt</span></a>
+      <a href="/theatre/?demo=episode-1&amp;cast=ash" target="_blank" rel="noopener" style="--i:8"><img src="/img/cast-ash.png" alt="Ash" width="96" height="96"><span>Ash</span></a>
+      <a href="/theatre/?demo=episode-1&amp;cast=nimbus" target="_blank" rel="noopener" style="--i:9"><img src="/img/cast-nimbus.png" alt="Nimbus" width="96" height="96"><span>Nimbus</span></a>
+      <a href="/theatre/?demo=episode-1&amp;cast=ember" target="_blank" rel="noopener" style="--i:10"><img src="/img/cast-ember.png" alt="Ember" width="96" height="96"><span>Ember</span></a>
+      <a href="/theatre/?demo=episode-1&amp;cast=tove" target="_blank" rel="noopener" style="--i:11"><img src="/img/cast-tove.png" alt="Tove" width="96" height="96"><span>Tove</span></a>
+    </div>
+  </div>
+  <a class="down" href="#why" aria-label="Scroll"></a>
 </header>
 
 <main>
-<section class="hero">
-  <p class="kicker">Open source · runs on your machine · nothing leaves it</p>
-  <h1>Watch your coding agent work —<br>as a film, not a log.</h1>
-  <p class="lede">Agent Theatre turns a Claude Code session into an animated scene. Your repo becomes a stage: folders are districts, files are buildings, test files are beacons. The agent is a character who walks to the files it reads, builds on the files it edits, runs tests at the beacons — and chases bug gremlins when they fail.</p>
-  <div class="cta">
-    <a class="btn primary" href="/theatre/?demo=episode-1" target="_blank" rel="noopener">▶ Watch Episode 1</a>
-    <code class="cmd" title="Copy"><span>$</span> npx agent-theatre</code>
+<section id="why" class="bento">
+  <h2 class="reveal">The repo is the stage.</h2>
+  <p class="sub reveal">Folders are districts. Files are buildings. Test files are beacons. The agent walks to what it reads, builds on what it edits, runs the tests at the beacons — and chases gremlins when they fail.</p>
+  <div class="cells">
+    <article class="cell big reveal"><img src="/img/stage-harbour.jpg" alt="Harbour stage" loading="lazy" width="880" height="520"><div><h3>Twenty stages.</h3><p>Each with its own layout, light, silhouette and sound. Agent Theatre reads what your repo is and suggests the ones that suit it.</p></div></article>
+    <article class="cell reveal"><img class="mascot" src="/img/cast-juno.png" alt="" width="150" height="150" aria-hidden="true"><div class="n">12</div><h3>A cast.</h3><p>The lead is chosen per repo. Subagents arrive at the dock as other members of the cast.</p></article>
+    <article class="cell reveal"><div class="n">0</div><h3>Linear tweens.</h3><p>Every motion is eased. A test in the repo makes sure none sneak in.</p></article>
+    <article class="cell reveal"><img class="mascot" src="/img/cast-sol.png" alt="" width="150" height="150" aria-hidden="true"><div class="n">0 KB</div><h3>Audio files.</h3><p>Every sound is synthesized at runtime. Every stage has its own voice and ambience.</p></article>
+    <article class="cell wide reveal"><img src="/img/stage-lanterns.jpg" alt="Lanterns stage" loading="lazy" width="880" height="520"><div><h3>One key light.</h3><p>Long soft shadows, ambient occlusion, rim light, aerial haze, cloud shadows drifting over the ground. Bloom only where something glows.</p></div></article>
   </div>
-  <p class="honest">And one honest detail no other visualiser has: <b>if the agent says the job is done but no test has passed since the last edit, a gremlin hides behind it.</b></p>
 </section>
 
-<section id="watch" class="watch">
-  <div class="frame">
-    <iframe src="/theatre/?demo=episode-1&amp;set=island&amp;nopreview=1&amp;paused=1" title="Agent Theatre — Episode 1: The login timeout" loading="lazy" allow="autoplay"></iframe>
+<section id="honest" class="honest">
+  <div class="inner reveal">
+    <img class="gremlin" src="/img/cast-gremlin.png" alt="A gremlin" width="200" height="200">
+    <p class="eyebrow">The honest detail</p>
+    <h2>If the agent says it's done, and no test has passed since the last edit —<br><em>a gremlin hides behind it.</em></h2>
+    <p class="sub">No other visualiser checks the claim against the evidence. Agent Theatre shows the passing test count as a chip when it exists, and the gremlin when it doesn't. Nothing is invented; every beat traces back to an event.</p>
   </div>
-  <p class="cap">Episode 1 · <i>The login timeout</i>. A synthetic session: a read, an edit, two failing tests, a fix, a passing run, a claim. Press play. Pick another stage with <b>Set</b>, or <a href="/theatre/?demo=subagents" target="_blank" rel="noopener">watch helpers arrive at the dock</a>.</p>
-</section>
-
-<section id="how" class="how">
-  <h2>How it works</h2>
-  <ol>
-    <li><b>Events.</b> Claude Code hooks (live) or the session transcript (replay) are normalised into a small, product-agnostic event schema: <code>read_file</code>, <code>edit_file +n −m</code>, <code>run_command</code>, <code>test_result</code>, <code>subagent_start</code>, <code>waiting_for_user</code>… Counts and paths only — never contents.</li>
-    <li><b>Stage.</b> The repo's file tree becomes a deterministic arrangement — one of six layouts chosen from the repo and the stage — so the same project is a ring island in one set and a terraced spine in another, and always the same in the same set.</li>
-    <li><b>Director.</b> Events become scene beats — walk, read, build, run tests, spawn gremlin, chase, celebrate — with a mood: curious, focused, lost, happy.</li>
-    <li><b>Renderer.</b> Isometric, one key light, long soft shadows, bloom only where something glows. No linear tween exists in the codebase; a test makes sure. The camera follows the character; the whole stage appears only to open, celebrate and close.</li>
-    <li><b>Sound.</b> Every beat has a sound and every stage has its own voice and ambience — all synthesized at runtime, no audio files. Effects and ambience toggle separately.</li>
-  </ol>
 </section>
 
 <section id="stages" class="stages">
-  <h2>Twenty stages</h2>
-  <p>Agent Theatre reads what your repo is — a web app, a backend, a CLI, data work, a game, infrastructure — and suggests the stages that suit it. Each has its own layout, light, silhouette and sound. Or hit <i>Surprise me</i>.</p>
-  <div class="grid">
-      <a class="stage" href="/theatre/?demo=episode-1&amp;set=island" target="_blank" rel="noopener">
-        <img src="/img/stage-island.jpg" alt="Island stage" loading="lazy" width="880" height="520">
-        <div><b>Island</b><span>A warm little island at golden hour.</span></div>
-      </a>
-      <a class="stage" href="/theatre/?demo=episode-1&amp;set=orbit" target="_blank" rel="noopener">
-        <img src="/img/stage-orbit.jpg" alt="Orbit stage" loading="lazy" width="880" height="520">
-        <div><b>Orbit</b><span>A quiet station turning above a blue planet.</span></div>
-      </a>
-      <a class="stage" href="/theatre/?demo=episode-1&amp;set=metropolis" target="_blank" rel="noopener">
-        <img src="/img/stage-metropolis.jpg" alt="Metropolis stage" loading="lazy" width="880" height="520">
-        <div><b>Metropolis</b><span>A warm night city, lights just coming on.</span></div>
-      </a>
-      <a class="stage" href="/theatre/?demo=episode-1&amp;set=harbour" target="_blank" rel="noopener">
-        <img src="/img/stage-harbour.jpg" alt="Harbour stage" loading="lazy" width="880" height="520">
-        <div><b>Harbour</b><span>Fog lifting off a working port.</span></div>
-      </a>
-      <a class="stage" href="/theatre/?demo=episode-1&amp;set=observatory" target="_blank" rel="noopener">
-        <img src="/img/stage-observatory.jpg" alt="Observatory stage" loading="lazy" width="880" height="520">
-        <div><b>Observatory</b><span>A mountaintop under a hard, clear sky.</span></div>
-      </a>
-      <a class="stage" href="/theatre/?demo=episode-1&amp;set=greenhouse" target="_blank" rel="noopener">
-        <img src="/img/stage-greenhouse.jpg" alt="Greenhouse stage" loading="lazy" width="880" height="520">
-        <div><b>Greenhouse</b><span>Glass, leaves and warm afternoon light.</span></div>
-      </a>
-      <a class="stage" href="/theatre/?demo=episode-1&amp;set=workshop" target="_blank" rel="noopener">
-        <img src="/img/stage-workshop.jpg" alt="Workshop stage" loading="lazy" width="880" height="520">
-        <div><b>Workshop</b><span>A village of makers, sawdust in the air.</span></div>
-      </a>
-      <a class="stage" href="/theatre/?demo=episode-1&amp;set=arcade" target="_blank" rel="noopener">
-        <img src="/img/stage-arcade.jpg" alt="Arcade stage" loading="lazy" width="880" height="520">
-        <div><b>Arcade</b><span>Neon rain on a late-night strip.</span></div>
-      </a>
-      <a class="stage" href="/theatre/?demo=episode-1&amp;set=kingdom" target="_blank" rel="noopener">
-        <img src="/img/stage-kingdom.jpg" alt="Kingdom stage" loading="lazy" width="880" height="520">
-        <div><b>Kingdom</b><span>Stone walls, banners, a river below.</span></div>
-      </a>
-      <a class="stage" href="/theatre/?demo=episode-1&amp;set=outpost" target="_blank" rel="noopener">
-        <img src="/img/stage-outpost.jpg" alt="Outpost stage" loading="lazy" width="880" height="520">
-        <div><b>Outpost</b><span>A desert station at dusk, dust in the light.</span></div>
-      </a>
-      <a class="stage" href="/theatre/?demo=episode-1&amp;set=snowfield" target="_blank" rel="noopener">
-        <img src="/img/stage-snowfield.jpg" alt="Snowfield stage" loading="lazy" width="880" height="520">
-        <div><b>Snowfield</b><span>Blue hour, fresh snow, chimney smoke.</span></div>
-      </a>
-      <a class="stage" href="/theatre/?demo=episode-1&amp;set=canopy" target="_blank" rel="noopener">
-        <img src="/img/stage-canopy.jpg" alt="Canopy stage" loading="lazy" width="880" height="520">
-        <div><b>Canopy</b><span>Treehouses strung through an old forest.</span></div>
-      </a>
-      <a class="stage" href="/theatre/?demo=episode-1&amp;set=lagoon" target="_blank" rel="noopener">
-        <img src="/img/stage-lagoon.jpg" alt="Lagoon stage" loading="lazy" width="880" height="520">
-        <div><b>Lagoon</b><span>Turquoise shallows and white sand at noon.</span></div>
-      </a>
-      <a class="stage" href="/theatre/?demo=episode-1&amp;set=volcano" target="_blank" rel="noopener">
-        <img src="/img/stage-volcano.jpg" alt="Volcano stage" loading="lazy" width="880" height="520">
-        <div><b>Volcano</b><span>Black rock, red sky, light from below.</span></div>
-      </a>
-      <a class="stage" href="/theatre/?demo=episode-1&amp;set=cloudtop" target="_blank" rel="noopener">
-        <img src="/img/stage-cloudtop.jpg" alt="Cloudtop stage" loading="lazy" width="880" height="520">
-        <div><b>Cloudtop</b><span>A floating town above a sea of cloud.</span></div>
-      </a>
-      <a class="stage" href="/theatre/?demo=episode-1&amp;set=reef" target="_blank" rel="noopener">
-        <img src="/img/stage-reef.jpg" alt="Reef stage" loading="lazy" width="880" height="520">
-        <div><b>Reef</b><span>Underwater, where the light comes in ribbons.</span></div>
-      </a>
-      <a class="stage" href="/theatre/?demo=episode-1&amp;set=bazaar" target="_blank" rel="noopener">
-        <img src="/img/stage-bazaar.jpg" alt="Bazaar stage" loading="lazy" width="880" height="520">
-        <div><b>Bazaar</b><span>Ochre walls, striped awnings, late light.</span></div>
-      </a>
-      <a class="stage" href="/theatre/?demo=episode-1&amp;set=monastery" target="_blank" rel="noopener">
-        <img src="/img/stage-monastery.jpg" alt="Monastery stage" loading="lazy" width="880" height="520">
-        <div><b>Monastery</b><span>Mist on the mountain, a bell somewhere.</span></div>
-      </a>
-      <a class="stage" href="/theatre/?demo=episode-1&amp;set=moonbase" target="_blank" rel="noopener">
-        <img src="/img/stage-moonbase.jpg" alt="Moonbase stage" loading="lazy" width="880" height="520">
-        <div><b>Moonbase</b><span>Grey dust, black sky, one blue marble.</span></div>
-      </a>
-      <a class="stage" href="/theatre/?demo=episode-1&amp;set=lanterns" target="_blank" rel="noopener">
-        <img src="/img/stage-lanterns.jpg" alt="Lanterns stage" loading="lazy" width="880" height="520">
-        <div><b>Lanterns</b><span>A night festival, paper light everywhere.</span></div>
-      </a>
+  <div class="head reveal"><h2>Twenty stages.<br>One repo, twenty ways.</h2><p class="sub">The same project is a ring island in one set and a terraced spine in another — and always the same in the same set. Scroll, then open any of them.</p></div>
+  <div class="strip" tabindex="0">
+        <a class="film" href="/theatre/?demo=episode-1&amp;set=island" target="_blank" rel="noopener"><img src="/img/stage-island.jpg" alt="Island" loading="lazy" width="880" height="520"><span><b>Island</b>A warm little island at golden hour.</span></a>
+        <a class="film" href="/theatre/?demo=episode-1&amp;set=orbit" target="_blank" rel="noopener"><img src="/img/stage-orbit.jpg" alt="Orbit" loading="lazy" width="880" height="520"><span><b>Orbit</b>A quiet station turning above a blue planet.</span></a>
+        <a class="film" href="/theatre/?demo=episode-1&amp;set=metropolis" target="_blank" rel="noopener"><img src="/img/stage-metropolis.jpg" alt="Metropolis" loading="lazy" width="880" height="520"><span><b>Metropolis</b>A warm night city, lights just coming on.</span></a>
+        <a class="film" href="/theatre/?demo=episode-1&amp;set=harbour" target="_blank" rel="noopener"><img src="/img/stage-harbour.jpg" alt="Harbour" loading="lazy" width="880" height="520"><span><b>Harbour</b>Fog lifting off a working port.</span></a>
+        <a class="film" href="/theatre/?demo=episode-1&amp;set=observatory" target="_blank" rel="noopener"><img src="/img/stage-observatory.jpg" alt="Observatory" loading="lazy" width="880" height="520"><span><b>Observatory</b>A mountaintop under a hard, clear sky.</span></a>
+        <a class="film" href="/theatre/?demo=episode-1&amp;set=greenhouse" target="_blank" rel="noopener"><img src="/img/stage-greenhouse.jpg" alt="Greenhouse" loading="lazy" width="880" height="520"><span><b>Greenhouse</b>Glass, leaves and warm afternoon light.</span></a>
+        <a class="film" href="/theatre/?demo=episode-1&amp;set=workshop" target="_blank" rel="noopener"><img src="/img/stage-workshop.jpg" alt="Workshop" loading="lazy" width="880" height="520"><span><b>Workshop</b>A village of makers, sawdust in the air.</span></a>
+        <a class="film" href="/theatre/?demo=episode-1&amp;set=arcade" target="_blank" rel="noopener"><img src="/img/stage-arcade.jpg" alt="Arcade" loading="lazy" width="880" height="520"><span><b>Arcade</b>Neon rain on a late-night strip.</span></a>
+        <a class="film" href="/theatre/?demo=episode-1&amp;set=kingdom" target="_blank" rel="noopener"><img src="/img/stage-kingdom.jpg" alt="Kingdom" loading="lazy" width="880" height="520"><span><b>Kingdom</b>Stone walls, banners, a river below.</span></a>
+        <a class="film" href="/theatre/?demo=episode-1&amp;set=outpost" target="_blank" rel="noopener"><img src="/img/stage-outpost.jpg" alt="Outpost" loading="lazy" width="880" height="520"><span><b>Outpost</b>A desert station at dusk, dust in the light.</span></a>
+        <a class="film" href="/theatre/?demo=episode-1&amp;set=snowfield" target="_blank" rel="noopener"><img src="/img/stage-snowfield.jpg" alt="Snowfield" loading="lazy" width="880" height="520"><span><b>Snowfield</b>Blue hour, fresh snow, chimney smoke.</span></a>
+        <a class="film" href="/theatre/?demo=episode-1&amp;set=canopy" target="_blank" rel="noopener"><img src="/img/stage-canopy.jpg" alt="Canopy" loading="lazy" width="880" height="520"><span><b>Canopy</b>Treehouses strung through an old forest.</span></a>
+        <a class="film" href="/theatre/?demo=episode-1&amp;set=lagoon" target="_blank" rel="noopener"><img src="/img/stage-lagoon.jpg" alt="Lagoon" loading="lazy" width="880" height="520"><span><b>Lagoon</b>Turquoise shallows and white sand at noon.</span></a>
+        <a class="film" href="/theatre/?demo=episode-1&amp;set=volcano" target="_blank" rel="noopener"><img src="/img/stage-volcano.jpg" alt="Volcano" loading="lazy" width="880" height="520"><span><b>Volcano</b>Black rock, red sky, light from below.</span></a>
+        <a class="film" href="/theatre/?demo=episode-1&amp;set=cloudtop" target="_blank" rel="noopener"><img src="/img/stage-cloudtop.jpg" alt="Cloudtop" loading="lazy" width="880" height="520"><span><b>Cloudtop</b>A floating town above a sea of cloud.</span></a>
+        <a class="film" href="/theatre/?demo=episode-1&amp;set=reef" target="_blank" rel="noopener"><img src="/img/stage-reef.jpg" alt="Reef" loading="lazy" width="880" height="520"><span><b>Reef</b>Underwater, where the light comes in ribbons.</span></a>
+        <a class="film" href="/theatre/?demo=episode-1&amp;set=bazaar" target="_blank" rel="noopener"><img src="/img/stage-bazaar.jpg" alt="Bazaar" loading="lazy" width="880" height="520"><span><b>Bazaar</b>Ochre walls, striped awnings, late light.</span></a>
+        <a class="film" href="/theatre/?demo=episode-1&amp;set=monastery" target="_blank" rel="noopener"><img src="/img/stage-monastery.jpg" alt="Monastery" loading="lazy" width="880" height="520"><span><b>Monastery</b>Mist on the mountain, a bell somewhere.</span></a>
+        <a class="film" href="/theatre/?demo=episode-1&amp;set=moonbase" target="_blank" rel="noopener"><img src="/img/stage-moonbase.jpg" alt="Moonbase" loading="lazy" width="880" height="520"><span><b>Moonbase</b>Grey dust, black sky, one blue marble.</span></a>
+        <a class="film" href="/theatre/?demo=episode-1&amp;set=lanterns" target="_blank" rel="noopener"><img src="/img/stage-lanterns.jpg" alt="Lanterns" loading="lazy" width="880" height="520"><span><b>Lanterns</b>A night festival, paper light everywhere.</span></a>
   </div>
 </section>
 
 <section id="cast" class="cast">
-  <h2>A cast of twelve</h2>
-  <p>The lead is chosen per repo; helpers (subagents) are other members of the cast, arriving by boat. Every character is drawn by one procedural routine — no sprite sheets.</p>
-  <div class="who-grid">
-      <a class="who" href="/theatre/?demo=episode-1&amp;cast=pip" target="_blank" rel="noopener"><i style="background:#ff9a3c"></i><b>Pip</b><span>Curious, quick, a little clumsy. The original.</span></a>
-      <a class="who" href="/theatre/?demo=episode-1&amp;cast=mo" target="_blank" rel="noopener"><i style="background:#5fa8ff"></i><b>Mo</b><span>Tall, calm, measures twice.</span></a>
-      <a class="who" href="/theatre/?demo=episode-1&amp;cast=juno" target="_blank" rel="noopener"><i style="background:#7fe08a"></i><b>Juno</b><span>Bright, chatty, finds the bug by talking to it.</span></a>
-      <a class="who" href="/theatre/?demo=episode-1&amp;cast=rook" target="_blank" rel="noopener"><i style="background:#9aa4b8"></i><b>Rook</b><span>Boxy, deliberate, never guesses.</span></a>
-      <a class="who" href="/theatre/?demo=episode-1&amp;cast=fen" target="_blank" rel="noopener"><i style="background:#b69cff"></i><b>Fen</b><span>Quiet and sharp. Reads everything first.</span></a>
-      <a class="who" href="/theatre/?demo=episode-1&amp;cast=sol" target="_blank" rel="noopener"><i style="background:#ffd23f"></i><b>Sol</b><span>Warm, loud, celebrates everything.</span></a>
-      <a class="who" href="/theatre/?demo=episode-1&amp;cast=ivy" target="_blank" rel="noopener"><i style="background:#3fbf9a"></i><b>Ivy</b><span>Patient gardener of code. Hates loose ends.</span></a>
-      <a class="who" href="/theatre/?demo=episode-1&amp;cast=bolt" target="_blank" rel="noopener"><i style="background:#ff5a9e"></i><b>Bolt</b><span>Fast. Sometimes too fast.</span></a>
-      <a class="who" href="/theatre/?demo=episode-1&amp;cast=ash" target="_blank" rel="noopener"><i style="background:#7a7390"></i><b>Ash</b><span>Dry wit, steady hands.</span></a>
-      <a class="who" href="/theatre/?demo=episode-1&amp;cast=nimbus" target="_blank" rel="noopener"><i style="background:#eef4ff"></i><b>Nimbus</b><span>Soft, cloud-headed, surprisingly precise.</span></a>
-      <a class="who" href="/theatre/?demo=episode-1&amp;cast=ember" target="_blank" rel="noopener"><i style="background:#ff6b3d"></i><b>Ember</b><span>Runs hot. Loves a red lighthouse.</span></a>
-      <a class="who" href="/theatre/?demo=episode-1&amp;cast=tove" target="_blank" rel="noopener"><i style="background:#c9a46b"></i><b>Tove</b><span>Small, brave, follows the map.</span></a>
+  <h2 class="reveal">A cast of twelve.</h2>
+  <p class="sub reveal">Every character is drawn by one procedural routine from a short spec — a shape, a topper, a pair of eyes, a palette. No sprite sheets. Their light shows their mood.</p>
+  <div class="troupe">
+        <figure class="who reveal"><img src="/img/cast-pip.png" alt="Pip" width="160" height="160" loading="lazy"><figcaption><b>Pip</b><span>Curious, quick, a little clumsy. The original.</span></figcaption></figure>
+        <figure class="who reveal"><img src="/img/cast-mo.png" alt="Mo" width="160" height="160" loading="lazy"><figcaption><b>Mo</b><span>Tall, calm, measures twice.</span></figcaption></figure>
+        <figure class="who reveal"><img src="/img/cast-juno.png" alt="Juno" width="160" height="160" loading="lazy"><figcaption><b>Juno</b><span>Bright, chatty, finds the bug by talking to it.</span></figcaption></figure>
+        <figure class="who reveal"><img src="/img/cast-rook.png" alt="Rook" width="160" height="160" loading="lazy"><figcaption><b>Rook</b><span>Boxy, deliberate, never guesses.</span></figcaption></figure>
+        <figure class="who reveal"><img src="/img/cast-fen.png" alt="Fen" width="160" height="160" loading="lazy"><figcaption><b>Fen</b><span>Quiet and sharp. Reads everything first.</span></figcaption></figure>
+        <figure class="who reveal"><img src="/img/cast-sol.png" alt="Sol" width="160" height="160" loading="lazy"><figcaption><b>Sol</b><span>Warm, loud, celebrates everything.</span></figcaption></figure>
+        <figure class="who reveal"><img src="/img/cast-ivy.png" alt="Ivy" width="160" height="160" loading="lazy"><figcaption><b>Ivy</b><span>Patient gardener of code. Hates loose ends.</span></figcaption></figure>
+        <figure class="who reveal"><img src="/img/cast-bolt.png" alt="Bolt" width="160" height="160" loading="lazy"><figcaption><b>Bolt</b><span>Fast. Sometimes too fast.</span></figcaption></figure>
+        <figure class="who reveal"><img src="/img/cast-ash.png" alt="Ash" width="160" height="160" loading="lazy"><figcaption><b>Ash</b><span>Dry wit, steady hands.</span></figcaption></figure>
+        <figure class="who reveal"><img src="/img/cast-nimbus.png" alt="Nimbus" width="160" height="160" loading="lazy"><figcaption><b>Nimbus</b><span>Soft, cloud-headed, surprisingly precise.</span></figcaption></figure>
+        <figure class="who reveal"><img src="/img/cast-ember.png" alt="Ember" width="160" height="160" loading="lazy"><figcaption><b>Ember</b><span>Runs hot. Loves a red lighthouse.</span></figcaption></figure>
+        <figure class="who reveal"><img src="/img/cast-tove.png" alt="Tove" width="160" height="160" loading="lazy"><figcaption><b>Tove</b><span>Small, brave, follows the map.</span></figcaption></figure>
   </div>
 </section>
 
+<section id="how" class="how">
+  <h2 class="reveal">How it works.</h2>
+  <ol class="steps">
+    <li class="reveal"><span>01</span><h3>Events</h3><p>Claude Code hooks (live) or the session transcript (replay), normalised into one small schema: <code>read_file</code>, <code>edit_file +n −m</code>, <code>run_command</code>, <code>test_result</code>, <code>subagent_start</code>… Counts and paths. Never contents.</p></li>
+    <li class="reveal"><span>02</span><h3>Stage</h3><p>The file tree becomes a deterministic arrangement — six layouts, chosen from the repo and the stage. Every file the session touches is always placed.</p></li>
+    <li class="reveal"><span>03</span><h3>Director</h3><p>Events become beats — walk, read, build, run tests, spawn gremlin, chase, celebrate — with a mood: curious, focused, lost, happy.</p></li>
+    <li class="reveal"><span>04</span><h3>Renderer</h3><p>Isometric WebGL. The camera follows the character; the whole stage appears only to open, celebrate and close, so it never gets cluttered. <code>prefers-reduced-motion</code> respected.</p></li>
+  </ol>
+</section>
+
 <section id="privacy" class="privacy">
-  <h2>Privacy, precisely</h2>
-  <ul>
-    <li>Runs entirely on your machine. No account, no telemetry, no network calls except to <code>127.0.0.1</code>.</li>
-    <li>Events carry repo-relative paths, line counts, a command's first word and a classified intent. <b>Never</b> file contents, prompts, command bodies or search queries. A test plants marker strings in all of those and asserts zero leaks.</li>
-    <li>Paths outside the repo appear as <code>//ext/&lt;name&gt;</code>; your home directory as <code>~/</code>.</li>
-    <li>Hooks are installed into <code>~/.claude/settings.json</code> non-destructively with a backup, and <code>agent-theatre hooks uninstall</code> reverses it byte-for-byte. The hook always exits 0 and never blocks a tool call.</li>
-  </ul>
+  <div class="inner reveal">
+    <h2>Privacy. Not a setting.</h2>
+    <p class="sub">Agent Theatre runs entirely on your machine and talks only to <code>127.0.0.1</code>. Events carry repo-relative paths, line counts, a command's first word and a classified intent — never file contents, prompts, command bodies or search queries. A test plants marker strings in all of those and asserts zero leaks. Hooks install non-destructively with a backup, and uninstall byte-for-byte.</p>
+  </div>
 </section>
 
 <section id="install" class="install">
-  <h2>Install</h2>
-  <div class="cols">
-    <div>
-      <h3>CLI</h3>
-      <pre><code>cd your-repo
-npx agent-theatre hooks install   # once
-npx agent-theatre                 # opens the stage; run Claude Code in another terminal
-npx agent-theatre replay          # pick any past session of this repo</code></pre>
-      <p>Node 22+. Works with the Claude Code CLI, desktop app and IDE extensions — anything that runs hooks.</p>
-    </div>
-    <div>
-      <h3>VS Code</h3>
-      <p>The same stage inside the editor, from the same hooks and transcripts. In progress — <a href="https://github.com/shreyassaw5394/agent-theatre" rel="noopener">watch the repo</a>.</p>
-      <h3>Suite</h3>
-      <p>Agent Theatre is the third product in a small suite for working with agents: <a href="https://lastsearch.ai" rel="noopener">LastSearch</a> (research with evidence) and <a href="https://www.npmjs.com/package/debuganything" rel="noopener">Debug Anything</a> (runtime observation). Same conventions, same licence spirit, same author.</p>
-    </div>
+  <h2 class="reveal">Two commands.</h2>
+  <div class="term reveal"><img class="peek" src="/img/cast-pip.png" alt="" width="140" height="140" aria-hidden="true"><pre><code><i>$</i> npx agent-theatre hooks install
+<i>$</i> npx agent-theatre</code></pre><p>Opens the stage for the repo you're in. Run Claude Code in another terminal and watch. <code>npx agent-theatre replay</code> plays back any past session. Node 22+.</p></div>
+  <div class="more reveal">
+    <div><h3>VS Code</h3><p>The same stage inside the editor, from the same hooks. Coming to the Marketplace.</p></div>
+    <div><h3>Open source</h3><p>MIT. Core, CLI, renderer and this site in one repo. <a href="https://github.com/shreyassaw5394/agent-theatre" rel="noopener">github.com/shreyassaw5394/agent-theatre</a></p></div>
+    <div><h3>Part of a suite</h3><p><a href="https://lastsearch.ai" rel="noopener">LastSearch</a> for research with evidence. <a href="https://www.npmjs.com/package/debuganything" rel="noopener">Debug Anything</a> for runtime observation. Agent Theatre for watching the work.</p></div>
   </div>
 </section>
 </main>
 
 <footer>
-  <p><span class="kicker">Agent Theatre</span> · open source on <a href="https://github.com/shreyassaw5394/agent-theatre" rel="noopener">GitHub</a> · <a href="https://www.npmjs.com/package/agent-theatre" rel="noopener">npm</a> · not affiliated with Anthropic; Claude Code is their product.</p>
+  <span class="wordmark">Agent Theatre</span>
+  <span>Not affiliated with Anthropic. Claude Code is their product.</span>
 </footer>
+
 <script>
-  // copy the install command on click; no analytics, no third parties
-  document.querySelector(".cmd")?.addEventListener("click", (e) => { navigator.clipboard?.writeText("npx agent-theatre").then(() => { e.currentTarget.classList.add("copied"); setTimeout(() => e.currentTarget.classList.remove("copied"), 1200); }); });
+(() => {
+  const btn = document.getElementById("copy");
+  btn?.addEventListener("click", () => { navigator.clipboard?.writeText("npx agent-theatre").then(() => { btn.classList.add("ok"); setTimeout(() => btn.classList.remove("ok"), 1400); }); });
+  // reveal on scroll; without IntersectionObserver (or if it never fires) everything simply shows
+  document.documentElement.classList.add("js");
+  const show = (el) => el.classList.add("in");
+  if ("IntersectionObserver" in window) {
+    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { show(e.target); io.unobserve(e.target); } }), { rootMargin: "0px 0px 8% 0px", threshold: 0 });
+    document.querySelectorAll(".reveal").forEach((el) => io.observe(el));
+    const sweep = () => document.querySelectorAll(".reveal:not(.in)").forEach((el) => { if (el.getBoundingClientRect().top < innerHeight * 1.1) show(el); });
+    addEventListener("scroll", sweep, { passive: true }); setTimeout(sweep, 800);
+  } else document.querySelectorAll(".reveal").forEach(show);
+  // hero copy drifts up and fades as you scroll, like a title card
+  const copy = document.querySelector(".hero .copy"), veil = document.querySelector(".veil");
+  const onScroll = () => { const y = Math.min(1, scrollY / (innerHeight * 0.8)); if (copy) { copy.style.opacity = String(1 - y * 1.2); copy.style.transform = `translateY(${-y * 60}px)`; } if (veil) veil.style.opacity = String(0.35 + y * 0.65); };
+  addEventListener("scroll", onScroll, { passive: true }); onScroll();
+})();
 </script>
 </body>
 </html>

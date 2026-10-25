@@ -113,7 +113,7 @@ export class Pip {
     const blink = !this.reducedMotion && (t % 3.3) < 0.13 && a.mood !== "happy";
     for (const s of [-1, 1] as const) {
       const x = ex + s * 4.6;
-      if (a.mood === "happy") { g.arc(x, ey + 1.5, 2.8, Math.PI * 1.1, Math.PI * 1.9).stroke({ width: 1.6, color: T.ink, cap: "round" }); continue; }
+      if (a.mood === "happy") { g.beginPath(); g.arc(x, ey + 1.5, 2.8, Math.PI * 1.1, Math.PI * 1.9).stroke({ width: 1.6, color: T.ink, cap: "round" }); continue; }
       if (blink) { g.moveTo(x - 2.6, ey).lineTo(x + 2.6, ey).stroke({ width: 1.6, color: T.ink, cap: "round" }); continue; }
       if (T.eyes === "visor") { if (s < 0) { g.roundRect(ex - 8.5, ey - 3, 17, 6, 3).fill(0xffffff); g.roundRect(ex - 7 + (a.look === "up" ? 0 : 1), ey - 1.5, 5, 3, 1.5).fill(T.ink); g.roundRect(ex + 2 + (a.look === "up" ? 0 : 1), ey - 1.5, 5, 3, 1.5).fill(T.ink); } continue; }
       const ry = T.eyes === "dot" ? 2.6 : T.eyes === "sleepy" ? 2.4 : a.mood === "focused" ? 3 : 4.3;
@@ -129,6 +129,7 @@ export class Pip {
       if (a.mood === "uneasy") g.moveTo(x - 3, ey - 5).lineTo(x + 3, ey - 6 + (s > 0 ? 1.5 : -1.5)).stroke({ width: 1.4, color: T.ink, cap: "round" });
     }
     // mouth
+    g.beginPath();
     if (a.mood === "happy") g.arc(ex, -10.5, 3.2, 0, Math.PI).fill(0x7a2e22);
     else if (a.mood === "lost" || a.mood === "uneasy") g.arc(ex, -8.4, 2.2, Math.PI * 1.15, Math.PI * 1.85).stroke({ width: 1.6, color: T.ink, cap: "round" });
     else g.arc(ex, -11.2, 1.9, Math.PI * 0.15, Math.PI * 0.85).stroke({ width: 1.6, color: T.ink, cap: "round" });

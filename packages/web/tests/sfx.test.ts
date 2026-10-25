@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -20,7 +21,7 @@ describe("sound design", () => {
   });
   it("ships no audio files and fetches none", () => {
     const walk = (d: string): string[] => readdirSync(d).flatMap((f) => (statSync(join(d, f)).isDirectory() ? walk(join(d, f)) : [join(d, f)]));
-    const root = new URL("..", import.meta.url).pathname;
+    const root = fileURLToPath(new URL("..", import.meta.url));
     const files = [...walk(join(root, "src")), ...walk(join(root, "public"))];
     expect(files.filter((f) => /\.(mp3|wav|ogg|m4a|flac|aac)$/i.test(f))).toEqual([]);
     const srcText = walk(join(root, "src")).filter((f) => /\.(ts|css)$/.test(f)).map((f) => readFileSync(f, "utf8")).join("\n");

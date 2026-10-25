@@ -34,7 +34,7 @@ describe("episode-1", () => {
     expect(r1?.durationMs).toBe(1000);
   });
   it("session metadata and claim", () => {
-    expect(events[0]).toMatchObject({ kind: "session_start", repoId: "acme-shop", branch: "main", seq: 0 });
+    expect(events[0]).toMatchObject({ kind: "session_start", repoId: "corner-shop", branch: "main", seq: 0 });
     expect(of(events, "turn_end")[0]?.claimedSuccess).toBe(true);
     expect(events.at(-1)).toMatchObject({ kind: "session_end", reason: "stop", claimedSuccess: true });
     expect(events.every((e, i) => e.seq === i && e.sessionId === "11111111-2222-3333-4444-555555555555" && e.source === "transcript")).toBe(true);
