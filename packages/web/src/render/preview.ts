@@ -21,6 +21,7 @@ export async function previewSet(app: Application, world: World, theme: SetTheme
   app.renderer.render({ container: root, target: rt, clear: true, clearColor: theme.sky[1] });
   const url = await app.renderer.extract.base64(rt);
   rt.destroy(true);
+  layer.destroy();
   root.destroy({ children: true });
   return url;
 }

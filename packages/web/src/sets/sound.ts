@@ -27,13 +27,50 @@ export interface SetAmbience {
   /** Mean seconds between extras. */
   every: number;
 }
-export interface SetSound { voice: SetVoice; ambience: SetAmbience }
+/** A generative jingle: short phrases on a scale, never the same twice. */
+export interface SetTune {
+  /** Semitone offsets from root; phrases walk this scale. */
+  scale: number[];
+  /** Root frequency, Hz. */
+  root: number;
+  wave: OscillatorType;
+  gain: number;
+  /** Mean seconds between phrases. */
+  every: number;
+  /** Note length range, seconds. */
+  len: [number, number];
+}
+export interface SetSound { voice: SetVoice; ambience: SetAmbience; tune: SetTune }
+
+const PENT = [0, 2, 4, 7, 9], MINOR_PENT = [0, 3, 5, 7, 10], LYDIAN = [0, 2, 4, 6, 7, 9, 11], DORIAN = [0, 2, 3, 5, 7, 9, 10], MIXO = [0, 2, 4, 5, 7, 9, 10], WHOLE = [0, 2, 4, 6, 8, 10], HARM = [0, 1, 4, 5, 7, 8, 11], MINOR = [0, 2, 3, 5, 7, 8, 10];
+export const TUNES: Record<SetId, SetTune> = {
+  island:      { scale: PENT, root: 261.6, wave: "sine", gain: 0.05, every: 16, len: [0.45, 0.9] },
+  orbit:       { scale: LYDIAN, root: 220, wave: "triangle", gain: 0.035, every: 20, len: [0.8, 1.6] },
+  metropolis:  { scale: DORIAN, root: 196, wave: "triangle", gain: 0.04, every: 18, len: [0.3, 0.7] },
+  harbour:     { scale: MIXO, root: 233, wave: "sine", gain: 0.045, every: 17, len: [0.5, 1.1] },
+  observatory: { scale: WHOLE, root: 329.6, wave: "sine", gain: 0.035, every: 22, len: [0.9, 1.8] },
+  greenhouse:  { scale: PENT, root: 293.7, wave: "triangle", gain: 0.045, every: 15, len: [0.35, 0.8] },
+  workshop:    { scale: PENT, root: 220, wave: "triangle", gain: 0.045, every: 16, len: [0.3, 0.6] },
+  arcade:      { scale: MINOR_PENT, root: 261.6, wave: "square", gain: 0.025, every: 12, len: [0.15, 0.35] },
+  kingdom:     { scale: DORIAN, root: 174.6, wave: "triangle", gain: 0.045, every: 19, len: [0.6, 1.2] },
+  outpost:     { scale: MINOR, root: 196, wave: "sine", gain: 0.04, every: 21, len: [0.8, 1.6] },
+  snowfield:   { scale: PENT, root: 392, wave: "sine", gain: 0.04, every: 18, len: [0.7, 1.5] },
+  canopy:      { scale: PENT, root: 246.9, wave: "triangle", gain: 0.045, every: 14, len: [0.3, 0.7] },
+  lagoon:      { scale: PENT, root: 329.6, wave: "sine", gain: 0.045, every: 15, len: [0.4, 0.9] },
+  volcano:     { scale: MINOR, root: 146.8, wave: "sawtooth", gain: 0.03, every: 20, len: [0.9, 1.8] },
+  cloudtop:    { scale: LYDIAN, root: 392, wave: "sine", gain: 0.04, every: 17, len: [0.8, 1.6] },
+  reef:        { scale: PENT, root: 174.6, wave: "sine", gain: 0.045, every: 14, len: [0.9, 2] },
+  bazaar:      { scale: HARM, root: 220, wave: "triangle", gain: 0.045, every: 13, len: [0.25, 0.6] },
+  monastery:   { scale: PENT, root: 196, wave: "sine", gain: 0.05, every: 24, len: [1.2, 2.4] },
+  moonbase:    { scale: MINOR, root: 164.8, wave: "sine", gain: 0.035, every: 23, len: [1, 2] },
+  lanterns:    { scale: PENT, root: 523.3, wave: "sine", gain: 0.04, every: 14, len: [0.3, 0.7] },
+};
 
 const organic: SetVoice = { wave: "triangle", pitch: 1, decay: 1, tone: 3200, surface: "grass" };
 const electric: SetVoice = { wave: "square", pitch: 1.18, decay: 0.8, tone: 2600, surface: "metal" };
 const urban: SetVoice = { wave: "sawtooth", pitch: 0.95, decay: 1.1, tone: 2200, surface: "stone" };
 
-export const SOUND: Record<SetId, SetSound> = {
+const BASE: Record<SetId, Omit<SetSound, "tune">> = {
   island:      { voice: organic, ambience: { washes: [{ hz: 520, q: 0.6, gain: 0.09, lfoHz: 0.11, depth: 0.6 }, { hz: 240, q: 0.9, gain: 0.05, lfoHz: 0.07, depth: 0.8 }], extras: ["gull", "cricket"], every: 9 } },
   orbit:       { voice: electric, ambience: { washes: [{ hz: 900, q: 2, gain: 0.015, lfoHz: 0.05, depth: 0.9 }], pad: { chord: [55, 110, 164.8], gain: 0.05, wave: "sine" }, extras: ["hum", "chime"], every: 11 } },
   metropolis:  { voice: urban, ambience: { washes: [{ hz: 380, q: 0.5, gain: 0.07, lfoHz: 0.2, depth: 0.5 }], pad: { chord: [65.4, 98], gain: 0.03, wave: "triangle" }, extras: ["horn", "hum"], every: 10 } },
@@ -55,3 +92,5 @@ export const SOUND: Record<SetId, SetSound> = {
   moonbase:    { voice: { ...electric, pitch: 1.05, decay: 1.2, tone: 2200 }, ambience: { washes: [{ hz: 240, q: 1.5, gain: 0.03, lfoHz: 0.03, depth: 0.9 }], pad: { chord: [55, 82.4], gain: 0.04, wave: "sine" }, extras: ["hum", "chime"], every: 13 } },
   lanterns:    { voice: { ...urban, wave: "triangle", pitch: 1.1, decay: 1.2, tone: 3000, surface: "stone" }, ambience: { washes: [{ hz: 400, q: 0.5, gain: 0.05, lfoHz: 0.2, depth: 0.5 }], extras: ["market", "chime", "bell"], every: 6 } },
 };
+
+export const SOUND: Record<SetId, SetSound> = Object.fromEntries(Object.entries(BASE).map(([id, v]) => [id, { ...v, tune: TUNES[id as SetId] }])) as Record<SetId, SetSound>;

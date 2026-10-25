@@ -105,6 +105,18 @@ export class AudioEngine {
   }
   now(): number { return this.ctx?.currentTime ?? 0; }
 
+  /** One soft melodic note on the ambience bus: gentle attack, long release, a touch of detuned shimmer. */
+  note(freq: number, dur: number, gain: number, type: OscillatorType = "sine", pan = 0): void {
+    if (!this.ready || !this.ctx || !this.ambBus) return;
+    const c = this.ctx, t = c.currentTime;
+    const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + Math.min(0.12, dur * 0.3)); g.gain.setTargetAtTime(0.0001, t + dur * 0.6, dur * 0.35);
+    const p = c.createStereoPanner(); p.pan.value = pan; g.connect(p); p.connect(this.ambBus);
+    const lp = c.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = Math.min(6000, freq * 4); lp.connect(g);
+    for (const det of [0, 4]) { const o = c.createOscillator(); o.type = type; o.frequency.value = freq; o.detune.value = det; o.connect(lp); o.start(t); o.stop(t + dur * 1.6); }
+    // a quiet octave for body
+    const o2 = c.createOscillator(); o2.type = "sine"; o2.frequency.value = freq / 2; const g2 = c.createGain(); g2.gain.value = 0.35; o2.connect(g2); g2.connect(lp); o2.start(t); o2.stop(t + dur * 1.6);
+  }
+
   /** Occasional scene details, all synthesized. Quiet by design; they live on the ambience bus. */
   extra(kind: string, pan = (Math.random() - 0.5) * 1.2): void {
     if (!this.ready || !this.ctx || !this.ambBus) return;

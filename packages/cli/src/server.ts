@@ -1,7 +1,7 @@
 import { createServer, type Server } from "node:http";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
-import { join, basename } from "node:path";
+import { join, basename, resolve, sep } from "node:path";
 import { Hono } from "hono";
 import { getRequestListener } from "@hono/node-server";
 import { WebSocketServer, type WebSocket } from "ws";
@@ -48,6 +48,9 @@ export class Theatre {
     a.post("/hook", async (c) => {
       let payload: unknown;
       try { payload = await c.req.json(); } catch { return c.body(null, 204); }
+      // hooks are global to Claude Code: only this repo's sessions belong on this stage
+      const cwd = typeof (payload as { cwd?: unknown })?.cwd === "string" ? (payload as { cwd: string }).cwd : "";
+      if (cwd && !isWithin(cwd, this.opts.cwd)) return c.body(null, 204);
       const { events } = hookPayloadToEvents(payload, { home: homedir() });
       if (events.length) this.ingest(events);
       return c.body(null, 204);
@@ -136,4 +139,11 @@ export class Theatre {
 
   get url(): string { return `http://127.0.0.1:${this.port}/`; }
   get name(): string { return basename(this.opts.cwd); }
+}
+
+/** True when `dir` is `root` or inside it (symlinks resolved when they exist). */
+export function isWithin(dir: string, root: string): boolean {
+  const norm = (p: string) => { try { return realpathSync(p); } catch { return resolve(p); } };
+  const d = norm(dir), r = norm(root);
+  return d === r || d.startsWith(r.endsWith(sep) ? r : r + sep);
 }

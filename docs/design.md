@@ -619,3 +619,14 @@ the same geometry. Characters got a rim light on the sunward side and a cool
 ground bounce on the far side so bodies read as round. The honest ceiling of
 procedural `Graphics` is still there; the next step up is baked textures or
 Rive characters, which is a separate decision.
+
+**Jingles (2026-10-25).** Every stage has a tune: a scale (pentatonic, lydian,
+dorian, mixolydian, whole-tone, double-harmonic, minor), a root, a waveform and
+a cadence. The ambience plays short phrases on it — a random walk of four to
+seven notes with a resting note at the end — every 12–25 s with jitter, so a
+stage hums its own music and never repeats a phrase. Notes go through the
+ambience bus (soft attack, long release, a detuned pair and a quiet octave).
+
+**Hook routing.** Claude Code hooks are global, so a running stage used to
+receive events from every session on the machine. The server now ignores hook
+payloads whose `cwd` is outside the repo it was started in.

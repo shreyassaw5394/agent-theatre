@@ -49,3 +49,13 @@ describe("Theatre server", () => {
     expect((await fetch(`${base}/api/replay/nope`)).status).toBe(404);
   });
 });
+
+import { isWithin } from "../src/server.js";
+describe("hook routing", () => {
+  it("only this repo's sessions belong on this stage", () => {
+    expect(isWithin("/tmp/repo-a/src", "/tmp/repo-a")).toBe(true);
+    expect(isWithin("/tmp/repo-a", "/tmp/repo-a")).toBe(true);
+    expect(isWithin("/tmp/repo-ab", "/tmp/repo-a")).toBe(false);
+    expect(isWithin("/tmp/other", "/tmp/repo-a")).toBe(false);
+  });
+});

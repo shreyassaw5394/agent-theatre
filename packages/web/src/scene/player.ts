@@ -396,5 +396,5 @@ export class ScenePlayer {
     }
     return out;
   }
-  destroy(): void { this.amb.stop(); this.stage.destroy({ children: true }); }
+  destroy(): void { this.amb.stop(); this.worldLayer.destroy(); this.stage.destroy({ children: true }); }
 }

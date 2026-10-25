@@ -26,6 +26,29 @@ export class WorldLayer {
   private readonly drawn = new Map<string, Drawn>();
   private readonly props: Array<{ g: Graphics; gx: number; gy: number; phase: number; canopy?: Graphics }> = [];
   private time = 0;
+  /**
+   * Gradients are cached per layer: every FillGradient owns a GPU texture and
+   * animated buildings redraw each frame (uncached, ~30 textures/s leaked
+   * until the context died). Keys quantise coordinates so a growing building
+   * reuses a handful of textures. They are destroyed with the layer — never
+   * earlier, because a destroyed gradient still referenced by a drawn
+   * building leaves the stage blank.
+   */
+  private readonly gradients = new Map<string, FillGradient>();
+  private vGrad(top: number, bottom: number, y0: number, y1: number): FillGradient {
+    const a = q2(y0), b = q2(y1), key = `v${top}|${bottom}|${a}|${b}`;
+    let g = this.gradients.get(key); if (!g) { g = makeV(top, bottom, a, b); this.gradients.set(key, g); } return g;
+  }
+  private hGrad(left: number, right: number, x0: number, x1: number): FillGradient {
+    const a = q2(x0), b = q2(x1), key = `h${left}|${right}|${a}|${b}`;
+    let g = this.gradients.get(key); if (!g) { g = makeH(left, right, a, b); this.gradients.set(key, g); } return g;
+  }
+  /** Frees every gradient texture this layer created. Call when the layer leaves the stage. */
+  destroy(): void {
+    for (const g of this.gradients.values()) g.destroy();
+    this.gradients.clear();
+    this.container.destroy({ children: true });
+  }
 
   constructor(public readonly world: World, public theme: SetTheme) {
     this.container.addChild(this.ripples, this.terrain, this.paths, this.labels, this.shadows, this.clouds, this.objects);
@@ -182,7 +205,7 @@ export class WorldLayer {
       case "gable": {
         // ridge along the long axis: two sloped faces, two triangular gables
         const ridgeH = 11 + fp * 7, r0 = up(lerpP(ec[0], ec[3], 0.5), h + ridgeH), r1 = up(lerpP(ec[1], ec[2], 0.5), h + ridgeH);
-        g.poly(flat([ec[3], ec[2], r1, r0])).fill(vGrad(mix(P.roof, 0xffffff, 0.1), P.roof, r0.y, ec[3].y));
+        g.poly(flat([ec[3], ec[2], r1, r0])).fill(this.vGrad(mix(P.roof, 0xffffff, 0.1), P.roof, r0.y, ec[3].y));
         g.poly(flat([ec[0], ec[1], r1, r0])).fill(mix(P.roofD, this.shadowInk, 0.2));
         g.poly(flat([ec[2], ec[1], r1])).fill(mix(P.right, this.shadowInk, 0.1));
         g.poly(flat([ec[3], ec[0], r0])).fill(P.left);
@@ -193,7 +216,7 @@ export class WorldLayer {
         const t = ec.map((q) => up(q, 3)) as [Pt, Pt, Pt, Pt];
         g.poly(flat([ec[3], ec[2], t[2], t[3]])).fill(P.roofD);
         g.poly(flat([ec[2], ec[1], t[1], t[2]])).fill(mix(P.roofD, 0x000000, 0.2));
-        g.poly(flat(t)).fill(hGrad(mix(P.roof, 0xffffff, 0.08), P.roof, t[3].x, t[1].x));
+        g.poly(flat(t)).fill(this.hGrad(mix(P.roof, 0xffffff, 0.08), P.roof, t[3].x, t[1].x));
         // rooftop units read as a city from above
         const u = corners(p.gx + 0.25 + (k % 3) * 0.1, p.gy + 0.3, 0.4, h + 3);
         g.poly(flat([u[3], u[2], up(u[2], 6), up(u[3], 6)])).fill(P.left); g.poly(flat([u[2], u[1], up(u[1], 6), up(u[2], 6)])).fill(P.right); g.poly(flat(u.map((q) => up(q, 6)))).fill(P.top);
@@ -201,14 +224,14 @@ export class WorldLayer {
       }
       case "dome": {
         const r = (fp * 32) * 0.78, cy = centre.y - h + 2;
-        g.ellipse(centre.x, cy, r, r * 0.62).fill(vGrad(mix(P.roof, 0xffffff, 0.22), mix(P.roofD, this.shadowInk, 0.15), cy - r * 0.62, cy + r * 0.3));
+        g.ellipse(centre.x, cy, r, r * 0.62).fill(this.vGrad(mix(P.roof, 0xffffff, 0.22), mix(P.roofD, this.shadowInk, 0.15), cy - r * 0.62, cy + r * 0.3));
         g.rect(centre.x - r, cy, r * 2, r * 0.62).fill({ color: 0, alpha: 0 });
         g.ellipse(centre.x - r * 0.3, cy - r * 0.28, r * 0.28, r * 0.14).fill({ color: 0xffffff, alpha: 0.32 });
         break;
       }
       case "onion": {
         const r = fp * 16, cy = centre.y - h;
-        g.moveTo(centre.x - r, cy).quadraticCurveTo(centre.x - r * 1.15, cy - r * 1.1, centre.x, cy - r * 2.2).quadraticCurveTo(centre.x + r * 1.15, cy - r * 1.1, centre.x + r, cy).fill(vGrad(mix(P.roof, 0xffffff, 0.2), P.roofD, cy - r * 2.2, cy));
+        g.moveTo(centre.x - r, cy).quadraticCurveTo(centre.x - r * 1.15, cy - r * 1.1, centre.x, cy - r * 2.2).quadraticCurveTo(centre.x + r * 1.15, cy - r * 1.1, centre.x + r, cy).fill(this.vGrad(mix(P.roof, 0xffffff, 0.2), P.roofD, cy - r * 2.2, cy));
         g.moveTo(centre.x - r * 0.4, cy - r * 0.3).quadraticCurveTo(centre.x - r * 0.5, cy - r * 1.2, centre.x - r * 0.05, cy - r * 1.9).stroke({ width: 1.6, color: 0xffffff, alpha: 0.35, cap: "round" });
         break;
       }
@@ -237,7 +260,7 @@ export class WorldLayer {
       }
       case "capsule": {
         const r = fp * 32 * 0.7, cy = centre.y - h + 1;
-        g.ellipse(centre.x, cy, r * 1.02, r * 0.5).fill(vGrad(mix(P.top, 0xffffff, 0.25), P.top, cy - r * 0.5, cy + r * 0.1));
+        g.ellipse(centre.x, cy, r * 1.02, r * 0.5).fill(this.vGrad(mix(P.top, 0xffffff, 0.25), P.top, cy - r * 0.5, cy + r * 0.1));
         g.ellipse(centre.x - r * 0.3, cy - r * 0.22, r * 0.3, r * 0.1).fill({ color: 0xffffff, alpha: 0.4 });
         g.ellipse(centre.x, cy, r * 1.02, r * 0.5).stroke({ width: 1.2, color: mix(P.roofD, 0xffffff, 0.1), alpha: 0.6 });
         break;
@@ -264,11 +287,11 @@ export class WorldLayer {
     const haze = this.hazeOf(gy + gx);
     const L = (c: number) => mix(c, this.theme.sky[0], haze);
     // left face: lit near the eave, ambient occlusion toward the ground
-    g.poly(flat([p3, p2, up(p2, h), up(p3, h)])).fill(vGrad(L(mix(left, 0xffffff, 0.08)), L(mix(left, this.shadowInk, 0.28)), p3.y - h, p3.y));
+    g.poly(flat([p3, p2, up(p2, h), up(p3, h)])).fill(this.vGrad(L(mix(left, 0xffffff, 0.08)), L(mix(left, this.shadowInk, 0.28)), p3.y - h, p3.y));
     // right face: in the shade, cooler, same AO
-    g.poly(flat([p2, p1, up(p1, h), up(p2, h)])).fill(vGrad(L(mix(right, this.coolInk, 0.06)), L(mix(right, this.shadowInk, 0.38)), p2.y - h, p2.y));
+    g.poly(flat([p2, p1, up(p1, h), up(p2, h)])).fill(this.vGrad(L(mix(right, this.coolInk, 0.06)), L(mix(right, this.shadowInk, 0.38)), p2.y - h, p2.y));
     // top: brightest toward the light
-    g.poly(flat([up(p0, h), up(p1, h), up(p2, h), up(p3, h)])).fill(hGrad(L(mix(top, 0xffffff, 0.16)), L(top), p3.x, p1.x));
+    g.poly(flat([up(p0, h), up(p1, h), up(p2, h), up(p3, h)])).fill(this.hGrad(L(mix(top, 0xffffff, 0.16)), L(top), p3.x, p1.x));
     // rim light along the lit eave and the sunward vertical edge
     g.moveTo(p3.x, p3.y - h).lineTo(p0.x, p0.y - h).lineTo(p1.x, p1.y - h).stroke({ width: 1.3, color: 0xffffff, alpha: 0.42, cap: "round" });
     g.moveTo(p3.x, p3.y - h).lineTo(p3.x, p3.y).stroke({ width: 1.1, color: 0xffffff, alpha: 0.22 });
@@ -309,8 +332,8 @@ export class WorldLayer {
   private pyramid(g: Graphics, tops: [Pt, Pt, Pt, Pt], apex: Pt, light: number, dark: number): void {
     g.poly(flat([tops[0], tops[1], apex])).fill(mix(dark, this.shadowInk, 0.25));
     g.poly(flat([tops[3], tops[0], apex])).fill(mix(light, 0xffffff, 0.12));
-    g.poly(flat([tops[3], tops[2], apex])).fill(vGrad(mix(light, 0xffffff, 0.06), light, apex.y, tops[2].y));
-    g.poly(flat([tops[2], tops[1], apex])).fill(vGrad(dark, mix(dark, this.shadowInk, 0.3), apex.y, tops[1].y));
+    g.poly(flat([tops[3], tops[2], apex])).fill(this.vGrad(mix(light, 0xffffff, 0.06), light, apex.y, tops[2].y));
+    g.poly(flat([tops[2], tops[1], apex])).fill(this.vGrad(dark, mix(dark, this.shadowInk, 0.3), apex.y, tops[1].y));
     g.moveTo(tops[3].x, tops[3].y).lineTo(apex.x, apex.y).stroke({ width: 1.2, color: 0xffffff, alpha: 0.35, cap: "round" });
   }
   private windows(g: Graphics, a: Pt, b: Pt, h: number, rows: number, cols: number, col: number, alpha: number): void {
@@ -498,32 +521,14 @@ export class WorldLayer {
 
 const d_glow = (c: number) => mix(c, 0xffffff, 0.25);
 
-/**
- * Gradients are cached: every FillGradient owns a GPU texture, and animated
- * buildings (forge smoke, dock bob, glowing windows, lamps) redraw each frame.
- * Uncached, that leaked ~30 textures a second until the context died and the
- * stage went white. Keys quantise coordinates so a growing building reuses
- * the same handful of textures.
- */
-const GRADIENTS = new Map<string, FillGradient>();
-function cachedGradient(key: string, make: () => FillGradient): FillGradient {
-  let g = GRADIENTS.get(key);
-  if (!g) {
-    if (GRADIENTS.size > 1500) { for (const old of GRADIENTS.values()) old.destroy(); GRADIENTS.clear(); }
-    g = make(); GRADIENTS.set(key, g);
-  }
-  return g;
+/** Vertical two-stop gradient in world px (Pixi 8 FillGradient, global coordinates). */
+function makeV(top: number, bottom: number, y0: number, y1: number): FillGradient {
+  return new FillGradient({ start: { x: 0, y: y0 }, end: { x: 0, y: y1 }, colorStops: [{ offset: 0, color: top }, { offset: 1, color: bottom }], textureSpace: "global" });
+}
+function makeH(left: number, right: number, x0: number, x1: number): FillGradient {
+  return new FillGradient({ start: { x: x0, y: 0 }, end: { x: x1, y: 0 }, colorStops: [{ offset: 0, color: left }, { offset: 1, color: right }], textureSpace: "global" });
 }
 const q2 = (v: number) => Math.round(v / 2) * 2;
-/** Vertical two-stop gradient in world px (Pixi 8 FillGradient, global coordinates). */
-function vGrad(top: number, bottom: number, y0: number, y1: number): FillGradient {
-  const a = q2(y0), b = q2(y1);
-  return cachedGradient(`v${top}|${bottom}|${a}|${b}`, () => new FillGradient({ start: { x: 0, y: a }, end: { x: 0, y: b }, colorStops: [{ offset: 0, color: top }, { offset: 1, color: bottom }], textureSpace: "global" }));
-}
-function hGrad(left: number, right: number, x0: number, x1: number): FillGradient {
-  const a = q2(x0), b = q2(x1);
-  return cachedGradient(`h${left}|${right}|${a}|${b}`, () => new FillGradient({ start: { x: a, y: 0 }, end: { x: b, y: 0 }, colorStops: [{ offset: 0, color: left }, { offset: 1, color: right }], textureSpace: "global" }));
-}
 
 export function mix(a: number, b: number, u: number): number {
   const ar = (a >> 16) & 255, ag = (a >> 8) & 255, ab = a & 255;
