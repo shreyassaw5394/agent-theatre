@@ -110,7 +110,9 @@ The server binds to `127.0.0.1` only. Hooks exit 0 and never block or slow your 
 
 ## Site
 
-The story lives at **[agenttheatre.dev](https://agenttheatre.dev)** (agenttheatre.com redirects there).
+**[agenttheatre.dev](https://agenttheatre.dev)** — the story, a playable Episode 1, all twenty stages, the cast,
+the privacy sheet and install notes. `agenttheatre.com` redirects there. The site is `site/` in this
+repo, deployed on Vercel from `main`; the playable demo is the real web bundle at `/theatre/`.
 
 ## License
 

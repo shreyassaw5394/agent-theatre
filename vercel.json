@@ -1,0 +1,64 @@
+{
+  "buildCommand": "pnpm --filter @agent-theatre/core build && pnpm --filter @agent-theatre/web exec vite build --base=/theatre/ && node site/build.mjs",
+  "outputDirectory": "site/dist",
+  "cleanUrls": true,
+  "redirects": [
+    {
+      "source": "/:path(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "agenttheatre.com"
+        }
+      ],
+      "destination": "https://agenttheatre.dev/:path",
+      "permanent": true
+    },
+    {
+      "source": "/:path(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.agenttheatre.dev"
+        }
+      ],
+      "destination": "https://agenttheatre.dev/:path",
+      "permanent": true
+    },
+    {
+      "source": "/:path(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.agenttheatre.com"
+        }
+      ],
+      "destination": "https://agenttheatre.dev/:path",
+      "permanent": true
+    }
+  ],
+  "headers": [
+    {
+      "source": "/theatre/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        }
+      ]
+    }
+  ]
+}
