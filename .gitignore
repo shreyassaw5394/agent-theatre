@@ -5,3 +5,4 @@ dist/
 coverage/
 packages/web/dist/
 packages/vscode/*.vsix
+docs/competitive.md
