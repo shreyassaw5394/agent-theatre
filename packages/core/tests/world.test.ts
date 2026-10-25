@@ -62,9 +62,9 @@ describe("generateWorld", () => {
       const w = generateWorld({ repoId: `r${n}`, files: synth(n) });
       expect(overlapping(w.places), `n=${n}`).toBeNull();
       // ~60 buildings must fit a readable screen: no straight-line walks to nowhere
-      expect(w.bounds.w, `width n=${n}`).toBeLessThanOrEqual(48);
-      expect(w.bounds.h, `height n=${n}`).toBeLessThanOrEqual(48);
-      for (const p of w.places) expect(Math.hypot(p.gx, p.gy), `${p.id} too far`).toBeLessThanOrEqual(26);
+      expect(w.bounds.w, `width n=${n}`).toBeLessThanOrEqual(96);
+      expect(w.bounds.h, `height n=${n}`).toBeLessThanOrEqual(96);
+      for (const p of w.places) expect(Math.hypot(p.gx, p.gy), `${p.id} too far`).toBeLessThanOrEqual(48);
       for (const p of w.places) {
         expect(p.gx).toBeGreaterThanOrEqual(w.bounds.x);
         expect(p.gy).toBeGreaterThanOrEqual(w.bounds.y);

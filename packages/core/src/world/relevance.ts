@@ -2,7 +2,7 @@ import { isTestPath } from "../adapters/paths.js";
 import type { FileNode, PlaceKind } from "./types.js";
 
 export const ARCHIVE_RE = /(^|\/)(schema\.(sql|prisma|graphql|gql)|.*\.(sql|prisma|db|sqlite)|migrations?\/|drizzle\/|models?\/.*\.(ts|js|py|rb)$)/i;
-const IGNORE_RE = /(^|\/)(node_modules|\.git|dist|build|out|coverage|\.next|\.turbo|target|vendor|__pycache__|\.venv|venv)(\/|$)|(^|\/)\.[^/]+$|\.(lock|map|min\.js|png|jpg|jpeg|gif|webp|svg|ico|woff2?|ttf|mp4|mp3|pdf|zip)$/i;
+const IGNORE_RE = /(^|\/)(node_modules|\.git|dist|build|out|coverage|_site|\.next|\.turbo|target|vendor|__pycache__|\.venv|venv)(\/|$)|(^|\/)\.[^/]+$|\.(lock|map|min\.js|png|jpg|jpeg|gif|webp|svg|ico|woff2?|ttf|mp4|mp3|pdf|zip)$/i;
 
 export function isIgnoredPath(p: string): boolean {
   return IGNORE_RE.test(p);
