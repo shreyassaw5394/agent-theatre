@@ -9,3 +9,8 @@ export { parseTranscript, parseTranscriptRows, type TranscriptOptions } from "./
 export { hookPayloadToEvents, type HookOptions } from "./adapters/hook.js";
 export { claimsSuccess, SUCCESS_LEXICON, HEDGE_LEXICON } from "./director/claims.js";
 export { findLeaks } from "./privacy/leaks.js";
+export * from "./world/types.js";
+export { generateWorld } from "./world/generate.js";
+export { worldToAscii } from "./world/ascii.js";
+export { hashString, mulberry32 } from "./world/prng.js";
+export { scoreFiles, kindOf, isIgnoredPath, heightClass, footprintOf } from "./world/relevance.js";

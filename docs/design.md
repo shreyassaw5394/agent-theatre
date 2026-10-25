@@ -496,3 +496,37 @@ Design consequences, mapped to milestones:
 - **README:** a privacy sheet table — what is read · what is rendered · what is exported.
 - **Naming:** never a bare `theatre` package; no Theatre.js dependency; "pixel" appears nowhere;
   Pip stays a character name only.
+
+## Sets, not just an island (design change, 2026-10-24)
+
+The user's direction: the stage should not be tied to one world. **The structure comes from the
+repo; the set is chosen.** Walking to a file has to mean something, so places still map to files —
+but the *theme* is a selectable "set", randomised on first launch with a picker, remembered per repo.
+
+- **Core:** `island/` becomes `world/`. The generator produces a set-agnostic `World` — districts,
+  places (`building | beacon | archive | forge | dock`), paths, bounds. No theme words in core.
+  (`lighthouse` → `beacon`, `library` → `archive`: the abstract roles.)
+- **Web:** a `Set` is an art pack implementing one interface — terrain, district ground, building
+  silhouettes by size class, beacon (the test-light analogue), forge, dock, props, gremlin skin,
+  palette, ambience, and per-set camera defaults. The Director never knows which set is active.
+- **MVP ships three sets** so randomisation feels real, each fully polished rather than many
+  half-done: **Island** (the concept clip), **Orbit** (a space station: modules, a beacon tower,
+  shuttles for subagents, star-field water), **Metropolis** (a warm night city: towers, a radio
+  mast beacon, taxis for subagents). More sets are a drop-in pack, and a natural community
+  contribution surface.
+- **Picker:** first launch shows three randomised set cards with a live 3-second preview each;
+  "Shuffle" rerolls; choice saved in `~/.agent-theatre/sets.json` keyed by repo id; `--set` flag
+  and VS Code setting override.
+- **Pip stays Pip across sets** (one character, costume accents per set) — recognisability is the
+  brand.
+
+## Motion bar (user: "Pixar level, as if Steve Jobs designed it")
+
+Concrete, testable, in `docs/motion.md` at M4: the twelve principles applied per beat (squash &
+stretch, anticipation ≥120 ms before every walk/build, follow-through on stops, secondary action
+on antenna/ears, slow-in/slow-out everywhere — **no linear tween anywhere in the codebase**, a lint
+test greps for it); one easing family per intent (walk `cubicBezier(.4,0,.2,1)`, land `backOut`,
+celebrate `elasticOut`); every state change is a designed transition, none is a cut; the camera
+never moves without a reason tied to a beat; idle is alive but quiet (breathing, blink, antenna
+drift — ≤2 px); reduced-motion keeps the story and removes the flourish. Quality gate per set: a
+side-by-side with the concept clip and a 10-second "does it feel alive with nothing happening" test.

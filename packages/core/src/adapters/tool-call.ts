@@ -53,6 +53,14 @@ function responseText(response: unknown): string {
   return "";
 }
 
+/** Number of body lines written by heredocs in a command (counts only; the body is never kept). */
+function heredocLines(command: string): number {
+  let n = 0;
+  for (const m of command.matchAll(/<<-?\s*(['"]?)(\w+)\1[^\n]*\n([\s\S]*?)\n\2(?=\n|$)/g)) n += lineCount(m[3]);
+  if (n === 0 && /(?:^|[\s)])\d?>{1,2}\s*[^\s|&;<>]+/.test(command) && !/>\s*\/dev\/null/.test(command)) n = 1;
+  return n;
+}
+
 const SEARCH_TOOLS_REPO = new Set(["Grep", "Glob", "LS", "ToolSearch"]);
 const SEARCH_TOOLS_WEB = new Set(["WebSearch", "WebFetch"]);
 const SILENT_TOOLS = new Set(["TodoWrite", "TodoRead", "Skill", "EnterPlanMode", "ExitPlanMode", "EnterWorktree", "ExitWorktree", "NotebookRead", "ListAgents", "SendMessage", "TaskStop", "Monitor", "ScheduleWakeup", "ReportFindings"]);
@@ -93,9 +101,10 @@ export function toolCallToOutcome(call: ToolCall, ctx: PathContext): ToolCallOut
     case "Bash": {
       const command = str(input.command) ?? "";
       const c = classifyBash(command);
-      const touched = [...c.writes, ...c.reads].map(rel);
+      const touched = [...new Set([...c.writes, ...c.reads].map(rel))];
       const bodies: AgentEventBody[] = [{ kind: "run_command", argv0: c.argv0, intent: c.intent, touched, ok, ...dur }];
-      for (const w of c.writes) bodies.push({ kind: "write_file", path: rel(w), added: 0, created: false });
+      const heredoc = heredocLines(command);
+      c.writes.forEach((w, i) => bodies.push({ kind: "write_file", path: rel(w), added: i === 0 ? heredoc : 0, created: false }));
       for (const r of c.reads) bodies.push({ kind: "read_file", path: rel(r) });
       if (c.intent === "test") {
         const sum = parseTestSummary(responseText(resp));

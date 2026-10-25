@@ -13,7 +13,8 @@
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json",
     "test": "vitest run",
     "build": "tsup",
-    "demo": "tsx scripts/demo.ts"
+    "demo": "tsx scripts/demo.ts",
+    "world": "tsx scripts/world.ts"
   },
   "devDependencies": {}
 }
