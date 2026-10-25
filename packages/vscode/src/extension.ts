@@ -11,8 +11,10 @@ import { Theatre, hooksStatus, installHooks, listSessions, repoIdFor, scanRepo, 
 let theatre: Theatre | null = null;
 let panel: vscode.WebviewPanel | null = null;
 let status: vscode.StatusBarItem;
+/** What the webview last asked for; lets an integration test prove the bundle booted inside the webview. */
+const probe = { lastWebviewMessage: "", scenesSent: 0, beatsRelayed: 0 };
 
-export async function activate(ctx: vscode.ExtensionContext): Promise<void> {
+export async function activate(ctx: vscode.ExtensionContext): Promise<{ __state: () => Record<string, unknown> }> {
   status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 50);
   status.command = "agentTheatre.open";
   status.text = "$(play) Theatre";
@@ -33,6 +35,7 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<void> {
     }),
   );
   if (vscode.workspace.getConfiguration("agentTheatre").get<boolean>("openOnStartup")) void open(ctx, "live");
+  return { __state: () => ({ ...probe, server: theatre?.url ?? null, panel: !!panel }) };
 }
 
 export async function deactivate(): Promise<void> { await theatre?.close(); theatre = null; }
@@ -74,12 +77,13 @@ async function open(ctx: vscode.ExtensionContext, mode: "live" | { session: stri
     panel.iconPath = vscode.Uri.joinPath(ctx.extensionUri, "media", "icon.png");
     panel.onDidDispose(() => { panel = null; });
     // the page asks to bring Claude Code forward when the agent is waiting on the person
-    const relay = (msg: unknown) => { void panel?.webview.postMessage(msg); };
+    const relay = (msg: unknown) => { probe.beatsRelayed++; void panel?.webview.postMessage(msg); };
     t.listeners.add(relay);
     panel.onDidDispose(() => t.listeners.delete(relay));
     // the webview never talks to the network itself: everything goes through here
     panel.webview.onDidReceiveMessage(async (m: { type?: string; id?: string; text?: string }) => {
-      if (m?.type === "scene") { void panel?.webview.postMessage({ type: "scene", payload: t.scene() }); return; }
+      probe.lastWebviewMessage = m?.type ?? "";
+      if (m?.type === "scene") { probe.scenesSent++; void panel?.webview.postMessage({ type: "scene", payload: t.scene() }); return; }
       if (m?.type === "replay" && m.id) {
         try { const r = await fetch(`${t.url}api/replay/${encodeURIComponent(m.id)}`); void panel?.webview.postMessage({ type: "scene", payload: await r.json() }); }
         catch (e) { void vscode.window.showErrorMessage(`Agent Theatre: could not load the session (${String(e)})`); }

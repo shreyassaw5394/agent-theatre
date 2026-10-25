@@ -7,3 +7,5 @@ vitest.config.ts
 node_modules/**
 **/*.map
 .vscode/**
+tests-electron/**
+.vscode-test/**

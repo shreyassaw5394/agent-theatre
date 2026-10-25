@@ -2,7 +2,7 @@
   "name": "agent-theatre-vscode",
   "displayName": "Agent Theatre",
   "description": "Watch your coding agent work \u2014 as a film, not a log. Turns a Claude Code session into an animated scene inside VS Code.",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "publisher": "agenttheatre",
   "license": "MIT",
   "private": true,
@@ -103,7 +103,8 @@
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
     "build": "pnpm --filter @agent-theatre/web exec vite build --base=./ --outDir dist-vscode && tsup && node scripts/copy-web.mjs",
-    "package": "pnpm build && vsce package --no-dependencies --out agent-theatre.vsix"
+    "package": "pnpm build && vsce package --no-dependencies --out agent-theatre.vsix",
+    "test:vscode": "node tests-electron/run.mjs"
   },
   "dependencies": {
     "@agent-theatre/core": "workspace:*",
@@ -111,6 +112,7 @@
   },
   "devDependencies": {
     "@types/vscode": "^1.90.0",
+    "@vscode/test-electron": "2.4.1",
     "@vscode/vsce": "^3.2.0",
     "tsup": "^8.3.0",
     "typescript": "^5.7.0",

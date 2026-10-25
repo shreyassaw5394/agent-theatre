@@ -7,7 +7,8 @@ import { HostTransport, StaticTransport, WsTransport, replayTransport, type Tran
 import { Panel } from "./ui/panel.js";
 import { previewSet } from "./render/preview.js";
 
-const q = new URLSearchParams(location.search || (globalThis as { __AT_QUERY?: string }).__AT_QUERY || "");
+// a host (the VS Code extension) injects the query; its webview has its own location.search, so the injected one wins
+const q = new URLSearchParams((globalThis as { __AT_QUERY?: string }).__AT_QUERY ?? location.search);
 const BASE = q.get("base") ?? "";
 // acquireVsCodeApi may be called once per page: one handle, shared by the transport and the panel
 const VS = (globalThis as { acquireVsCodeApi?: () => { postMessage: (m: unknown) => void } }).acquireVsCodeApi?.() ?? null;

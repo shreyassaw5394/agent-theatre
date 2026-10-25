@@ -12,3 +12,5 @@ Everything runs on your machine and talks only to `127.0.0.1`. Events carry path
 Site: https://agenttheatre.dev · Source: https://github.com/shreyassaw5394/agent-theatre
 
 Community: https://discord.gg/PPGeQWd7r
+
+Integration test in a real VS Code (opens a window): `pnpm test:vscode` — run with `ELECTRON_RUN_AS_NODE` unset if you are inside an extension host.
