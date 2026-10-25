@@ -45,7 +45,10 @@ Claude Code ──hooks──▶ agent-theatre (local) ──WebSocket──▶ 
 3. **Director.** Events become scene beats — `walk_to`, `build`, `run_tests`, `spawn_gremlin`,
    `chase`, `celebrate`, `unverified_claim` — with a mood: curious, focused, lost, happy.
 4. **Renderer.** PixiJS, isometric, soft lighting, easing everywhere, 60 fps with 60 buildings,
-   `prefers-reduced-motion` respected.
+   `prefers-reduced-motion` respected. Three selectable **sets** — Island, Orbit, Metropolis —
+   same story, different stage.
+5. **Sound.** Every beat has a sound, all synthesized at runtime with the Web Audio API — no
+   audio files, no licences to worry about. The "Pip needs you" chime is the one you'll notice.
 
 ## Privacy
 
@@ -62,6 +65,7 @@ fixture session and asserts none reach the stream).
 | Command text | first word + classified intent + redirect targets | no | never |
 | Test output | summary counts only | pass/fail | never |
 | Telemetry | — | — | none, ever |
+| Audio | — | synthesized, no files | never |
 
 The server binds to `127.0.0.1` only. Hooks exit 0 and never block or slow your agent.
 
@@ -69,6 +73,10 @@ The server binds to `127.0.0.1` only. Hooks exit 0 and never block or slow your 
 
 `packages/core` (schema, adapters, island, director — no DOM, no fs) ·
 `packages/cli` · `packages/web` · `packages/vscode` · `fixtures/` (synthetic sessions).
+
+## Site
+
+The story lives at **[agenttheatre.dev](https://agenttheatre.dev)** (agenttheatre.com redirects there).
 
 ## License
 

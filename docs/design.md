@@ -530,3 +530,32 @@ celebrate `elasticOut`); every state change is a designed transition, none is a 
 never moves without a reason tied to a beat; idle is alive but quiet (breathing, blink, antenna
 drift — ≤2 px); reduced-motion keeps the story and removes the flourish. Quality gate per set: a
 side-by-side with the concept clip and a 10-second "does it feel alive with nothing happening" test.
+
+## Sound (user: "sound effects for everything", 2026-10-24)
+
+**Everything is synthesized with the Web Audio API at runtime; no audio files ship** —
+`packages/web/tests/sfx.test.ts` fails the build if an audio file appears under `src/` or
+`public/`, or if any beat kind is missing from the sound switch (silence must be explicit).
+
+- `audio/engine.ts` — tiny synth: tones with envelopes/slides/lowpass/pan, filtered noise bursts,
+  sustained pads and noise washes; an SFX bus and an ambience bus with automatic ducking.
+- `audio/sfx.ts` — one sound per beat kind. Footsteps and hammer taps are driven by the walk
+  and build rhythms, not the beat start. Pass = major arpeggio; fail = two-note descending
+  "bwomp"; gremlin = squeaky wobble; banish = pop + sparkle; **`blocked_on_you` = the loudest,
+  most distinct two-note chime** (the one sound that must be unmistakable); `your_turn` = a
+  single soft chime; `unverified_claim` = a low tiptoe motif. Set-specific arrival: Island boat
+  horn, Orbit shuttle whoosh, Metropolis taxi beep.
+- `audio/ambience.ts` — one quiet bed per set (waves / station hum / distant traffic) plus a
+  barely-there pad that follows mood (major when happy, sour when lost).
+- Rules: arms only on a user gesture (browser requirement); mute persisted; density drops at
+  2×/4× so fast replay isn't a wall of pings; silent during seeks; ambience ducks under effects.
+
+## Site and domains (2026-10-24)
+
+The open-source repo is the product; **agenttheatre.dev** is the story. The user owns
+`agenttheatre.dev` (primary) and `agenttheatre.com` (301 → .dev). The site ships as `site/` in
+this repo on Vercel, the same way debuganything.dev does: lore (Pip, gremlins, beacons, the
+three sets), how it works, the privacy sheet, the Episode 1 film, install for CLI and VS Code.
+The user supplied a 30 s vertical story reel (`agent-theater-story-music.mp4`, 1080×1920, h264/
+aac, 7 MB) for the site and GitHub — note it carries the US spelling "Agent Theater" burned in;
+re-render from the real renderer with "Theatre" before it becomes the hero asset.
