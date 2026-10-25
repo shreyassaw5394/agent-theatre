@@ -40,18 +40,10 @@ Watch them at [agenttheatre.dev](https://agenttheatre.dev) or locally with `?dem
 
 ## Status
 
-Milestone 5 of 6 — core, world, director, renderer and the CLI (live via hooks, replay of real
-sessions) work end-to-end; the live path is verified with a real Claude Code session. Not on npm
-yet; the VS Code extension is milestone 6. See [docs/design.md](docs/design.md).
-
-To run it today from a checkout:
-
-```sh
-npx pnpm install && npx pnpm build
-node packages/cli/dist/cli.js hooks install     # once
-cd ~/your-repo && node ~/agent-theatre/packages/cli/dist/cli.js          # live
-node ~/agent-theatre/packages/cli/dist/cli.js replay --latest            # replay
-```
+**v1.0.0** — on npm as [`agent-theatre`](https://www.npmjs.com/package/agent-theatre), VS Code extension on every
+[release](https://github.com/shreyassaw5394/agent-theatre/releases), six playable episodes at
+[agenttheatre.dev](https://agenttheatre.dev). Live via hooks and replay of real sessions both verified
+end-to-end on real repos. Design notes in [docs/design.md](docs/design.md).
 
 ## Install
 
