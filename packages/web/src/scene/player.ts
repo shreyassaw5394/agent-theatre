@@ -75,6 +75,7 @@ export class ScenePlayer {
 
   // ---------- control ----------
   load(beats: Beat[]): void { this.beats = beats; this.duration = beats.length ? Math.max(...beats.map((b) => b.atMs + b.durationMs)) : 0; this.seek(0); }
+  get beatCount(): number { return this.beats.length; }
   append(beats: Beat[]): void { this.beats.push(...beats); this.duration = Math.max(this.duration, ...beats.map((b) => b.atMs + b.durationMs)); }
   get playing(): boolean { return this._playing; }
   play(): void { this._playing = true; this.amb.start(this.theme); }
@@ -134,6 +135,7 @@ export class ScenePlayer {
     // place pip
     const spot = this.worldLayer.standingSpot(this.actorAt.get("pip") ?? "forge");
     this.pip.pose.x = spot.x; this.pip.pose.y = spot.y; this.pip.snap();
+    this.camTarget = null;
     this.fitCamera(); this.cameraStep(this.currentBeat(), 0); this.camera.snap();
   }
   private triggerBetween(a: number, b: number): void {
@@ -308,40 +310,55 @@ export class ScenePlayer {
 
   private fitCamera(): void { this.camera.setZoomFactor(this.fitZoom()); this.baseZoom = this.fitZoom(); }
   private baseZoom = 1;
+  /** Where the camera is currently told to look; moves only when the subject leaves the dead zone. */
+  private camTarget: { x: number; y: number } | null = null;
   private cameraStep(cur: Beat | null, dtMs: number): void {
     const view = { w: this.app.renderer.width / this.app.renderer.resolution, h: this.app.renderer.height / this.app.renderer.resolution };
     const narrow = view.w < 640;
     // follow Pip loosely; weight ramps in after the curtain
-    // Frame the action: close on the character for the story; pull back to the whole stage only to open, celebrate and close.
-    const wide = !cur || cur.kind === "curtain_up" || cur.kind === "curtain_down" || cur.kind === "celebrate" || cur.kind === "your_turn";
-    const w = wide ? (narrow ? 0.4 : 0.15) : narrow ? 0.9 : 0.8;
+    // A follow camera, not a centre-lock: the subject may roam a dead zone in the middle of the frame;
+    // when it leaves, the camera glides to bring it back with a little lead room in the walking direction.
+    // Wide shots only at real boundaries (open, celebrate, close); the zoom never pumps per beat.
+    const wide = !cur || cur.kind === "curtain_up" || cur.kind === "curtain_down" || cur.kind === "celebrate";
     const pts = this.world.places.map((p) => iso(p.gx + p.footprint / 2, p.gy + p.footprint / 2));
     const minX = Math.min(...pts.map((p) => p.x)) - 70, maxX = Math.max(...pts.map((p) => p.x)) + 70;
     const minY = Math.min(...pts.map((p) => p.y)) - 110, maxY = Math.max(...pts.map((p) => p.y)) + 50;
     const centre = { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
-    const z = this.fitZoom() * this.zoomFor(cur);
-    const halfW = view.w / z / 2, halfH = view.h / z / 2;
+    const zNow = Math.max(0.05, this.camera.scale);
+    const halfW = view.w / zNow / 2, halfH = view.h / zNow / 2;
     const clampAxis = (v: number, lo: number, hi: number) => (lo + halfW > hi - halfW ? (lo + hi) / 2 : Math.max(lo + halfW, Math.min(hi - halfW, v)));
     const clampY = (v: number, lo: number, hi: number) => (lo + halfH > hi - halfH ? (lo + hi) / 2 : Math.max(lo + halfH, Math.min(hi - halfH, v)));
-    const tx = clampAxis(lerp(centre.x, this.pip.pose.x, w), minX, maxX);
-    const ty = clampY(lerp(centre.y, this.pip.pose.y - 24, w * 0.8), minY, maxY);
+    const subject = this.pip.drawn;
+    const lead = this.pip.pose.moving ? this.pip.pose.face * halfW * 0.18 : 0;
+    const want = { x: subject.x + lead, y: subject.y - 24 };
+    if (wide || narrow) this.camTarget = wide ? { x: centre.x, y: centre.y } : want;
+    else {
+      if (!this.camTarget) this.camTarget = want;
+      const dzX = halfW * 0.28, dzY = halfH * 0.26;
+      const dx = want.x - this.camTarget.x, dy = want.y - this.camTarget.y;
+      if (Math.abs(dx) > dzX) this.camTarget.x += dx - Math.sign(dx) * dzX;
+      if (Math.abs(dy) > dzY) this.camTarget.y += dy - Math.sign(dy) * dzY;
+    }
+    const tx = clampAxis(this.camTarget.x, minX, maxX);
+    const ty = clampY(this.camTarget.y, minY, maxY);
     this.camera.follow(tx, ty, 1);
     this.camera.setDrift(this.mood === "lost");
-    this.camera.setZoomFactor(this.fitZoom() * this.zoomFor(cur));
+    this.camera.setZoomFactor(this.zoomFor(cur, view.h));
     this.camera.update(dtMs, view.w, view.h);
   }
   /** Zoom so the inhabited part of the world (places, not the whole terrain) fills the view. */
   /** Close for the story (a character is about an eighth of the frame); wide for the establishing and closing shots. */
-  private zoomFor(cur: Beat | null): number {
-    if (!cur) return 1;
-    const n = this.world.places.length;
-    const close = n > 40 ? 1.9 : n > 20 ? 1.7 : 1.45;
+  private zoomFor(cur: Beat | null, viewH: number): number {
+    const fit = this.fitZoom();
+    if (!cur) return fit;
+    // story beats use an absolute scale so a character is always about a tenth of the frame tall,
+    // whatever the repo size; the establishing and closing shots fit the whole stage
+    const close = Math.max(fit, Math.min(1.7, Math.max(0.95, viewH / 430)));
     switch (cur.kind) {
-      case "curtain_up": return lerp(1.08, 1, walkEase(seg(this.t, cur.atMs, cur.atMs + cur.durationMs)));
-      case "curtain_down": case "your_turn": return 1.05;
-      case "celebrate": return 1.15;
-      case "spawn_gremlin": case "chase": case "banish": return close * 1.12;
-      default: return close;
+      case "curtain_up": return fit * lerp(1.08, 1, walkEase(seg(this.t, cur.atMs, cur.atMs + cur.durationMs)));
+      case "curtain_down": return fit * 1.05;
+      case "celebrate": return fit * 1.15;
+      default: return close; // every story beat shares one zoom; punches come from camera.pushIn, not zoom changes
     }
   }
   private fitZoom(): number {

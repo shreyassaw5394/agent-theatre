@@ -27,3 +27,13 @@ describe("sound design", () => {
     expect(srcText).not.toMatch(/\.(mp3|wav|ogg)\b/i);
   });
 });
+
+import { SETS } from "../src/sets/index.js";
+import { SOUND } from "../src/sets/sound.js";
+describe("per-scene sound", () => {
+  it("every set has a voice and an ambience recipe with at least one extra", () => {
+    for (const s of SETS) { const r = SOUND[s.id]; expect(r, s.id).toBeTruthy(); expect(r.ambience.extras.length, s.id).toBeGreaterThan(0); expect(r.voice.pitch).toBeGreaterThan(0.5); }
+    const voices = new Set(SETS.map((s) => JSON.stringify(SOUND[s.id].voice)));
+    expect(voices.size, "distinct voices").toBeGreaterThanOrEqual(12);
+  });
+});

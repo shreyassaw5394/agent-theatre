@@ -28,7 +28,7 @@ program
     if (!st.installed) console.log(pc.yellow("Hooks are not installed — the scene will stay empty until you run:"), pc.bold("agent-theatre hooks install"));
     const files = scanRepo(cwd);
     const theatre = new Theatre({ cwd, repoId: repoIdFor(cwd), files, ...(webDir ? { webDir } : {}) });
-    const port = await theatre.listen(Number(o.port) || 0);
+    await theatre.listen(Number(o.port) || 0);
     const url = `${theatre.url}?live=1${o.set ? `&set=${o.set}` : ""}`;
     console.log(`${pc.bold("Agent Theatre")} · ${pc.dim(theatre.name)} · ${files.length} files`);
     console.log(`${pc.green("▶")} ${url}`);

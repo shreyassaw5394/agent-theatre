@@ -62,17 +62,25 @@ Claude Code ──hooks──▶ agent-theatre (local) ──WebSocket──▶ 
 1. **Events.** Hook payloads (live) or transcript rows (replay) are normalised into a small,
    product-agnostic `AgentEvent` schema: `read_file`, `edit_file (+n −m)`, `run_command
    (intent)`, `test_result`, `subagent_start/stop`, `waiting_for_user`, `turn_end`, …
-2. **Island.** The repo's file tree becomes a deterministic layout (same repo → same island),
-   capped to ~60 buildings by relevance; every file the session touches is always placed.
+2. **Stage.** The repo's file tree becomes a deterministic arrangement — one of six layout
+   archetypes (ring, grid, strip, scatter, terrace, spine) chosen from the repo and the stage,
+   so the same project is a ring island in one set and a terraced spine in another, and always
+   the same in the same set. Capped to ~60 buildings by relevance; every file the session
+   touches is always placed.
 3. **Director.** Events become scene beats — `walk_to`, `build`, `run_tests`, `spawn_gremlin`,
    `chase`, `celebrate`, `unverified_claim` — with a mood: curious, focused, lost, happy.
 4. **Renderer.** PixiJS, isometric, soft lighting, easing everywhere — no linear tween exists
    in the codebase, a test makes sure. The camera frames the action; the whole stage appears
-   only to open, celebrate and close, so it never gets cluttered. `prefers-reduced-motion`
-   respected. Twenty stages on shared geometry; a cast of twelve characters from one procedural
-   routine.
+   only to open, celebrate and close, so it never gets cluttered. One key light: long soft
+   cast shadows, gradient faces with ambient occlusion and rim light, aerial haze on far rows,
+   bloom only on lamps and lit windows, cloud shadows drifting over the ground.
+   `prefers-reduced-motion` respected. Twenty stages; a cast of twelve characters from one
+   procedural routine.
 5. **Sound.** Every beat has a sound, all synthesized at runtime with the Web Audio API — no
-   audio files, no licences to worry about. Effects and background ambience toggle separately.
+   audio files, no licences to worry about. Every stage has its own voice (waveform, pitch,
+   decay, the surface underfoot) and its own ambience — washes, pads and occasional details
+   like gulls, bells, bubbles, wind or market murmur on a jittered timer, so nothing loops.
+   Effects and background ambience toggle separately.
    The "needs your permission" chime is the one you'll notice.
 
 ## Privacy

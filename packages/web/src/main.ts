@@ -1,5 +1,5 @@
 import { Application } from "pixi.js";
-import { direct, filesFromEvents, generateWorld, parseTranscript, type Beat } from "@agent-theatre/core";
+import { direct, filesFromEvents, generateWorld, LAYOUTS, parseTranscript, relayoutWorld, type Beat, type World } from "@agent-theatre/core";
 import { AudioEngine } from "./audio/engine.js";
 import { ScenePlayer } from "./scene/player.js";
 import { SETS, setById, suggestSets, type SetTheme } from "./sets/index.js";
@@ -50,15 +50,20 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
   panel.stageEl.prepend(app.canvas);
 
   let payload: Parameters<Parameters<Transport["onReady"]>[0]>[0] | null = null;
+  /** Every set shows the repo in its own arrangement, so twenty stages never read as one island recoloured. */
+  const worldFor = (base: World, set: SetTheme): World => relayoutWorld(base, LAYOUTS[(base.seed + SETS.findIndex((s) => s.id === set.id) * 7) % LAYOUTS.length]!);
   let wasT = 0, wasPlaying = false;
   function rebuild(): void {
     if (!payload) return;
     if (player) { wasT = player.state.t; wasPlaying = player.playing; player.destroy(); }
     app.renderer.background.color = theme.sky[1];
-    player = new ScenePlayer(app, payload.world, theme, audio, reducedMotion, q.get("cast") ?? store.get(`at:cast:${payload.repoId}`));
+    const world = worldFor(payload.world, theme);
+    const beats = world === payload.world ? payload.beats : direct(payload.events, world);
+    player = new ScenePlayer(app, world, theme, audio, reducedMotion, q.get("cast") ?? store.get(`at:cast:${payload.repoId}`));
     (globalThis as any).__agentTheatre = { app, get player() { return player; }, panel };
     panel.leadName = player.leadName;
-    player.load(payload.beats); player.setRate(rate); player.seek(wasT); if (wasPlaying) player.play();
+    player.load(beats); player.setRate(rate); player.seek(wasT); if (wasPlaying) player.play();
+    panel.loadTimeline(beats, payload.events, world);
   }
 
   transport.onReady((p) => {
@@ -73,7 +78,7 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
     rebuild();
     const t = Number(q.get("t")); if (t > 0 && player) player.seek(t * 1000);
     // real previews for the picker, rendered from this repo's world in each set
-    const buildPreviews = (async () => { if (q.has("nopreview")) return; for (const s of SETS) { try { panel.previews.set(s.id, await previewSet(app, p.world, s)); } catch (err) { console.warn("set preview failed", s.id, err); } } if (panel.pickerOpen) panel.showPicker(true, theme.id); wake(); })();
+    const buildPreviews = (async () => { if (q.has("nopreview")) return; for (const s of SETS) { try { panel.previews.set(s.id, await previewSet(app, worldFor(p.world, s), s)); } catch (err) { console.warn("set preview failed", s.id, err); } } if (panel.pickerOpen) panel.showPicker(true, theme.id); wake(); })();
     if (!chosen && !q.has("t")) void buildPreviews.then(() => panel.showPicker(true, theme.id));
     if (q.get("paused") !== "1" && !reducedMotion) { player?.play(); }
     if (reducedMotion && !q.has("t")) player?.seek(Math.min(player.state.duration, 25_400));
@@ -81,8 +86,9 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
   transport.onBeats((beats: Beat[], events) => {
     if (!player || !payload) return;
     payload.beats.push(...beats); payload.events.push(...events);
-    player.append(beats);
-    panel.loadTimeline(payload.beats, payload.events, payload.world);
+    if (player.world === payload.world) player.append(beats);
+    else { const all = direct(payload.events, player.world); player.append(all.slice(player.beatCount)); }
+    panel.loadTimeline(player.world === payload.world ? payload.beats : direct(payload.events, player.world), payload.events, player.world);
     if (!player.playing) player.play();
     wake();
   });

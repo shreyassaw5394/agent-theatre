@@ -38,10 +38,12 @@ export class Pip {
   private snapNext = true;
   /** Call after a seek so the character doesn't glide from the old spot. */
   snap(): void { this.snapNext = true; }
+  /** Where the character is drawn this frame (eased), not where it is headed. */
+  get drawn(): { x: number; y: number } { return { x: this.shown.x, y: this.shown.y }; }
 
   constructor(private theme: SetTheme, private reducedMotion: boolean, public spec: CharacterSpec = CAST[0]!) {
     this.container.addChild(this.shadow, this.body);
-    this.container.scale.set(1.4 * spec.size);
+    this.container.scale.set(1.75 * spec.size);
   }
   setTheme(t: SetTheme): void { this.theme = t; }
 

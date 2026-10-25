@@ -559,3 +559,51 @@ three sets), how it works, the privacy sheet, the Episode 1 film, install for CL
 The user supplied a 30 s vertical story reel (`agent-theater-story-music.mp4`, 1080×1920, h264/
 aac, 7 MB) for the site and GitHub — note it carries the US spelling "Agent Theater" burned in;
 re-render from the real renderer with "Theatre" before it becomes the hero asset.
+
+
+## Layouts, light and sound per stage (2026-10-25)
+
+Three complaints drove this pass: every stage looked like the same island
+recoloured, every stage sounded the same, and the frame was either cluttered
+or empty depending on the camera.
+
+**Arrangement is generated, not shared.** `packages/core/src/world/generate.ts`
+now has six layout archetypes — `ring`, `grid`, `strip`, `scatter`, `terrace`,
+`spine` — each with its own hub position (centre, or one end for strip /
+terrace / spine) and its own street pattern (spokes, L-shaped streets, a
+chain). `relayoutWorld(world, layout)` re-arranges an existing world keeping
+every place id, so beats directed against one arrangement remain valid in
+another. The stage picks a layout from `(repo seed + set index)`, so the same
+repo in twenty sets is twenty arrangements, and the same repo in the same set
+is always the same arrangement. Beacons stand just outside their own folder's
+district on the side away from the hub; the dock is a few cells past the hub;
+test folders with no district of their own stand near the hub. The terrain
+blob is an ellipse over the bounds with a seeded wobble, so a strip layout is
+a long island, not a round one with a strip on it.
+
+**Light.** One key light, upper-left. Every box gets a long soft cast shadow
+(two layers) and a contact shadow; faces are gradients — the lit face brightens
+toward the eave and darkens toward the ground (ambient occlusion), the shaded
+face is cooler; the top brightens toward the light; a rim highlight runs along
+the sunward eave and edge. Far rows haze toward the sky colour. Windows have a
+bright glass sliver. An `AdvancedBloomFilter` with a high threshold sits on the
+objects layer so only lamps, embers and lit windows glow. Three cloud shadows
+drift across the ground. Trees are three foliage lobes with a highlight and a
+shaded underside. Still procedural `Graphics`; nothing is an image.
+
+**Sound per stage.** `packages/web/src/sets/sound.ts` gives every set a
+*voice* (oscillator family, pitch multiplier, decay multiplier, lowpass
+ceiling, surface underfoot) and an *ambience recipe* (filtered-noise washes,
+optional pad chord, a list of synthesized extras and a mean interval). Effects
+are coloured by the voice at play time; footsteps are per surface (grass,
+stone, metal, sand, snow, wood, water, neon); extras — gull, cricket, bell,
+bubble, wind, horn, hum, chime, owl, rumble, drip, market — fire on a jittered
+timer so nothing loops. All synthesized; the no-audio-files test still holds.
+
+**Camera.** A true follow camera: the subject roams a dead zone (28% / 26% of
+the half-view), the camera glides only when it leaves, with lead room in the
+walking direction. Story beats use an absolute scale (a character is about a
+tenth of the frame tall whatever the repo size); only the establishing and
+closing shots fit the whole stage. A seek that produced a negative frame delta
+used to flip the ease factors and send the camera to infinity — the delta is
+now clamped, which is what "the panning isn't right" turned out to be.

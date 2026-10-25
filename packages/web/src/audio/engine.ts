@@ -104,4 +104,36 @@ export class AudioEngine {
     return () => { const tt = c.currentTime; g.gain.setTargetAtTime(0.0001, tt, 0.5); src.stop(tt + 2.5); lfo.stop(tt + 2.5); };
   }
   now(): number { return this.ctx?.currentTime ?? 0; }
+
+  /** Occasional scene details, all synthesized. Quiet by design; they live on the ambience bus. */
+  extra(kind: string, pan = (Math.random() - 0.5) * 1.2): void {
+    if (!this.ready || !this.ctx || !this.ambBus) return;
+    const c = this.ctx, t = c.currentTime;
+    const osc = (type: OscillatorType, f0: number, f1: number, dur: number, gain: number, attack = 0.01) => {
+      const o = c.createOscillator(); o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
+      const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      const p = c.createStereoPanner(); p.pan.value = pan; o.connect(g); g.connect(p); p.connect(this.ambBus!); o.start(t); o.stop(t + dur + 0.05);
+    };
+    const noise = (hz: number, q: number, dur: number, gain: number, sweepTo?: number, type: BiquadFilterType = "bandpass") => {
+      if (!this.noiseBuf) return;
+      const s = c.createBufferSource(); s.buffer = this.noiseBuf; s.loop = true;
+      const f = c.createBiquadFilter(); f.type = type; f.frequency.setValueAtTime(hz, t); if (sweepTo) f.frequency.exponentialRampToValueAtTime(sweepTo, t + dur); f.Q.value = q;
+      const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + 0.05); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      const p = c.createStereoPanner(); p.pan.value = pan; s.connect(f); f.connect(g); g.connect(p); p.connect(this.ambBus!); s.start(t); s.stop(t + dur + 0.05);
+    };
+    switch (kind) {
+      case "gull": osc("sine", 1800, 1100, 0.35, 0.05, 0.03); setTimeout(() => osc("sine", 1700, 1250, 0.3, 0.04, 0.03), 260); return;
+      case "cricket": for (let i = 0; i < 6; i++) setTimeout(() => osc("sine", 4200, 4100, 0.04, 0.02), i * 70); return;
+      case "bell": osc("sine", 880, 870, 2.2, 0.06, 0.005); osc("sine", 1760, 1740, 1.4, 0.03, 0.005); osc("sine", 2640, 2600, 0.8, 0.015, 0.005); return;
+      case "bubble": osc("sine", 300 + Math.random() * 300, 900 + Math.random() * 600, 0.18, 0.04, 0.01); return;
+      case "wind": noise(500 + Math.random() * 400, 0.5, 2.5 + Math.random() * 2, 0.05, 300 + Math.random() * 300); return;
+      case "horn": osc("sawtooth", 180, 176, 0.8, 0.03, 0.08); return;
+      case "hum": osc("sine", 60, 60, 2.5, 0.03, 0.4); return;
+      case "chime": [1046.5, 1318.5, 1568][Math.floor(Math.random() * 3)]!; osc("sine", 1318.5, 1316, 1.2, 0.035, 0.005); return;
+      case "owl": osc("sine", 420, 380, 0.5, 0.04, 0.05); setTimeout(() => osc("sine", 400, 360, 0.6, 0.035, 0.05), 420); return;
+      case "rumble": noise(90, 1.2, 2.5, 0.09, 60, "lowpass"); return;
+      case "drip": osc("sine", 1200, 600, 0.12, 0.04, 0.003); return;
+      case "market": for (let i = 0; i < 4; i++) setTimeout(() => noise(600 + Math.random() * 1200, 2, 0.12, 0.02), i * 120); return;
+    }
+  }
 }

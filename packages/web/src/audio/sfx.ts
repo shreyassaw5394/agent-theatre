@@ -1,6 +1,7 @@
 import type { Beat, Mood } from "@agent-theatre/core";
 import type { SetTheme } from "../sets/types.js";
 import type { AudioEngine } from "./engine.js";
+import { SOUND } from "../sets/sound.js";
 
 /**
  * Every beat kind has a sound. tests/sfx.test.ts fails if one is missing.
@@ -15,15 +16,35 @@ const rnd = (a: number, b: number) => a + Math.random() * (b - a);
 export class Sfx {
   constructor(private readonly a: AudioEngine) {}
 
+  private footstep(surface: string, pan: number): void {
+    const a = this.a;
+    switch (surface) {
+      case "stone": a.noise(0.04, { filter: "bandpass", freq: rnd(1400, 1900), q: 2, gain: 0.05, pan }); a.tone(rnd(160, 200), 0.03, { type: "triangle", gain: 0.03, pan }); return;
+      case "metal": a.tone(rnd(700, 900), 0.05, { type: "square", gain: 0.03, lowpass: 2000, pan }); a.noise(0.03, { filter: "highpass", freq: 3000, gain: 0.03, pan }); return;
+      case "sand": a.noise(0.09, { filter: "lowpass", freq: rnd(700, 1000), q: 0.5, gain: 0.05, pan }); return;
+      case "snow": a.noise(0.08, { filter: "bandpass", freq: rnd(2500, 3500), q: 0.8, gain: 0.04, pan }); return;
+      case "wood": a.tone(rnd(220, 300), 0.05, { type: "triangle", gain: 0.05, slideTo: 120, pan }); return;
+      case "water": a.noise(0.08, { filter: "bandpass", freq: rnd(400, 700), q: 1, gain: 0.05, sweepTo: 1200, pan }); return;
+      case "neon": a.tone(rnd(900, 1200), 0.035, { type: "square", gain: 0.025, lowpass: 3000, pan }); return;
+      default: a.noise(0.05, { filter: "bandpass", freq: rnd(900, 1300), q: 1.2, gain: 0.05, pan }); return; // grass
+    }
+  }
+
   /** Should this sound play at the given playback rate? */
   static plays(name: SfxName, rate: number): boolean { return rate <= 1.01 || KEY_AT_SPEED.has(name as SfxName); }
 
   play(name: SfxName, ctx: { theme: SetTheme; intensity?: number; mood?: Mood; pan?: number; outcome?: "pass" | "fail" | "unknown"; count?: number } ): void {
-    const a = this.a, pan = ctx.pan ?? 0, inten = ctx.intensity ?? 0.5;
+    const raw = this.a, pan = ctx.pan ?? 0, inten = ctx.intensity ?? 0.5;
+    const v = SOUND[ctx.theme.id].voice;
+    // the stage's voice colours every melodic effect: its wave, its pitch, how long the room rings
+    const a = {
+      tone: (f: number, dur: number, o: Parameters<AudioEngine["tone"]>[2] = {}) => raw.tone(f * v.pitch, dur * v.decay, { ...o, type: o.type ?? v.wave, lowpass: Math.min(o.lowpass ?? v.tone, v.tone), ...(o.slideTo ? { slideTo: o.slideTo * v.pitch } : {}) }),
+      noise: raw.noise.bind(raw),
+    };
+    if (name === "footstep") return this.footstep(v.surface, pan);
     switch (name) {
       case "curtain_up": a.tone(392, 1.2, { attack: 0.3, gain: 0.14 }); a.tone(587.3, 1.3, { attack: 0.5, gain: 0.1 }); a.tone(784, 1.4, { attack: 0.7, gain: 0.08 }); return;
       case "curtain_down": a.tone(523.25, 1.6, { attack: 0.2, gain: 0.12 }); a.tone(392, 1.8, { attack: 0.4, gain: 0.1 }); return;
-      case "footstep": a.noise(0.05, { filter: "bandpass", freq: rnd(900, 1300), q: 1.2, gain: 0.05, pan }); return;
       case "walk_to": return; // footsteps are driven by the walk cycle
       case "read": a.noise(0.14, { filter: "highpass", freq: 2500, sweepTo: 6000, gain: 0.07, pan }); a.tone(2200, 0.05, { gain: 0.04, pan }); return;
       case "hammer": a.tone(rnd(180, 240) * (1 + inten * 0.4), 0.06, { type: "triangle", gain: 0.12 + inten * 0.1, slideTo: 90, pan }); a.noise(0.03, { filter: "bandpass", freq: 3000, q: 2, gain: 0.05, pan }); return;

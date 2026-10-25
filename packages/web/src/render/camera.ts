@@ -23,13 +23,15 @@ export class Camera {
   setDrift(on: boolean): void { this.drift = this.reducedMotion ? 0 : on ? 1 : 0; }
   snap(): void { this.cx = this.tx; this.cy = this.ty; this.zoom = this.tz; }
   update(dtMs: number, viewW: number, viewH: number): void {
-    const dt = Math.min(0.05, dtMs / 1000);
+    // a negative or NaN delta (seek, tab resume) would flip the ease factors and send the camera to infinity
+    const dt = Number.isFinite(dtMs) ? Math.max(0, Math.min(0.05, dtMs / 1000)) : 0;
     this.t += dt;
-    const k = 1 - Math.pow(0.001, dt); // exponential ease toward target, frame-rate independent
-    this.cx += (this.tx - this.cx) * k * 0.9;
-    this.cy += (this.ty - this.cy) * k * 0.9;
+    // frame-rate independent exponential eases: pan settles in ~0.7 s, zoom in ~1.4 s
+    const kp = 1 - Math.pow(0.012, dt), kz = 1 - Math.pow(0.05, dt);
+    this.cx += (this.tx - this.cx) * kp;
+    this.cy += (this.ty - this.cy) * kp;
     this.punch = Math.max(0, this.punch - dt * 0.12);
-    this.zoom += (this.tz * (1 + easeOut(this.punch / 0.08) * this.punch) - this.zoom) * k;
+    this.zoom += (this.tz * (1 + easeOut(this.punch / 0.08) * this.punch) - this.zoom) * kz;
     let ox = 0, oy = 0;
     if (this.shakeT > 0) { this.shakeT -= dt; const a = this.shakeT * 18; ox = Math.sin(this.t * 60) * a; oy = Math.cos(this.t * 47) * a; }
     if (this.drift) { ox += Math.sin(this.t * 0.7) * 2.2; oy += Math.cos(this.t * 0.5) * 1.6; }

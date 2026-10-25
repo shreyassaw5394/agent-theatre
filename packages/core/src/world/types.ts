@@ -51,9 +51,13 @@ export interface Place {
 
 export interface Path { from: string; to: string; points: Array<[number, number]> }
 
+/** How districts are arranged. Chosen per set and seed so stages don't all look like one island. */
+export type LayoutStyle = "ring" | "grid" | "strip" | "scatter" | "terrace" | "spine";
+
 export interface World {
   repoId: string;
   seed: number;
+  layout: LayoutStyle;
   /** What the repo looks like it is; the renderer uses it to suggest sets. */
   profile: RepoProfile;
   districts: District[];
@@ -77,4 +81,6 @@ export interface GenerateOptions {
   touchedCap?: number;
   /** Manifest contents (package.json etc.) if the host read them, for better project-kind detection. Never stored. */
   manifests?: Record<string, string>;
+  /** Arrangement; default chosen from the seed. */
+  layout?: LayoutStyle;
 }

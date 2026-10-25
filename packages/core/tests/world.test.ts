@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { generateWorld } from "../src/world/generate.js";
 import { worldToAscii } from "../src/world/ascii.js";
@@ -94,5 +95,26 @@ describe("generateWorld", () => {
     expect(art).toMatch(/L/);
     expect(art).toMatch(/#/);
     expect(art.split("\n")).toHaveLength(w.bounds.h);
+  });
+});
+
+import { LAYOUTS, relayoutWorld } from "../src/world/generate.js";
+describe("layouts", () => {
+  const files = JSON.parse(readFileSync(new URL("../../../fixtures/episode-1.files.json", import.meta.url), "utf8")).files;
+  it("six layouts give six different arrangements that keep every place id", () => {
+    const base = generateWorld({ repoId: "acme", files, touched: [] });
+    const seen = new Set<string>();
+    for (const layout of LAYOUTS) {
+      const w = relayoutWorld(base, layout);
+      expect(w.layout).toBe(layout);
+      expect(new Set(w.places.map((p) => p.id))).toEqual(new Set(base.places.map((p) => p.id)));
+      // no two places overlap and no rim feature sits inside a district
+      const cells = new Set<string>();
+      for (const p of w.places) for (let dx = 0; dx < p.footprint; dx++) for (let dy = 0; dy < p.footprint; dy++) { const k = `${p.gx + dx},${p.gy + dy}`; expect(cells.has(k), `${layout} overlap at ${k}`).toBe(false); cells.add(k); }
+      for (const p of w.places.filter((q) => q.kind === "beacon" || q.kind === "dock")) for (const d of w.districts) expect(p.gx >= d.bounds.x && p.gx < d.bounds.x + d.bounds.w && p.gy >= d.bounds.y && p.gy < d.bounds.y + d.bounds.h, `${layout}: ${p.id} inside ${d.id}`).toBe(false);
+      seen.add(w.places.map((p) => `${p.id}@${p.gx},${p.gy}`).sort().join("|"));
+      expect(relayoutWorld(base, layout)).toEqual(w); // deterministic
+    }
+    expect(seen.size).toBe(LAYOUTS.length);
   });
 });

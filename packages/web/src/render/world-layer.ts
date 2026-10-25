@@ -1,4 +1,5 @@
-import { Container, Graphics, Text, TextStyle } from "pixi.js";
+import { Container, FillGradient, Graphics, Text, TextStyle } from "pixi.js";
+import { AdvancedBloomFilter } from "pixi-filters";
 import type { Place, World } from "@agent-theatre/core";
 import { hashString, mulberry32 } from "@agent-theatre/core";
 import { corners, depthOf, flat, iso, lerpP, up, type Pt } from "./iso.js";
@@ -19,14 +20,19 @@ export class WorldLayer {
   private readonly ripples = new Graphics();
   private readonly paths = new Graphics();
   private readonly labels = new Container();
+  private readonly shadows = new Graphics();
+  private readonly clouds = new Graphics();
   private readonly objects = new Container();
   private readonly drawn = new Map<string, Drawn>();
   private readonly props: Array<{ g: Graphics; gx: number; gy: number; phase: number; canopy?: Graphics }> = [];
   private time = 0;
 
   constructor(public readonly world: World, public theme: SetTheme) {
-    this.container.addChild(this.ripples, this.terrain, this.paths, this.labels, this.objects);
+    this.container.addChild(this.ripples, this.terrain, this.paths, this.labels, this.shadows, this.clouds, this.objects);
     this.objects.sortableChildren = true;
+    // emissive bloom: only the brightest things (lamps, windows, embers) glow; everything else is untouched
+    this.objects.filters = [new AdvancedBloomFilter({ threshold: 0.86, bloomScale: 0.55, brightness: 1, blur: 5, quality: 4 })];
+    this.shadows.alpha = 0.9;
     this.drawTerrain();
     this.drawPaths();
     this.drawLabels();
@@ -79,6 +85,7 @@ export class WorldLayer {
   update(dtMs: number): void {
     this.time += dtMs / 1000;
     this.drawRipples();
+    this.drawCloudShadows();
     for (const pr of this.props) if (pr.canopy) pr.canopy.x = Math.sin(this.time * 1.4 + pr.phase) * 1.2;
     for (const d of this.drawn.values()) {
       if (d.glow > 0 || d.lamp === "scan" || d.lamp === "fail" || d.lamp === "pass" || d.place.kind === "dock" || d.place.kind === "forge") d.dirty = true;
@@ -99,9 +106,10 @@ export class WorldLayer {
     d.dirty = false;
     const h = this.heightPx(d);
     const fp = p.footprint;
-    // soft ground shadow (key light from upper-left → shadow to lower-right)
-    const sh = corners(p.gx + 0.18, p.gy + 0.18, fp);
-    g.poly(flat(sh)).fill({ color: 0x0a2a1a, alpha: 0.18 });
+    // contact shadow under the footprint + a long soft cast shadow from the key light (upper-left)
+    const sh = corners(p.gx + 0.12, p.gy + 0.12, fp);
+    g.poly(flat(sh)).fill({ color: this.shadowInk, alpha: 0.22 });
+    if (p.kind !== "dock") this.castShadow(g, p, h);
     if (p.kind === "dock") return this.drawDock(g, p);
     if (p.kind === "beacon") return this.drawBeacon(d, h);
     const c = this.box(g, p.gx, p.gy, fp, h, p.kind === "forge" ? P.roof : P.top, P.left, P.right);
@@ -161,16 +169,57 @@ export class WorldLayer {
 
   private box(g: Graphics, gx: number, gy: number, fp: number, h: number, top: number, left: number, right: number): [Pt, Pt, Pt, Pt] {
     const [p0, p1, p2, p3] = corners(gx, gy, fp);
-    g.poly(flat([p3, p2, up(p2, h), up(p3, h)])).fill(left);
-    g.poly(flat([p2, p1, up(p1, h), up(p2, h)])).fill(right);
-    g.poly(flat([up(p0, h), up(p1, h), up(p2, h), up(p3, h)])).fill(top);
+    const haze = this.hazeOf(gy + gx);
+    const L = (c: number) => mix(c, this.theme.sky[0], haze);
+    // left face: lit near the eave, ambient occlusion toward the ground
+    g.poly(flat([p3, p2, up(p2, h), up(p3, h)])).fill(vGrad(L(mix(left, 0xffffff, 0.08)), L(mix(left, this.shadowInk, 0.28)), p3.y - h, p3.y));
+    // right face: in the shade, cooler, same AO
+    g.poly(flat([p2, p1, up(p1, h), up(p2, h)])).fill(vGrad(L(mix(right, this.coolInk, 0.06)), L(mix(right, this.shadowInk, 0.38)), p2.y - h, p2.y));
+    // top: brightest toward the light
+    g.poly(flat([up(p0, h), up(p1, h), up(p2, h), up(p3, h)])).fill(hGrad(L(mix(top, 0xffffff, 0.16)), L(top), p3.x, p1.x));
+    // rim light along the lit eave and the sunward vertical edge
+    g.moveTo(p3.x, p3.y - h).lineTo(p0.x, p0.y - h).lineTo(p1.x, p1.y - h).stroke({ width: 1.3, color: 0xffffff, alpha: 0.42, cap: "round" });
+    g.moveTo(p3.x, p3.y - h).lineTo(p3.x, p3.y).stroke({ width: 1.1, color: 0xffffff, alpha: 0.22 });
     return [p0, p1, p2, p3];
   }
+  /** Far rows fade a little toward the sky: cheap aerial perspective. */
+  private hazeOf(depth: number): number {
+    const b = this.world.bounds, far = b.x + b.y, near = b.x + b.w + b.y + b.h;
+    return 0.16 * (1 - Math.max(0, Math.min(1, (depth - far) / Math.max(1, near - far))));
+  }
+  private get shadowInk(): number { return mix(this.theme.vignette, 0x000000, 0.3); }
+  private get coolInk(): number { return mix(this.theme.sky[0], 0x2a3f6a, 0.5); }
+  /** Long soft shadow cast toward the lower-right, two layers so the edge is soft. */
+  private castShadow(g: Graphics, p: Place, h: number): void {
+    const fp = p.footprint, len = h / 36;
+    const c = corners(p.gx, p.gy, fp);
+    const sx = 0.55 * len, sy = 0.95 * len; // light from upper-left in grid space
+    const far = [iso(p.gx + sx, p.gy + sy), iso(p.gx + fp + sx, p.gy + sy), iso(p.gx + fp + sx, p.gy + fp + sy), iso(p.gx + sx, p.gy + fp + sy)];
+    const poly = [c[1], far[1]!, far[2]!, far[3]!, c[3], c[2]];
+    g.poly(flat(poly)).fill({ color: this.shadowInk, alpha: 0.16 });
+    const far2 = [iso(p.gx + sx * 0.6, p.gy + sy * 0.6), iso(p.gx + fp + sx * 0.6, p.gy + sy * 0.6), iso(p.gx + fp + sx * 0.6, p.gy + fp + sy * 0.6)];
+    g.poly(flat([c[1], far2[1]!, far2[2]!, c[3], c[2]])).fill({ color: this.shadowInk, alpha: 0.12 });
+  }
+  /** Slow cloud shadows crossing the ground; the single cheapest thing that makes a stage feel outdoors. */
+  private drawCloudShadows(): void {
+    const g = this.clouds;
+    g.clear();
+    if (this.theme.terrain !== "island" && this.theme.terrain !== "block") return;
+    const b = this.world.bounds, cx = iso(b.x + b.w / 2, b.y + b.h / 2);
+    const span = (b.w + b.h) * 24;
+    for (let i = 0; i < 3; i++) {
+      const u = ((this.time * 0.012 + i * 0.37) % 1);
+      const x = cx.x - span / 2 + u * span * 1.3 - span * 0.15, y = cx.y - 90 + Math.sin(i * 2.1) * 120;
+      g.ellipse(x, y, 150 + i * 30, 56 + i * 8).fill({ color: this.shadowInk, alpha: 0.075 });
+      g.ellipse(x + 90, y + 18, 110, 40).fill({ color: this.shadowInk, alpha: 0.06 });
+    }
+  }
   private pyramid(g: Graphics, tops: [Pt, Pt, Pt, Pt], apex: Pt, light: number, dark: number): void {
-    g.poly(flat([tops[0], tops[1], apex])).fill(dark);
-    g.poly(flat([tops[3], tops[0], apex])).fill(light);
-    g.poly(flat([tops[3], tops[2], apex])).fill(light);
-    g.poly(flat([tops[2], tops[1], apex])).fill(dark);
+    g.poly(flat([tops[0], tops[1], apex])).fill(mix(dark, this.shadowInk, 0.25));
+    g.poly(flat([tops[3], tops[0], apex])).fill(mix(light, 0xffffff, 0.12));
+    g.poly(flat([tops[3], tops[2], apex])).fill(vGrad(mix(light, 0xffffff, 0.06), light, apex.y, tops[2].y));
+    g.poly(flat([tops[2], tops[1], apex])).fill(vGrad(dark, mix(dark, this.shadowInk, 0.3), apex.y, tops[1].y));
+    g.moveTo(tops[3].x, tops[3].y).lineTo(apex.x, apex.y).stroke({ width: 1.2, color: 0xffffff, alpha: 0.35, cap: "round" });
   }
   private windows(g: Graphics, a: Pt, b: Pt, h: number, rows: number, cols: number, col: number, alpha: number): void {
     const dx = ((b.x - a.x) / cols) * 0.3, dy = ((b.y - a.y) / cols) * 0.3;
@@ -178,6 +227,7 @@ export class WorldLayer {
       const base = lerpP(a, b, (k + 0.5) / cols);
       const y = base.y - (h * (r + 0.75)) / (rows + 0.5), x = base.x;
       g.poly([x - dx, y - dy, x + dx, y + dy, x + dx, y + dy - 6, x - dx, y - dy - 6]).fill({ color: col, alpha });
+      g.poly([x - dx, y - dy - 4.5, x + dx, y + dy - 4.5, x + dx, y + dy - 6, x - dx, y - dy - 6]).fill({ color: 0xffffff, alpha: alpha * 0.45 });
     }
   }
   private outline(g: Graphics, c: [Pt, Pt, Pt, Pt], h: number, color: number, alpha: number): void {
@@ -230,12 +280,13 @@ export class WorldLayer {
 
   private blobPath(g: Graphics, k: number, dy: number): Graphics {
     const b = this.world.bounds;
-    const cx = b.x + b.w / 2, cy = b.y + b.h / 2, R = Math.max(b.w, b.h) / 2 + 0.6;
+    const cx = b.x + b.w / 2, cy = b.y + b.h / 2, Rx = b.w / 2 + 1.2, Ry = b.h / 2 + 1.2;
     const pts: number[] = [];
+    const wob = mulberry32(this.world.seed ^ 0x5bd1e995)() * 6.28;
     for (let i = 0; i < 80; i++) {
       const a = (i / 80) * Math.PI * 2;
-      const r = R * (1 + 0.06 * Math.sin(3 * a + 0.6) + 0.035 * Math.sin(5 * a + 2.1));
-      const p = iso(cx + Math.cos(a) * r * k, cy + Math.sin(a) * r * k);
+      const r = 1 + 0.07 * Math.sin(3 * a + wob) + 0.04 * Math.sin(5 * a + 2.1 + wob) + 0.025 * Math.sin(8 * a + 1.3);
+      const p = iso(cx + Math.cos(a) * Rx * r * k, cy + Math.sin(a) * Ry * r * k);
       pts.push(p.x, p.y + dy);
     }
     return g.poly(pts);
@@ -248,6 +299,10 @@ export class WorldLayer {
       this.blobPath(g, 1, 0).fill(T.sand);
       this.blobPath(g, 0.88, -1).fill(T.fill);
       this.blobPath(g, 0.6, -2).fill({ color: T.fillLight, alpha: 0.55 });
+      // a sun pool upper-left and a cool falloff lower-right, so the ground itself is lit
+      const b = this.world.bounds, c = iso(b.x + b.w / 2, b.y + b.h / 2), R = (b.w + b.h) * 14;
+      g.circle(c.x - R * 0.45, c.y - R * 0.35, R * 0.9).fill({ color: 0xffffff, alpha: 0.07 });
+      g.circle(c.x + R * 0.5, c.y + R * 0.4, R * 1.1).fill({ color: this.shadowInk, alpha: 0.08 });
     } else if (this.theme.terrain === "platform") {
       const b = this.world.bounds, c = corners(b.x, b.y, Math.max(b.w, b.h));
       g.poly(flat([c[3], c[2], up(c[2], -14), up(c[3], -14)])).fill(T.edgeDark);
@@ -327,8 +382,11 @@ export class WorldLayer {
         g.ellipse(p.x + 3, p.y + 1, 9 * s, 4 * s).fill({ color: 0x0a2a1a, alpha: 0.18 });
         g.rect(p.x - 1.5, p.y - 10 * s, 3, 10 * s).fill(c3);
         canopy = new Graphics();
+        canopy.ellipse(p.x + 1 * s, p.y - 13 * s, 9.5 * s, 7.5 * s).fill(mix(c1, this.shadowInk, 0.25));
         canopy.ellipse(p.x, p.y - 16 * s, 9 * s, 8.5 * s).fill(c1);
-        canopy.ellipse(p.x - 2.5 * s, p.y - 18.5 * s, 6 * s, 5.5 * s).fill(c2);
+        canopy.ellipse(p.x - 4 * s, p.y - 19 * s, 6.5 * s, 6 * s).fill(c2);
+        canopy.ellipse(p.x + 4.5 * s, p.y - 20 * s, 5.5 * s, 5 * s).fill(c2);
+        canopy.ellipse(p.x - 3.5 * s, p.y - 22 * s, 3.2 * s, 2.4 * s).fill({ color: 0xffffff, alpha: 0.32 });
         node.addChild(canopy);
       } else if (this.theme.prop === "antenna") {
         g.rect(p.x - 1, p.y - 18 * s, 2, 18 * s).fill(c1);
@@ -344,6 +402,14 @@ export class WorldLayer {
       placed++;
     }
   }
+}
+
+/** Vertical two-stop gradient in world px (Pixi 8 FillGradient, global coordinates). */
+function vGrad(top: number, bottom: number, y0: number, y1: number): FillGradient {
+  return new FillGradient({ start: { x: 0, y: y0 }, end: { x: 0, y: y1 }, colorStops: [{ offset: 0, color: top }, { offset: 1, color: bottom }], textureSpace: "global" });
+}
+function hGrad(left: number, right: number, x0: number, x1: number): FillGradient {
+  return new FillGradient({ start: { x: x0, y: 0 }, end: { x: x1, y: 0 }, colorStops: [{ offset: 0, color: left }, { offset: 1, color: right }], textureSpace: "global" });
 }
 
 export function mix(a: number, b: number, u: number): number {
