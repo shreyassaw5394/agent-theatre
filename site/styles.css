@@ -75,7 +75,7 @@ html.js .reveal.in{opacity:1;transform:none}
 /* install */
 .term{max-width:760px;margin:40px auto 0;text-align:left}
 .term pre{margin:0;background:#121214;border:1px solid var(--line);border-radius:20px;padding:26px 28px;font:500 18px/1.8 var(--mono);overflow:auto}
-.term i{color:var(--amber);font-style:normal;margin-right:10px}.term p{color:var(--grey);font-size:16px}
+.term i{color:var(--amber);font-style:normal;margin-right:10px;user-select:none;-webkit-user-select:none}.term p{color:var(--grey);font-size:16px}
 .more{display:grid;grid-template-columns:repeat(3,1fr);gap:28px;max-width:1100px;margin:56px auto 0;text-align:left}
 .more h3{font-size:20px}.more p{color:var(--grey);font-size:15px;margin:0}.more a{color:var(--ink);border-bottom:1px solid var(--dim)}
 @media(max-width:760px){.more{grid-template-columns:1fr}.nav .links{display:none}}

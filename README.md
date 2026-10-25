@@ -53,15 +53,23 @@ cd ~/your-repo && node ~/agent-theatre/packages/cli/dist/cli.js          # live
 node ~/agent-theatre/packages/cli/dist/cli.js replay --latest            # replay
 ```
 
-## Install (soon)
+## Install
+
+**CLI** (Node 22+ — works with the Claude Code CLI, desktop app and IDE extensions, anything that runs hooks):
 
 ```sh
-npx agent-theatre            # in any repo: opens the island, animates the live session
-npx agent-theatre replay     # pick a past session for this repo and watch it
-npx agent-theatre hooks install   # one-time; non-destructive; `uninstall` reverses it
+cd your-repo
+npx agent-theatre hooks install   # once: adds hooks to ~/.claude/settings.json, keeps a backup
+npx agent-theatre                 # opens the stage for this repo; run Claude Code in another terminal
+npx agent-theatre replay          # pick any past Claude Code session of this repo and watch it
+npx agent-theatre hooks uninstall # reverses the install byte-for-byte
 ```
 
-Or install the **Agent Theatre** VS Code extension (same renderer, same privacy).
+Flags: `--port <n>`, `--no-open`, `--set <stage-id>`; `replay --latest` skips the picker. Install globally if you prefer: `npm i -g agent-theatre`.
+
+**VS Code**: download `agent-theatre.vsix` from the [latest release](https://github.com/shreyassaw5394/agent-theatre/releases/latest), then *Extensions → ⋯ → Install from VSIX…* (or `code --install-extension agent-theatre.vsix`). Commands: *Agent Theatre: Open the stage (live)*, *Replay a session…*, *Install hooks*. Marketplace listing is coming.
+
+**Just watch**: [agenttheatre.dev](https://agenttheatre.dev) plays six synthetic episodes in the browser, no install.
 
 ## How it works
 
