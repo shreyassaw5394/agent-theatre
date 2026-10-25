@@ -173,7 +173,9 @@ export class Director {
   }
 
   private emit(e: AgentEvent, actor: ActorId, body: BeatBody, durationMs: number, mood = this.mood.mood): Beat {
-    const b: Beat = { id: `b${this.seq++}`, atMs: this.sceneMs, durationMs, realTs: e.ts, mood, actor, sourceEventIds: [e.id], ...body };
+    durationMs = Math.round(durationMs);
+    if ("intensity" in body) body = { ...body, intensity: Math.round(body.intensity * 1000) / 1000 };
+    const b: Beat = { id: `b${this.seq++}`, atMs: Math.round(this.sceneMs), durationMs, realTs: e.ts, mood, actor, sourceEventIds: [e.id], ...body };
     this.beats.push(b);
     this.sceneMs += durationMs;
     return b;

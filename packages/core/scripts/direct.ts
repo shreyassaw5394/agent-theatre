@@ -11,7 +11,8 @@ const world = generateWorld({ repoId: file, files, touched });
 const beats = direct(events, world);
 const t0 = events[0]?.ts ?? 0;
 for (const b of beats) {
-  const { id: _i, atMs, durationMs, realTs, mood, actor, sourceEventIds: _s, kind, ...rest } = b as any;
+  const { atMs, durationMs, realTs, mood, actor, kind } = b;
+  const rest = Object.fromEntries(Object.entries(b).filter(([k]) => !["id", "atMs", "durationMs", "realTs", "mood", "actor", "sourceEventIds", "kind"].includes(k)));
   const real = ((realTs - t0) / 1000).toFixed(1).padStart(6);
   console.log(`${(atMs / 1000).toFixed(2).padStart(7)}s +${String(durationMs).padStart(4)}  real ${real}s  ${mood.padEnd(8)} ${actor === "pip" ? "" : `[${actor}] `}${kind.padEnd(16)} ${JSON.stringify(rest)}`);
 }
