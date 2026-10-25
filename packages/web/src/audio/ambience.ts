@@ -18,14 +18,26 @@ export class Ambience {
     if (this.current === theme.id) return;
     this.stop();
     this.current = theme.id;
-    const r = SOUND[theme.id].ambience;
+    const r0 = SOUND[theme.id].ambience;
+    // a new take every time the curtain goes up: same stage, never the same evening
+    const semis = Math.floor(Math.random() * 8) - 3, tr = Math.pow(2, semis / 12);
+    const r = {
+      ...r0,
+      washes: r0.washes.map((w) => ({ ...w, hz: w.hz * (0.85 + Math.random() * 0.35), lfoHz: w.lfoHz * (0.7 + Math.random() * 0.6), gain: w.gain * (0.8 + Math.random() * 0.4) })),
+      pad: r0.pad ? { ...r0.pad, chord: r0.pad.chord.map((f, i) => f * tr * (i > 0 && Math.random() < 0.35 ? 2 : 1)) } : undefined,
+      extras: [...r0.extras].sort(() => Math.random() - 0.5).slice(0, Math.max(1, Math.ceil(r0.extras.length * (0.5 + Math.random() * 0.5)))),
+      every: r0.every * (0.7 + Math.random() * 0.6),
+    };
     for (const w of r.washes) this.stops.push(this.a.wash(w.hz, w.q, w.gain, w.lfoHz, w.depth));
     if (r.pad) this.stops.push(this.a.pad(r.pad.chord, r.pad.gain, r.pad.wave));
     // occasional details, Poisson-ish spaced so they never feel looped
     const tick = () => { if (this.current !== theme.id) return; const k = r.extras[Math.floor(Math.random() * r.extras.length)]; if (k) this.a.extra(k); this.extraTimer = setTimeout(tick, r.every * 1000 * (0.5 + Math.random())); };
     this.extraTimer = setTimeout(tick, 2000 + Math.random() * 3000);
     // the stage's jingle: a short phrase on its scale, a random walk with a resting note at the end — never the same twice
-    const tune = SOUND[theme.id].tune;
+    const tune0 = SOUND[theme.id].tune;
+    // the jingle changes key and mode each performance: transposed with the pad, scale rotated to a sibling mode
+    const rot = Math.floor(Math.random() * tune0.scale.length);
+    const tune = { ...tune0, root: tune0.root * tr, scale: tune0.scale.map((_, i) => (tune0.scale[(i + rot) % tune0.scale.length]! - tune0.scale[rot]! + 12) % 12).sort((a, b) => a - b), every: tune0.every * (0.7 + Math.random() * 0.6) };
     const phrase = () => {
       if (this.current !== theme.id) return;
       const n = 4 + Math.floor(Math.random() * 4);

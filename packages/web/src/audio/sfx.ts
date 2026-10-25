@@ -33,12 +33,16 @@ export class Sfx {
   /** Should this sound play at the given playback rate? */
   static plays(name: SfxName, rate: number): boolean { return rate <= 1.01 || KEY_AT_SPEED.has(name as SfxName); }
 
+  /** This performance's take: the stage's voice bent a little, chosen once per Sfx (per stage, per visit). */
+  private readonly take = { pitch: 0.92 + Math.random() * 0.18, decay: 0.85 + Math.random() * 0.4, tone: 0.8 + Math.random() * 0.5, swap: Math.random() < 0.3 };
   play(name: SfxName, ctx: { theme: SetTheme; intensity?: number; mood?: Mood; pan?: number; outcome?: "pass" | "fail" | "unknown"; count?: number } ): void {
     const raw = this.a, pan = ctx.pan ?? 0, inten = ctx.intensity ?? 0.5;
-    const v = SOUND[ctx.theme.id].voice;
-    // the stage's voice colours every melodic effect: its wave, its pitch, how long the room rings
+    const base = SOUND[ctx.theme.id].voice, tk = this.take;
+    const family: Record<OscillatorType, OscillatorType> = { sine: "triangle", triangle: "sine", square: "sawtooth", sawtooth: "square", custom: "sine" };
+    const v = { ...base, pitch: base.pitch * tk.pitch, decay: base.decay * tk.decay, tone: base.tone * tk.tone, wave: tk.swap ? family[base.wave] : base.wave };
+    // the stage's voice colours every melodic effect — and no two hits are identical (±3% pitch, ±15% length)
     const a = {
-      tone: (f: number, dur: number, o: Parameters<AudioEngine["tone"]>[2] = {}) => raw.tone(f * v.pitch, dur * v.decay, { ...o, type: o.type ?? v.wave, lowpass: Math.min(o.lowpass ?? v.tone, v.tone), ...(o.slideTo ? { slideTo: o.slideTo * v.pitch } : {}) }),
+      tone: (f: number, dur: number, o: Parameters<AudioEngine["tone"]>[2] = {}) => { const j = 0.97 + Math.random() * 0.06, dj = 0.85 + Math.random() * 0.3; return raw.tone(f * v.pitch * j, dur * v.decay * dj, { ...o, type: o.type ?? v.wave, lowpass: Math.min(o.lowpass ?? v.tone, v.tone), ...(o.slideTo ? { slideTo: o.slideTo * v.pitch * j } : {}) }); },
       noise: raw.noise.bind(raw),
     };
     if (name === "footstep") return this.footstep(v.surface, pan);
