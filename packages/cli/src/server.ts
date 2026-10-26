@@ -72,11 +72,9 @@ export class Theatre {
       if (events.length) this.ingest(events);
       return c.body(null, 204);
     });
-    // The VS Code webview is another origin, and Chromium treats a loopback target from it as a "private network"
-    // request: it preflights and requires Access-Control-Allow-Private-Network. Loopback only; nothing sensitive.
-    const cors = { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-private-network": "true" };
-    a.use("/api/*", async (c, next) => { await next(); for (const [k, v] of Object.entries(cors)) c.res.headers.set(k, v); });
-    a.options("/api/*", (c) => c.body(null, 204, cors));
+    // No CORS on purpose: the only clients are same-origin pages and the VS Code extension host (Node). A wildcard
+    // plus Access-Control-Allow-Private-Network would let any website the person visits read this repo's file paths
+    // and session titles, or inject fake events. Browsers' private-network rules do the rest.
     a.get("/api/scene", (c) => c.json(this.scene()));
     a.get("/api/sessions", (c) => c.json(listSessions(this.opts.cwd).map((s) => ({ id: s.id, title: s.title, mtime: s.mtime, bytes: s.bytes }))));
     a.get("/api/replay/:id", (c) => {

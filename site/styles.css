@@ -23,10 +23,8 @@ code{font:500 .9em var(--mono)}
 .hero{position:relative;box-sizing:border-box;min-height:100svh;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:calc(84px + env(safe-area-inset-top,0px)) 24px 72px;text-align:center;isolation:isolate}
 .screen{position:absolute;inset:0;z-index:-1;overflow:hidden;background:#000}
 .screen iframe{position:absolute;inset:-2px;width:calc(100% + 4px);height:calc(100% + 4px);border:0;pointer-events:none}
-.veil{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.55) 0%,rgba(0,0,0,.05) 35%,rgba(0,0,0,.35) 70%,#000 100%);opacity:.35}
-.hero .copy{max-width:980px;will-change:transform,opacity;padding:clamp(22px,4vh,40px) clamp(22px,4vw,48px);border-radius:32px;background:linear-gradient(180deg,rgba(14,18,28,.34),rgba(14,18,28,.22));backdrop-filter:blur(20px) saturate(150%);-webkit-backdrop-filter:blur(22px) saturate(150%);border:1px solid rgba(255,255,255,.14);box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(0,0,0,.25),0 30px 80px rgba(0,0,0,.35)}
-.hero .copy::before{content:"";position:absolute;inset:0;border-radius:inherit;background:radial-gradient(120% 80% at 20% 0%,rgba(255,255,255,.14),transparent 55%);pointer-events:none}
-.hero .copy{position:relative}
+.veil{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.5) 0%,rgba(0,0,0,.18) 30%,rgba(0,0,0,.42) 62%,#000 100%);opacity:.35}
+.hero .copy{max-width:980px;will-change:transform,opacity;position:relative;padding:clamp(22px,4vh,40px) clamp(22px,4vw,48px)}
 .hero h1{font-size:clamp(32px,min(7.2vw,8.5vh),96px);line-height:1;margin:0 0 .35em;font-weight:700;text-shadow:0 2px 40px rgba(0,0,0,.6)}
 .hero p{font-size:clamp(16px,min(1.8vw,2.6vh),24px);color:#f2f4f8;max-width:60ch;margin:0 auto;text-shadow:0 1px 20px rgba(0,0,0,.7)}
 .actions{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:min(34px,4vh)}
@@ -117,3 +115,19 @@ footer{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;paddin
 .way{display:flex;flex-direction:column;gap:6px;padding:16px 18px;border-radius:16px;background:#121214;border:1px solid rgba(255,255,255,.06);color:var(--ink);transition:transform .4s var(--ease),border-color .2s}
 .way:hover{transform:translateY(-3px);border-color:rgba(255,255,255,.18);text-decoration:none}.way b{font:600 17px var(--display)}.way code{font:500 12px var(--mono);color:#ffd27e;word-break:break-all}.way span{font:600 13px var(--text);color:var(--grey)}
 @media(max-width:900px){.ways{grid-template-columns:repeat(2,1fr)}}@media(max-width:560px){.ways{grid-template-columns:1fr}}
+
+/* hero motion */
+.hero h1 .w{display:inline-block;opacity:0;transform:translateY(26px) rotate(1.5deg);animation:rise .9s var(--ease) forwards;animation-delay:calc(var(--i) * 70ms)}
+@keyframes rise{to{opacity:1;transform:none}}
+.hero h1 em{background-size:200% 100%;animation:shimmer 6s ease-in-out infinite;display:inline-block}.hero h1 em .w{background:inherit;-webkit-background-clip:text;background-clip:text;color:transparent}
+@keyframes shimmer{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+.hero p,.hero .actions,.hero .parade{opacity:0;animation:rise 1s var(--ease) forwards}.hero p{animation-delay:.6s}.hero .actions{animation-delay:.8s}.hero .parade{animation-delay:1s}
+.screen iframe{animation:drift 40s ease-in-out infinite alternate;transform-origin:50% 60%}
+@keyframes drift{0%{transform:scale(1.04) translate(0,0)}100%{transform:scale(1.08) translate(-1.2%,-0.8%)}}
+.parade a{animation:wave 4.8s ease-in-out infinite;animation-delay:calc(var(--i) * -.2s)}
+@keyframes wave{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px) rotate(-2deg)}}
+.parade a:hover{animation-play-state:paused;transform:translateY(-10px) scale(1.1)}
+.button.primary{position:relative;overflow:hidden}.button.primary::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.55) 50%,transparent 70%);transform:translateX(-120%);animation:sheen 5s ease-in-out infinite 2s}
+@keyframes sheen{0%,70%{transform:translateX(-120%)}85%,100%{transform:translateX(120%)}}
+.down{animation:fadein 1s ease 1.6s both}@keyframes fadein{from{opacity:0}to{opacity:1}}
+@media(prefers-reduced-motion:reduce){.hero h1 .w,.hero p,.hero .actions,.hero .parade{animation:none;opacity:1;transform:none}.screen iframe,.parade a,.hero h1 em,.button.primary::after{animation:none}}
