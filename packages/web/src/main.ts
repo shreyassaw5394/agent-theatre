@@ -3,6 +3,8 @@ import { direct, filesFromEvents, generateWorld, LAYOUTS, parseTranscript, relay
 import { AudioEngine } from "./audio/engine.js";
 import { ScenePlayer } from "./scene/player.js";
 import { SETS, setById, suggestSets, type SetTheme } from "./sets/index.js";
+// VS Code webviews (and any strict CSP) forbid unsafe-eval; this makes Pixi build its shaders without `new Function`.
+import "pixi.js/unsafe-eval";
 import { HostTransport, StaticTransport, WsTransport, replayTransport, type Transport } from "./transport.js";
 import { Panel } from "./ui/panel.js";
 import { previewSet } from "./render/preview.js";
@@ -125,6 +127,7 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
     const beats = world === payload.world ? payload.beats : direct(payload.events, world);
     player = new ScenePlayer(app, world, theme, audio, reducedMotion, q.get("cast") ?? store.get(`at:cast:${payload.repoId}`));
     (globalThis as any).__agentTheatre = { app, get player() { return player; }, panel };
+    VS?.postMessage({ type: "ready", places: world.places.length });
     panel.leadName = player.leadName;
     player.load(beats); player.setRate(rate);
     // a new set is a new performance: start from the top (a same-set rebuild keeps its place)

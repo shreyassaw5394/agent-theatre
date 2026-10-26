@@ -12,7 +12,7 @@ let theatre: Theatre | null = null;
 let panel: vscode.WebviewPanel | null = null;
 let status: vscode.StatusBarItem;
 /** What the webview last asked for; lets an integration test prove the bundle booted inside the webview. */
-const probe = { lastWebviewMessage: "", scenesSent: 0, beatsRelayed: 0 };
+const probe = { lastWebviewMessage: "", scenesSent: 0, beatsRelayed: 0, ready: false };
 
 export async function activate(ctx: vscode.ExtensionContext): Promise<{ __state: () => Record<string, unknown> }> {
   status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 50);
@@ -83,6 +83,7 @@ async function open(ctx: vscode.ExtensionContext, mode: "live" | { session: stri
     // the webview never talks to the network itself: everything goes through here
     panel.webview.onDidReceiveMessage(async (m: { type?: string; id?: string; text?: string }) => {
       probe.lastWebviewMessage = m?.type ?? "";
+      if (m?.type === "ready") { probe.ready = true; return; }
       if (m?.type === "scene") { probe.scenesSent++; void panel?.webview.postMessage({ type: "scene", payload: t.scene() }); return; }
       if (m?.type === "replay" && m.id) {
         try { const r = await fetch(`${t.url}api/replay/${encodeURIComponent(m.id)}`); void panel?.webview.postMessage({ type: "scene", payload: await r.json() }); }
