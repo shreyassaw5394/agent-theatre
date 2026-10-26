@@ -1,0 +1,11 @@
+import { chromium } from "playwright";
+const [url, gpu = "metal"] = process.argv.slice(2);
+const args = gpu === "metal" ? ["--use-angle=metal", "--enable-gpu", "--ignore-gpu-blocklist"] : ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"];
+const b = await chromium.launch({ channel: "chrome", headless: true, args });
+const p = await (await b.newContext({ viewport: { width: 1400, height: 800 }, deviceScaleFactor: 2 })).newPage();
+await p.goto(url, { waitUntil: "load" }); await p.waitForFunction(() => globalThis.__agentTheatre?.player, null, { timeout: 20000 });
+await p.evaluate(() => { const pl = globalThis.__agentTheatre.player; pl.play(); globalThis.__frames = []; let last = performance.now(); const tick = () => { const now = performance.now(); globalThis.__frames.push(now - last); last = now; requestAnimationFrame(tick); }; requestAnimationFrame(tick); });
+await p.waitForTimeout(8000);
+const r = await p.evaluate(() => { const f = globalThis.__frames.slice(10); f.sort((a, b) => a - b); const pct = (q) => f[Math.floor(f.length * q)]; const pl = globalThis.__agentTheatre.player; return { frames: f.length, medianMs: +pct(0.5).toFixed(1), p95Ms: +pct(0.95).toFixed(1), maxMs: +f[f.length - 1].toFixed(1), over33: f.filter((x) => x > 33).length, tickerFPS: +pl.app.ticker.FPS.toFixed(1), places: pl.world.places.length, res: pl.app.renderer.resolution, screen: [pl.app.renderer.screen.width, pl.app.renderer.screen.height] }; });
+console.log(JSON.stringify(r));
+await b.close();

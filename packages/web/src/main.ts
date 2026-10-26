@@ -174,7 +174,8 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
     else { const all = direct(payload.events, player.world); player.append(all.slice(player.beatCount)); }
     // real time: a live stage shows what just happened now, not after replaying the backlog — jump to the newest beat
     const newest = Math.max(...beats.map((b) => b.atMs), 0);
-    if (followLive && player.state.duration - player.state.t > 1200 && newest > player.state.t) player.seek(newest);
+    // let the current walk finish: only jump when well behind; otherwise the loop below catches up gently
+    if (followLive && player.state.duration - player.state.t > 4000 && newest > player.state.t) player.seek(newest);
     panel.loadTimeline(player.world === payload.world ? payload.beats : direct(payload.events, player.world), payload.events, player.world);
     if (!player.playing) player.play();
     wake();
@@ -193,8 +194,9 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
       // live: stay on the live edge. Open late → jump near the end; fall behind → catch up at up to 4x, then settle at 1x.
       if (transport.mode === "live" && player.playing && followLive) {
         const behind = player.state.duration - player.state.t;
-        if (behind > 6000) { if (player.state.rate !== 4) player.setRate(4); }
-        else if (behind < 1500 && player.state.rate !== rate) player.setRate(rate);
+        // catch up at 1.75x while behind, never faster (4x looked like skipping); settle back once within a beat
+        if (behind > 2500) { if (player.state.rate !== 1.75) player.setRate(1.75); }
+        else if (behind < 800 && player.state.rate !== rate) player.setRate(rate);
       }
       if ((cinema || q.has("loop")) && player.state.t >= player.state.duration - 1 && player.state.duration > 0) { if (!loopTimer) loopTimer = setTimeout(() => { loopTimer = null; player?.seek(0); player?.play(); }, 600); }
       player.update(dt);
