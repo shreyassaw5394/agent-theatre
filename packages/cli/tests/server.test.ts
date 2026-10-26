@@ -92,3 +92,18 @@ describe("mcp registry limits", () => {
     expect(srv.description.length).toBeLessThanOrEqual(100);
   });
 });
+
+describe("no cross-origin access", () => {
+  it("the API sends no CORS or private-network headers (any website could otherwise read repo paths)", async () => {
+    const { Theatre } = await import("../src/server.js");
+    const { mkdtempSync } = await import("node:fs"); const { tmpdir } = await import("node:os"); const { join } = await import("node:path");
+    const t = new Theatre({ cwd: "/tmp/repo", repoId: "repo", files: [{ path: "a.ts", loc: 10 }], home: mkdtempSync(join(tmpdir(), "at-cors-")) });
+    await t.listen(0);
+    const r = await fetch(`${t.url}api/scene`, { headers: { origin: "https://evil.example" } });
+    expect(r.headers.get("access-control-allow-origin")).toBeNull();
+    expect(r.headers.get("access-control-allow-private-network")).toBeNull();
+    const pre = await fetch(`${t.url}api/scene`, { method: "OPTIONS", headers: { origin: "https://evil.example", "access-control-request-method": "GET" } });
+    expect(pre.headers.get("access-control-allow-origin")).toBeNull();
+    await t.close();
+  });
+});
