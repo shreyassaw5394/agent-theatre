@@ -62,3 +62,8 @@ describe("classifyBash", () => {
     expect(i("npm test > results.txt")).toBe("test");
   });
 });
+
+import { argv0Of as a0 } from "../src/adapters/bash-intent.js";
+describe("argv0 skips shell tests", () => {
+  it("[ -n \"$x\" ] && cmd → cmd", () => { expect(a0('[ -n "$B" ] && lsof -nP -p 1')).toBe("lsof"); expect(a0("test -f x && git status")).toBe("git"); expect(a0("! grep -q foo bar")).toBe("grep"); });
+});

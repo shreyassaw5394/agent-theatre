@@ -149,7 +149,7 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
     payload = p;
     const saved = store.get(`at:set:${p.repoId}`);
     const chosen = q.get("set") ?? saved;
-    panel.profile = p.world.profile; panel.repoId = p.repoId;
+    panel.profile = p.world.profile; panel.repoId = p.repoId; panel.cwd = p.cwd ?? ""; panel.elsewhere = p.elsewhere ?? "";
     // default: the stage that fits what this repo is, chosen deterministically per repo
     if (chosen) theme = setById(chosen); else theme = suggestSets(p.world.profile, p.world.seed)[0] ?? SETS[0]!;
     panel.setTitle(p.repoId, q.get("episode") ?? undefined);
@@ -180,6 +180,7 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
     wake();
   });
   transport.onSignal?.((s) => player?.setSignal(s));
+  transport.onElsewhere?.((cwd) => { panel.elsewhere = cwd; wake(); });
 
   // Render loop with a scheduler: runs while playing or settling; a paused, settled scene costs nothing.
   // `?step=<ms>` advances the scene by a fixed amount per frame (deterministic capture for clips/GIFs).

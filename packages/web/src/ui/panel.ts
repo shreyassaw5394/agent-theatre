@@ -131,6 +131,8 @@ export class Panel {
   }
   private durationMs = 0;
   repoId = "";
+  /** Live: the folder this stage watches, and (if any) another folder where Claude Code is actually running. */
+  cwd = ""; elsewhere = "";
   /** Set by the host when the local server can resume the session (`claude -p --resume`). */
   promptEnabled = false;
 
@@ -248,7 +250,11 @@ export class Panel {
     // live with nothing to perform yet: say what the stage is waiting for instead of sitting on a title card
     if (this.liveMode && s.duration === 0) {
       const short = (this.repoId || "this folder").split(/[/\\]/).filter(Boolean).pop();
-      this.caption.hidden = false; (this.caption.firstElementChild as HTMLElement).textContent = `Waiting for a Claude Code session in ${short}. Run \`claude\` in that folder and the stage comes alive.`;
+      const other = this.elsewhere && this.elsewhere !== this.cwd ? this.elsewhere.split(/[/\\]/).filter(Boolean).pop() : "";
+      this.caption.hidden = false;
+      (this.caption.firstElementChild as HTMLElement).textContent = other
+        ? `This stage watches ${short}, but Claude Code is working in ${other}. Start a stage there: cd ${this.elsewhere} && npx agent-theatre`
+        : `Waiting for a Claude Code session in ${short}. Run \`claude\` in that folder and the stage comes alive.`;
     }
     this.signal.hidden = s.signal === "ok" || !this.liveMode; this.signal.className = `signal ${s.signal}`; (this.signal.lastElementChild as HTMLElement).textContent = s.signal === "lost" ? "quiet — no events for 90 s" : "live";
     // acts

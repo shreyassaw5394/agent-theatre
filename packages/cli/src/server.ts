@@ -37,6 +37,8 @@ export class Theatre {
   private signal: "ok" | "lost" = "ok";
   /** The most recent Claude Code session that spoke to this stage; what a prompt from the stage resumes. */
   private lastSessionId: string | null = null;
+  /** The most recent cwd of a Claude Code session that is NOT this repo (so an empty stage can point the person there). */
+  private elsewhere: string | null = null;
   private timer: NodeJS.Timeout | null = null;
   port = 0;
 
@@ -53,7 +55,11 @@ export class Theatre {
       try { payload = await c.req.json(); } catch { return c.body(null, 204); }
       // hooks are global to Claude Code: only this repo's sessions belong on this stage
       const cwd = typeof (payload as { cwd?: unknown })?.cwd === "string" ? (payload as { cwd: string }).cwd : "";
-      if (cwd && !isWithin(cwd, this.opts.cwd)) return c.body(null, 204);
+      if (cwd && !isWithin(cwd, this.opts.cwd)) {
+        // not this stage's repo — but tell the stage where the action is, so an empty stage can say so
+        if (this.elsewhere !== cwd) { this.elsewhere = cwd; this.broadcast({ type: "elsewhere", cwd }); }
+        return c.body(null, 204);
+      }
       const sid = (payload as { session_id?: unknown }).session_id; if (typeof sid === "string" && sid) this.lastSessionId = sid;
       const { events } = hookPayloadToEvents(payload, { home: homedir() });
       if (events.length) this.ingest(events);
@@ -64,7 +70,7 @@ export class Theatre {
     const cors = { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-private-network": "true" };
     a.use("/api/*", async (c, next) => { await next(); for (const [k, v] of Object.entries(cors)) c.res.headers.set(k, v); });
     a.options("/api/*", (c) => c.body(null, 204, cors));
-    a.get("/api/scene", (c) => c.json({ mode: "live", repoId: this.opts.repoId, world: this.live.world, events: this.live.events, beats: this.live.beats, signal: this.signal }));
+    a.get("/api/scene", (c) => c.json(this.scene()));
     a.get("/api/sessions", (c) => c.json(listSessions(this.opts.cwd).map((s) => ({ id: s.id, title: s.title, mtime: s.mtime, bytes: s.bytes }))));
     a.get("/api/replay/:id", (c) => {
       const id = c.req.param("id");
@@ -170,7 +176,7 @@ export class Theatre {
   }
 
   /** The live scene as /api/scene returns it. */
-  scene(): unknown { return { mode: "live", repoId: this.opts.repoId, world: this.live.world, events: this.live.events, beats: this.live.beats, signal: this.signal }; }
+  scene(): unknown { return { mode: "live", repoId: this.opts.repoId, cwd: this.opts.cwd, elsewhere: this.elsewhere, world: this.live.world, events: this.live.events, beats: this.live.beats, signal: this.signal }; }
   get url(): string { return `http://127.0.0.1:${this.port}/`; }
   get name(): string { return basename(this.opts.cwd); }
 }

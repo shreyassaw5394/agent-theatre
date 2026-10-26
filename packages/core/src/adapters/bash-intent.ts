@@ -24,7 +24,9 @@ const READ = /^\s*(cat|head|tail|less|more|bat|wc|stat|jq)\b/;
 
 /** First word of the first simple command, after env assignments and cd. */
 export function argv0Of(command: string): string {
-  const first = command.split(/\s*(?:&&|\|\||;|\|)\s*/)[0] ?? "";
+  // a leading shell test (`[ -n "$x" ] && real-command`) or negation is not the command
+  const segments = command.split(/\s*(?:&&|\|\||;|\|)\s*/);
+  const first = (segments.find((s) => !/^\s*(\[|test\b|!)/.test(s)) ?? segments[0] ?? "").replace(/^\s*!\s*/, "");
   const toks = first.trim().split(/\s+/).map((t) => t.replace(/^[({]+/, "")).filter(Boolean);
   let i = 0;
   while (i < toks.length && /^[A-Za-z_][A-Za-z0-9_]*=/.test(toks[i]!)) i++;
