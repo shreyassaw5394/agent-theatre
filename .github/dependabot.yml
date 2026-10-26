@@ -1,9 +1,17 @@
 version: 2
 updates:
+  # npm: minors and patches arrive together weekly; each major arrives alone so it can be judged on its own
   - package-ecosystem: npm
     directory: /
     schedule: { interval: weekly }
-    groups: { all: { patterns: ["*"] } }
+    groups:
+      minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    open-pull-requests-limit: 5
   - package-ecosystem: github-actions
     directory: /
     schedule: { interval: weekly }
+    groups:
+      actions:
+        patterns: ["*"]
