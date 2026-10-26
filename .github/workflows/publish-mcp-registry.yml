@@ -11,7 +11,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Keep server.json in step with the CLI package
         run: |
           PKG=$(node -p "require('./packages/cli/package.json').version")
