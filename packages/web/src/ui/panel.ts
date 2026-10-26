@@ -129,6 +129,8 @@ export class Panel {
   repoId = "";
   /** Live: the folder this stage watches, and (if any) another folder where Claude Code is actually running. */
   cwd = ""; elsewhere = "";
+  /** Live: ms since the last event and whether a session is open; drives the quiet banner. */
+  quietMs = 0; sessionOpen = true; quietAfterMs = 90000;
 
   setTitle(repoId: string, episode?: string): void {
     // "github.com/org/repo" → "repo", "/Users/me/projects/x" → "x"; the full id stays in the tooltip
@@ -245,7 +247,14 @@ export class Panel {
         ? `This stage watches ${short}, but Claude Code is working in ${other}. Start a stage there: cd ${this.elsewhere} && npx agent-theatre`
         : `Waiting for a Claude Code session in ${short}. Run \`claude\` in that folder and the stage comes alive.`;
     }
-    this.signal.hidden = s.signal === "ok" || !this.liveMode; this.signal.className = `signal ${s.signal}`; (this.signal.lastElementChild as HTMLElement).textContent = s.signal === "lost" ? "quiet — no events for 90 s" : "live";
+    // quiet banner: 20 s → thinking, 90 s → quiet with elapsed time, session closed → ended
+    const q = this.liveMode ? this.quietMs : 0;
+    const mins = Math.floor(q / 60000), secs = Math.floor((q % 60000) / 1000);
+    const ago = mins ? `${mins} min ${secs} s` : `${secs} s`;
+    const quietAfter = this.quietAfterMs, thinkAfter = quietAfter * 0.22;
+    this.signal.hidden = !this.liveMode || (q < thinkAfter && this.sessionOpen && s.signal === "ok");
+    this.signal.className = `signal ${!this.sessionOpen ? "ended" : q >= quietAfter ? "lost" : "thinking"}`;
+    (this.signal.lastElementChild as HTMLElement).textContent = !this.sessionOpen ? `session ended · last event ${ago} ago` : q >= quietAfter ? `quiet · nothing from the agent for ${ago}` : `thinking… ${ago}`;
     // acts
     let ai = 0; this.acts.forEach((a, i) => { if (s.t >= a.fromMs) ai = i; });
     if (ai !== this.lastAct) { this.lastAct = ai; this.actBtns.forEach((b, i) => { b.classList.toggle("on", i < ai); b.classList.toggle("now", i === ai); }); this.actLabels.forEach((l, i) => l.classList.toggle("now", i === ai)); }

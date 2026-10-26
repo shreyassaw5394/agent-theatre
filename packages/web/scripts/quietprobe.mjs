@@ -1,0 +1,21 @@
+// Live stage with a server whose quiet threshold is tiny: does it dim, sit the lead down and show the banner — and recover on the next event?
+import { chromium } from "playwright";
+import { spawn } from "node:child_process";
+const port = 4877, cwd = "/Users/shreyassawant/ai-agent-browser";
+const srv = spawn("node", ["/Users/shreyassawant/agent-theatre/packages/cli/dist/cli.js", "--port", String(port), "--no-open"], { cwd, stdio: "ignore", env: { ...process.env, AGENT_THEATRE_HOME: "/tmp/at-quietprobe", AGENT_THEATRE_QUIET_MS: "4000", AGENT_THEATRE_HEARTBEAT_MS: "1000" } });
+await new Promise((r) => setTimeout(r, 2500));
+const post = (p) => fetch(`http://127.0.0.1:${port}/hook`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ session_id: "qp", transcript_path: "/x", cwd, permission_mode: "default", ...p }) });
+const read = () => post({ hook_event_name: "PostToolUse", tool_name: "Read", tool_use_id: "t" + Math.random().toString(36).slice(2, 7), tool_input: { file_path: `${cwd}/README.md` }, tool_response: { type: "text", file: { filePath: `${cwd}/README.md`, content: "x\n", numLines: 1, startLine: 1, totalLines: 1 } } });
+const b = await chromium.launch({ channel: "chrome", headless: true, args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
+const p = await (await b.newContext({ viewport: { width: 1200, height: 700 } })).newPage();
+await p.goto(`http://127.0.0.1:${port}/?live=1&set=island&nopreview=1&quiet=4000`, { waitUntil: "load" }); await p.waitForFunction(() => globalThis.__agentTheatre?.player, null, { timeout: 20000 });
+await post({ hook_event_name: "SessionStart", source: "startup" }); await read(); await p.waitForTimeout(1500);
+const st = () => p.evaluate(() => { const pl = globalThis.__agentTheatre.player; const sig = document.querySelector(".signal"); return { quiet: pl.quietLevel, alpha: +pl.stage.alpha.toFixed(2), sy: +pl.pip.pose.sy.toFixed(2), look: pl.pip.pose.look, cur: pl.state.current?.kind ?? null, rm: pl.reducedMotion, banner: sig.hidden ? null : sig.textContent.trim() }; });
+console.log("active   ", JSON.stringify(await st()));
+await p.waitForTimeout(1500); console.log("thinking ", JSON.stringify(await st()));
+await p.waitForTimeout(5000); console.log("quiet    ", JSON.stringify(await st()));
+await read(); await p.waitForTimeout(2500);
+console.log("recovered", JSON.stringify(await st()));
+await post({ hook_event_name: "SessionEnd", reason: "other" }); await p.waitForTimeout(6000);
+console.log("ended    ", JSON.stringify(await st()));
+await b.close(); srv.kill();

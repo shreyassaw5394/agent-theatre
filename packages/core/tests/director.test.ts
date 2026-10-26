@@ -133,3 +133,21 @@ describe("mood, waiting, helpers, gaps", () => {
     expect(JSON.stringify(streamed)).toBe(JSON.stringify(direct(events, w)));
   });
 });
+
+describe("unknown test outcome", () => {
+  it("a zero exit with no counts is not evidence: a success claim after an edit still gets the gremlin", async () => {
+    const { direct } = await import("../src/director/direct.js");
+    const { generateWorld } = await import("../src/world/generate.js");
+    const world = generateWorld({ repoId: "r", files: [{ path: "src/a.ts", loc: 50 }, { path: "tests/a.test.ts", loc: 20 }], touched: ["src/a.ts"] });
+    const base = { sessionId: "s", source: "hook" as const };
+    const ev = [
+      { ...base, id: "e1", seq: 1, ts: 1000, kind: "edit_file" as const, path: "src/a.ts", added: 3, removed: 1, hunks: 1 },
+      { ...base, id: "e2", seq: 2, ts: 2000, kind: "run_command" as const, argv0: "npx", intent: "test" as const, touched: [], ok: true },
+      { ...base, id: "e3", seq: 3, ts: 2100, kind: "test_result" as const, ok: true, passed: 0, failed: 0, framework: "unknown" },
+      { ...base, id: "e4", seq: 4, ts: 3000, kind: "turn_end" as const, claimedSuccess: true },
+    ];
+    const beats = direct(ev as any, world);
+    expect(beats.some((b) => b.kind === "unverified_claim")).toBe(true);
+    expect(beats.find((b) => b.kind === "test_outcome")).toMatchObject({ outcome: "unknown" });
+  });
+});
