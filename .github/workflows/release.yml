@@ -9,10 +9,10 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
         with: { version: 9.15.4 }
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with: { node-version: 22, cache: pnpm, registry-url: "https://registry.npmjs.org" }
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
@@ -51,7 +51,7 @@ jobs:
           sed -i "s#agent-theatre-[0-9.]*\.tgz#agent-theatre-$v.tgz#; s#sha256 \"[0-9a-f]*\"#sha256 \"$sha\"#" /tmp/tap/Formula/agent-theatre.rb
           cd /tmp/tap && git config user.name release-bot && git config user.email release@agenttheatre.dev && git commit -qam "agent-theatre $v" && git push -q
       - name: GitHub release with the .vsix
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: packages/vscode/agent-theatre.vsix
           generate_release_notes: true
