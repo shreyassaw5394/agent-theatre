@@ -36,14 +36,14 @@
     "dev": "tsx src/cli.ts"
   },
   "dependencies": {
-    "@hono/node-server": "^1.13.0",
+    "@hono/node-server": "^2.1.5",
     "@modelcontextprotocol/sdk": "1.32.2",
-    "commander": "^12.1.0",
+    "commander": "^15.0.0",
     "hono": "^4.6.0",
-    "open": "^10.1.0",
+    "open": "^11.0.4",
     "picocolors": "^1.1.0",
     "ws": "^8.18.0",
-    "zod": "^3.23.8"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@agent-theatre/core": "workspace:*",
