@@ -37,6 +37,14 @@ export class Panel {
   }
   nudgeSeen(): void { this.nudge.hidden = true; try { localStorage.setItem("at:nudged", "1"); } catch { /* fine */ } }
   private readonly overviewBtn: HTMLButtonElement; private overviewOn = false; readonly exportBtn: HTMLButtonElement;
+  private readonly fsBtn: HTMLButtonElement;
+  /** Full screen keeps the stage, the caption and the live controls; the side panels and header go. */
+  toggleFullscreen(): void {
+    const root = this.root;
+    if (document.fullscreenElement) { void document.exitFullscreen(); return; }
+    if (root.requestFullscreen) void root.requestFullscreen({ navigationUI: "hide" }).catch(() => {});
+    else { document.documentElement.classList.toggle("fullscreen"); dispatchEvent(new Event("resize")); } // no API (old Safari): CSS-only full-bleed
+  }
   private readonly liveBtn: HTMLButtonElement;
   private readonly tip: HTMLElement;
   /** Set by the host: screen point → what is there. */
@@ -76,7 +84,11 @@ export class Panel {
     this.ambBtn = el("button", "btn ghost", "Ambience on"); this.ambBtn.type = "button"; this.ambBtn.title = "Background sound"; this.ambBtn.onclick = () => h.onAmbience();
     this.overviewBtn = el("button", "btn ghost", "Whole repo"); this.overviewBtn.type = "button"; this.overviewBtn.title = "Pull back to see every building (follow camera off)"; this.overviewBtn.onclick = () => { this.overviewOn = !this.overviewOn; this.overviewBtn.textContent = this.overviewOn ? "Follow" : "Whole repo"; this.overviewBtn.setAttribute("aria-pressed", String(this.overviewOn)); h.onOverview(this.overviewOn); };
     this.exportBtn = el("button", "btn ghost", "Export clip"); this.exportBtn.type = "button"; this.exportBtn.title = "Record the stage (with sound) to a .webm you can share"; this.exportBtn.onclick = () => h.onExport();
-    tb.append(this.setBtn, this.overviewBtn, this.muteBtn, this.ambBtn, this.exportBtn);
+    this.fsBtn = el("button", "btn ghost", "⤢ Full screen"); this.fsBtn.type = "button"; this.fsBtn.title = "Stage only, full screen (F or Esc to leave)";
+    this.fsBtn.onclick = () => this.toggleFullscreen();
+    tb.append(this.setBtn, this.overviewBtn, this.muteBtn, this.ambBtn, this.exportBtn, this.fsBtn);
+    document.addEventListener("fullscreenchange", () => { const on = !!document.fullscreenElement; document.documentElement.classList.toggle("fullscreen", on); this.fsBtn.textContent = on ? "⤡ Exit full screen" : "⤢ Full screen"; dispatchEvent(new Event("resize")); });
+    addEventListener("keydown", (ev) => { if (ev.key === "f" && !(ev.target instanceof HTMLInputElement) && !ev.metaKey && !ev.ctrlKey) this.toggleFullscreen(); });
     this.nudge = el("div", "nudge", "Sound is off — turn on effects and ambience to hear the stage"); this.nudge.hidden = true; tb.append(this.nudge);
     header.append(brand, tb);
     const grid = el("div", "grid");
