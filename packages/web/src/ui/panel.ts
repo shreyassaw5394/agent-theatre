@@ -142,7 +142,7 @@ export class Panel {
   /** Live: the folder this stage watches, and (if any) another folder where Claude Code is actually running. */
   cwd = ""; elsewhere = "";
   /** Live: ms since the last event and whether a session is open; drives the quiet banner. */
-  quietMs = 0; sessionOpen = true; quietAfterMs = 90000;
+  quietMs = 0; sessionOpen = true; quietAfterMs = 90000; restAfterMs = ENDED_REST_MS;
 
   setTitle(repoId: string, episode?: string): void {
     // "github.com/org/repo" → "repo", "/Users/me/projects/x" → "x"; the full id stays in the tooltip
@@ -261,12 +261,14 @@ export class Panel {
     }
     // quiet banner: 20 s → thinking, 90 s → quiet with elapsed time, session closed → ended
     const q = this.liveMode ? this.quietMs : 0;
-    const mins = Math.floor(q / 60000), secs = Math.floor((q % 60000) / 1000);
-    const ago = mins ? `${mins} min ${secs} s` : `${secs} s`;
+    const ago = elapsed(q);
     const quietAfter = this.quietAfterMs, thinkAfter = quietAfter * 0.22;
     this.signal.hidden = !this.liveMode || (q < thinkAfter && this.sessionOpen && s.signal === "ok");
     this.signal.className = `signal ${!this.sessionOpen ? "ended" : q >= quietAfter ? "lost" : "thinking"}`;
-    (this.signal.lastElementChild as HTMLElement).textContent = !this.sessionOpen ? `session ended · last event ${ago} ago` : q >= quietAfter ? `quiet · nothing from the agent for ${ago}` : `thinking… ${ago}`;
+    const folder = (this.repoId || "this folder").split(/[/\\]/).filter(Boolean).pop();
+    (this.signal.lastElementChild as HTMLElement).textContent = !this.sessionOpen
+      ? (q < this.restAfterMs ? `session ended · last event ${ago} ago` : `session ended ${ago} ago · run claude in ${folder} to start a new one`)
+      : q >= quietAfter ? `quiet · nothing from the agent for ${ago}` : `thinking… ${ago}`;
     // acts
     let ai = 0; this.acts.forEach((a, i) => { if (s.t >= a.fromMs) ai = i; });
     if (ai !== this.lastAct) { this.lastAct = ai; this.actBtns.forEach((b, i) => { b.classList.toggle("on", i < ai); b.classList.toggle("now", i === ai); }); this.actLabels.forEach((l, i) => l.classList.toggle("now", i === ai)); }
@@ -312,6 +314,18 @@ function describe(e: AgentEvent, world: World): [string, string] {
 }
 const hashSeed = (s: string) => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
 /** Scroll the event log's own pane to keep a row visible — never the page (scrollIntoView yanked the stage out of view). */
+/** After an ended session the stage rests: lights up, the banner stops counting seconds (also in main.ts). */
+export const ENDED_REST_MS = 5 * 60_000;
+
+/** "12 s", "3 min 4 s", "2 h 14 min", "3 d 2 h" — the banner never reads "212 min 8 s". */
+export function elapsed(ms: number): string {
+  const s = Math.floor(ms / 1000), m = Math.floor(s / 60), h = Math.floor(m / 60), d = Math.floor(h / 24);
+  if (d) return `${d} d ${h % 24} h`;
+  if (h) return `${h} h ${m % 60} min`;
+  if (m) return `${m} min ${s % 60} s`;
+  return `${s} s`;
+}
+
 function scrollWithin(el: HTMLElement): void {
   let c: HTMLElement | null = el.parentElement;
   while (c && !/(auto|scroll)/.test(getComputedStyle(c).overflowY)) c = c.parentElement;

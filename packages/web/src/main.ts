@@ -6,7 +6,7 @@ import { SETS, setById, suggestSets, type SetTheme } from "./sets/index.js";
 // VS Code webviews (and any strict CSP) forbid unsafe-eval; this makes Pixi build its shaders without `new Function`.
 import "pixi.js/unsafe-eval";
 import { HostTransport, StaticTransport, WsTransport, replayTransport, type Transport } from "./transport.js";
-import { Panel } from "./ui/panel.js";
+import { ENDED_REST_MS, Panel } from "./ui/panel.js";
 import { previewSet } from "./render/preview.js";
 
 // a host (the VS Code extension) injects the query; its webview has its own location.search, so the injected one wins
@@ -175,13 +175,15 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
   // quiet tiers: the server heartbeats every 5 s; between beats the page keeps counting
   let quietBase = 0, quietAt = performance.now();
   panel.quietAfterMs = Number(q.get("quiet")) || 90000;
+  const restAfterMs = Number(q.get("rest")) || ENDED_REST_MS; panel.restAfterMs = restAfterMs;
   transport.onQuiet?.((ms, open) => { quietBase = ms; quietAt = performance.now(); panel.sessionOpen = open; wake(); });
   const quietTick = () => {
     if (!player || transport.mode !== "live") return;
     const ms = quietBase + (performance.now() - quietAt);
     panel.quietMs = ms;
     const quietAfter = Number(q.get("quiet")) || 90000, thinkAfter = quietAfter * 0.22;
-    const level = !panel.sessionOpen || ms >= quietAfter ? 2 : ms >= thinkAfter ? 1 : 0;
+    // ended session: the house lights come down for a while, then the stage rests (lit, idle) instead of looking broken for hours
+    const level = !panel.sessionOpen ? (ms < restAfterMs ? 2 : 1) : ms >= quietAfter ? 2 : ms >= thinkAfter ? 1 : 0;
     if (level !== player.quietLevel) { player.setQuiet(level); audio.setQuietGain(level === 2 ? 0.12 : level === 1 ? 0.35 : 1); wake(); }
   };
 
