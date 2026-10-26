@@ -110,3 +110,10 @@ footer{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;paddin
 @media(max-width:900px){.eps{grid-template-columns:repeat(2,1fr)}}@media(max-width:560px){.eps{grid-template-columns:1fr}}
 
 @media(max-height:700px){.parade{gap:0}.parade a{width:clamp(44px,6.5vh,64px)}.parade img{width:clamp(36px,5.5vh,52px);height:clamp(36px,5.5vh,52px)}.down{display:none}}
+
+/* install channels */
+.ways-h{font-size:20px;margin:48px 0 16px;color:var(--grey);font-weight:600}
+.ways{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:1100px;margin:0 auto;text-align:left}
+.way{display:flex;flex-direction:column;gap:6px;padding:16px 18px;border-radius:16px;background:#121214;border:1px solid rgba(255,255,255,.06);color:var(--ink);transition:transform .4s var(--ease),border-color .2s}
+.way:hover{transform:translateY(-3px);border-color:rgba(255,255,255,.18);text-decoration:none}.way b{font:600 17px var(--display)}.way code{font:500 12px var(--mono);color:#ffd27e;word-break:break-all}.way span{font:600 13px var(--text);color:var(--grey)}
+@media(max-width:900px){.ways{grid-template-columns:repeat(2,1fr)}}@media(max-width:560px){.ways{grid-template-columns:1fr}}

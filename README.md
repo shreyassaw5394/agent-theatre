@@ -47,31 +47,30 @@ end-to-end on real repos. Design notes in [docs/design.md](docs/design.md).
 
 ## Install
 
-**CLI** (Node 22+ — works with the Claude Code CLI, desktop app and IDE extensions, anything that runs hooks):
+Pick whichever fits how you work. All of them run the same local stage; nothing leaves your machine.
+
+| Where | How | Notes |
+|---|---|---|
+| **npm (CLI)** | `npx agent-theatre` | Node 22+. `npx agent-theatre replay` for past sessions |
+| **Claude Code plugin** | `/plugin install agent-theatre --marketplace shreyassaw5394/agent-theatre` | one step on Claude Code 2.1.275+; brings the hooks, a `/theatre` command and a skill |
+| **Homebrew** | `brew install shreyassaw5394/tap/agent-theatre` | tap: [shreyassaw5394/homebrew-tap](https://github.com/shreyassaw5394/homebrew-tap) |
+| **VS Code** | `agent-theatre.vsix` from the [latest release](https://github.com/shreyassaw5394/agent-theatre/releases/latest) → *Extensions → ⋯ → Install from VSIX…* | commands: *Open the stage (live)*, *Replay a session…*, *Switch folder*. Marketplace and Open VSX listings coming |
+| **Cursor / Windsurf / VSCodium** | same `.vsix` | Open VSX listing coming |
+| **Just watch** | [agenttheatre.dev](https://agenttheatre.dev) | six synthetic episodes, no install |
+
+**First run (CLI):**
 
 ```sh
 cd your-repo
-npx agent-theatre hooks install   # once (skip if you installed the Claude Code plugin — it brings the hooks)
+npx agent-theatre hooks install   # once — skip if you installed the Claude Code plugin, it brings the hooks
 npx agent-theatre                 # opens the stage for this repo; run Claude Code in another terminal
 npx agent-theatre replay          # pick any past Claude Code session of this repo and watch it
 npx agent-theatre hooks uninstall # reverses the install byte-for-byte
 ```
 
-Flags: `--port <n>`, `--no-open`, `--set <stage-id>`; `replay --latest` skips the picker.
+Flags: `--port <n>`, `--no-open`, `--set <stage-id>`; `replay --latest` skips the picker. Global install if you prefer: `npm i -g agent-theatre`.
 
-In the stage: hover anything for what it is and what happened to it this session; live stages show **Live** at the edge and a **Go live** button whenever you have scrubbed back; **Whole repo** pulls back to every building (wheel to zoom), **Export clip** records what you see and hear to a `.webm` you can post. When the agent needs you, the stage says so and points you back to Claude Code (in VS Code it focuses the Claude Code input); you answer there, never on the stage. Install globally if you prefer: `npm i -g agent-theatre`.
-
-**Claude Code plugin** (hooks + a `/theatre` command + a skill, one step on Claude Code 2.1.275+):
-
-```
-/plugin install agent-theatre --marketplace shreyassaw5394/agent-theatre
-```
-
-**Homebrew**: `brew install shreyassaw5394/tap/agent-theatre`
-
-**VS Code**: download `agent-theatre.vsix` from the [latest release](https://github.com/shreyassaw5394/agent-theatre/releases/latest), then *Extensions → ⋯ → Install from VSIX…* (or `code --install-extension agent-theatre.vsix`). Commands: *Agent Theatre: Open the stage (live)*, *Replay a session…*, *Install hooks*. Marketplace listing is coming.
-
-**Just watch**: [agenttheatre.dev](https://agenttheatre.dev) plays six synthetic episodes in the browser, no install.
+**In the stage:** hover anything for what it is and what happened to it this session. Live stages show **Live** at the edge and a **Go live** button whenever you have scrubbed back. **Whole repo** pulls back to every building (wheel to zoom). **Export clip** records what you see and hear to mp4/webm with a share sheet (download, system share, X, LinkedIn). When the agent needs you, the stage says so and points you back to Claude Code (in VS Code it focuses the Claude Code input); you answer there, never on the stage. A stage watches the folder it was started in; several stages at once (browser, VS Code, another repo) all receive events.
 
 ## How it works
 
