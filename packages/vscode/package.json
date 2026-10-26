@@ -1,7 +1,7 @@
 {
   "name": "agent-theatre-vscode",
   "displayName": "Agent Theatre",
-  "description": "Watch your coding agent work \u2014 as a film, not a log. Turns a Claude Code session into an animated scene inside VS Code.",
+  "description": "Watch your coding agent work — as a film, not a log. Turns a Claude Code session into an animated scene inside VS Code.",
   "version": "1.5.5",
   "publisher": "agenttheatre",
   "license": "MIT",
@@ -48,7 +48,7 @@
       },
       {
         "command": "agentTheatre.replay",
-        "title": "Replay a session\u2026",
+        "title": "Replay a session…",
         "category": "Agent Theatre",
         "icon": "$(history)"
       },
@@ -113,9 +113,9 @@
   "devDependencies": {
     "@types/vscode": "^1.90.0",
     "@vscode/test-electron": "2.4.1",
-    "@vscode/vsce": "^3.2.0",
+    "@vscode/vsce": "^4.0.0",
     "tsup": "^8.3.0",
     "typescript": "^5.7.0",
-    "vitest": "^3.0.0"
+    "vitest": "^4.1.12"
   }
 }
