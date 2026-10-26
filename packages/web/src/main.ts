@@ -213,6 +213,7 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
   wake = () => { settle = 45; last = performance.now(); schedule(); };
   wake();
   for (const ev of ["pointerdown", "keydown", "resize"]) addEventListener(ev, wake, { passive: true });
+  addEventListener("resize", () => player?.resized(), { passive: true });
   document.addEventListener("visibilitychange", () => { if (!document.hidden) wake(); });
   const origPlay = ScenePlayer.prototype.play; ScenePlayer.prototype.play = function (this: ScenePlayer) { origPlay.call(this); wake(); };
   const origSeek = ScenePlayer.prototype.seek; ScenePlayer.prototype.seek = function (this: ScenePlayer, ms: number) { origSeek.call(this, ms); wake(); };
