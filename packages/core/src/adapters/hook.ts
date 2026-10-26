@@ -98,13 +98,19 @@ export function noteOf(text: string | undefined): { note?: string } {
     .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")   // links
     .replace(/\*+|#+|>+/g, "")                   // emphasis, headings, quotes
     .replace(/(^|\s)_+|_+(?=\s|$)/g, "$1")        // underscore emphasis, not snake_case
-    .replace(/^\s*[-•\d.)]+\s+/gm, "")           // list bullets
+    .replace(/^\s*(?:[-•]|\d+[.)])\s+/gm, "")     // list bullets ("- ", "1. "), not versions like 1.3.4
     .replace(/\s+/g, " ").trim();
   if (!clean) return {};
-  const sentences = clean.match(/[^.!?]+[.!?]+(?=\s|$)|[^.!?]+$/g)?.map((x) => x.trim()).filter(Boolean) ?? [clean];
+  // sentence ends are punctuation followed by a space and a capital/quote/paren — so 1.3.4, .vsix and e.g. stay whole
+  const sentences = clean.split(/(?<=[.!?])\s+(?=["'(A-Z])/).map((x) => x.trim()).filter(Boolean);
+  if (!sentences.length) return {};
   const questions = sentences.filter((x) => x.endsWith("?"));
   let note = questions.length ? questions[questions.length - 1]! : sentences[0]!;
-  if (!questions.length) for (const next of sentences.slice(1)) { if (!/[.!?]$/.test(next) || note.length + next.length + 1 > 160) break; note = `${note} ${next}`; }
+  if (!questions.length) for (const raw of sentences.slice(1)) {
+    const next = /[.!?]$/.test(raw) ? raw : raw.replace(/[^.!?]*$/, "").trim(); // drop a trailing fragment (bullets, half a line)
+    if (!next || note.length + next.length + 1 > 160) break;
+    note = `${note} ${next}`;
+  }
   if (note.length > 200) note = note.slice(0, 197).replace(/\s+\S*$/, "") + "…";
   return { note };
 }

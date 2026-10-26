@@ -67,3 +67,12 @@ import { argv0Of as a0 } from "../src/adapters/bash-intent.js";
 describe("argv0 skips shell tests", () => {
   it("[ -n \"$x\" ] && cmd → cmd", () => { expect(a0('[ -n "$B" ] && lsof -nP -p 1')).toBe("lsof"); expect(a0("test -f x && git status")).toBe("git"); expect(a0("! grep -q foo bar")).toBe("grep"); });
 });
+
+import { extractWrites as xw } from "../src/adapters/bash-intent.js";
+describe("redirects inside heredoc bodies are not writes", () => {
+  it("ignores > inside a heredoc and keeps the real target", () => {
+    const cmd = "cat > scripts/probe.mjs <<'JS'\nif (d > 900) jumps++;\nconst t = (a + b) > 2500;\nJS\nnode scripts/probe.mjs";
+    expect(xw(cmd)).toEqual(["scripts/probe.mjs"]);
+  });
+  it("drops bare numbers and stray parens as targets", () => { expect(xw("x > 900) && y >> 12")).toEqual([]); expect(xw("echo hi > out.txt")).toEqual(["out.txt"]); });
+});

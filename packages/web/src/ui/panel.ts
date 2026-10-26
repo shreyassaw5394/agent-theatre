@@ -161,7 +161,8 @@ export class Panel {
     for (const a of this.acts) {
       const w = ((a.toMs - a.fromMs) / Math.max(1, this.durationMs)) * 100;
       const b = el("button"); b.type = "button"; b.style.flex = `0 0 calc(${w}% - 3px)`; b.setAttribute("aria-label", `Jump to ${a.label}`); b.onclick = (e) => { e.stopPropagation(); this.h.onSeek(a.fromMs + 1); };
-      const s = el("span", "", a.label); s.style.flex = `0 0 calc(${w}% - 3px)`;
+      // a label only where it fits; narrow acts (long live sessions) keep the name as a tooltip instead of piling up
+      const s = el("span", "", w >= 7 ? a.label : ""); s.style.flex = `0 0 calc(${w}% - 3px)`; s.title = a.label;
       this.actsEl.append(b); this.labelsEl.append(s); this.actBtns.push(b); this.actLabels.push(s);
     }
     this.logEl.innerHTML = ""; this.logBtns = [];
@@ -234,7 +235,7 @@ export class Panel {
     const yourTurn = this.liveMode && cur?.kind === "your_turn" && this.promptEnabled;
     this.prompt.hidden = !yourTurn;
     if (yourTurn && cur?.kind === "your_turn") {
-      (this.prompt.querySelector("input") as HTMLInputElement).placeholder = `${this.leadName || "The agent"} is done. What's next?`;
+      (this.prompt.querySelector("input") as HTMLInputElement).placeholder = `${this.leadName || "The agent"} is done. What's next? (continues in the background; the reply plays here, not in your terminal)`;
       const n = this.prompt.querySelector(".note") as HTMLElement; n.hidden = !cur.note; n.textContent = cur.note ? `${this.leadName || "The agent"}: ${cur.note}` : "";
     }
     // waiting banner (live only): permission or question → the person is the next actor

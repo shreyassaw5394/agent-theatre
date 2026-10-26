@@ -46,12 +46,20 @@ function cleanTarget(t: string): string | null {
   return s;
 }
 
-export function extractWrites(command: string): string[] {
+/** The command with heredoc bodies removed: `cat > f <<'EOF' … EOF` keeps `cat > f`, the body's `>` signs are not redirects. */
+export function withoutHeredocBodies(command: string): string {
+  return command.replace(/<<-?\s*(['"]?)([A-Za-z_][A-Za-z0-9_]*)\1[^\n]*\n[\s\S]*?\n\s*\2(?=\s*(?:\n|$))/g, (m) => m.split("\n")[0] ?? "");
+}
+/** A redirect target that could be a file: has a letter, a slash or a dot, and isn't a stray `)` or a bare number. */
+const plausibleFile = (t: string) => /[A-Za-z/.]/.test(t) && !/^\d+$/.test(t) && !/[()]$/.test(t);
+
+export function extractWrites(commandRaw: string): string[] {
+  const command = withoutHeredocBodies(commandRaw);
   const out = new Set<string>();
   // Redirections: > file, >> file, 1> file, 2>file is stderr (still a write target)
   for (const m of command.matchAll(/(?:^|[\s)])\d?>{1,2}\s*([^\s|&;<>]+)/g)) {
     const t = cleanTarget(m[1] ?? "");
-    if (t) out.add(t);
+    if (t && plausibleFile(t)) out.add(t);
   }
   // tee [-a] file...
   for (const m of command.matchAll(/\btee\s+(?:-[a-z]+\s+)*((?:[^\s|&;<>]+\s*)+)/g)) {

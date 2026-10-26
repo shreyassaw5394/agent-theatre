@@ -11,5 +11,8 @@ describe("closing note", () => {
     const n = noteOf("Here is a very long explanation " + "of many things that go on and on ".repeat(20) + "and it ends here.").note!;
     expect(n.length).toBeLessThanOrEqual(200); expect(n.endsWith("…") || /[.!?]$/.test(n)).toBe(true);
   });
+  it("keeps versions and file names whole", () => {
+    expect(noteOf("1.3.4 is fully shipped: commit abc, release succeeded (npm + .vsix), site deployed. Nothing was left half-done.").note).toBe("1.3.4 is fully shipped: commit abc, release succeeded (npm + .vsix), site deployed. Nothing was left half-done.");
+  });
   it("empty in, nothing out", () => { expect(noteOf("")).toEqual({}); expect(noteOf(undefined)).toEqual({}); });
 });

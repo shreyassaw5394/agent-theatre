@@ -39,6 +39,7 @@ export class Theatre {
   private lastSessionId: string | null = null;
   /** The most recent cwd of a Claude Code session that is NOT this repo (so an empty stage can point the person there). */
   private elsewhere: string | null = null;
+  private readonly openSessions = new Set<string>();
   private timer: NodeJS.Timeout | null = null;
   port = 0;
 
@@ -61,7 +62,12 @@ export class Theatre {
         return c.body(null, 204);
       }
       const sid = (payload as { session_id?: unknown }).session_id; if (typeof sid === "string" && sid) this.lastSessionId = sid;
-      const { events } = hookPayloadToEvents(payload, { home: homedir() });
+      const hookName = (payload as { hook_event_name?: unknown }).hook_event_name;
+      // any session that speaks to this stage is open until its SessionEnd (a stage started mid-session never saw the SessionStart)
+      if (typeof sid === "string" && sid) { if (hookName === "SessionEnd") this.openSessions.delete(sid); else this.openSessions.add(sid); }
+      let { events } = hookPayloadToEvents(payload, { home: homedir() });
+      // several Claude Code sessions can share a repo (a terminal, VS Code, a headless resume): the curtain falls only when the last one ends
+      if (this.openSessions.size > 0) events = events.filter((e) => e.kind !== "session_end");
       if (events.length) this.ingest(events);
       return c.body(null, 204);
     });
@@ -93,8 +99,15 @@ export class Theatre {
       if (!text) return c.json({ ok: false, error: "empty prompt" }, 400);
       if (!bin) return c.json({ ok: false, error: "Claude Code 2.x not found on PATH" }, 503);
       if (!this.lastSessionId) return c.json({ ok: false, error: "no session to resume yet" }, 409);
-      const child = spawn(bin, ["-p", "--resume", this.lastSessionId, text], { cwd: this.opts.cwd, stdio: "ignore", detached: true, env: process.env });
+      const logPath = join(this.opts.home ?? join(homedir(), ".agent-theatre"), "prompt.log");
+      const child = spawn(bin, ["-p", "--resume", this.lastSessionId, text], { cwd: this.opts.cwd, stdio: ["ignore", "pipe", "pipe"], detached: true, env: process.env });
+      let err = "";
+      child.stdout?.on("data", (d: Buffer) => { try { writeFileSync(logPath, `[${new Date().toISOString()}] out: ${String(d).slice(0, 2000)}\n`, { flag: "a" }); } catch { /* fine */ } });
+      child.stderr?.on("data", (d: Buffer) => { err += String(d); try { writeFileSync(logPath, `[${new Date().toISOString()}] err: ${String(d).slice(0, 2000)}\n`, { flag: "a" }); } catch { /* fine */ } });
       child.unref();
+      // an early exit means it never started (bad session id, auth, flags): say so instead of pretending
+      const early = await new Promise<number | null>((res) => { const t = setTimeout(() => res(null), 2500); child.once("exit", (code) => { clearTimeout(t); res(code ?? 1); }); });
+      if (early !== null && early !== 0) return c.json({ ok: false, error: `Claude Code exited ${early}: ${err.trim().split("\n").pop() ?? "see ~/.agent-theatre/prompt.log"}` }, 502);
       return c.json({ ok: true, session: this.lastSessionId });
     });
     a.get("/healthz", (c) => c.json({ ok: true, port: this.port, events: this.live.events.length }));

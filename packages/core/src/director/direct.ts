@@ -45,7 +45,7 @@ export class Director {
     this.forge = world.places.find((p) => p.kind === "forge") ?? world.places[0]!;
     this.dock = world.places.find((p) => p.kind === "dock") ?? this.forge;
     this.maxGap = opts.maxGapMs ?? 2500;
-    this.msPerCell = opts.walkMsPerCell ?? 90;
+    this.msPerCell = opts.walkMsPerCell ?? 150; // a stroll, not a glide: ~6-7 cells per second
     this.mood = new MoodTracker(opts.lostWindowMs ?? 90_000);
     this.actorAt.set("pip", this.forge.id);
   }
@@ -186,7 +186,7 @@ export class Director {
     if (fromId === to.id) return;
     const from = this.places.get(fromId) ?? this.forge;
     const cells = Math.hypot(to.gx - from.gx, to.gy - from.gy);
-    this.emit(e, actor, { kind: "walk_to", target: to.id }, clamp(Math.round(cells * this.msPerCell), 300, 2500));
+    this.emit(e, actor, { kind: "walk_to", target: to.id }, clamp(Math.round(cells * this.msPerCell), 700, 3500));
     this.actorAt.set(actor, to.id);
   }
 
