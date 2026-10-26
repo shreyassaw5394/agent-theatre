@@ -38,6 +38,16 @@ jobs:
         working-directory: packages/vscode
         env: { OVSX_PAT: "${{ secrets.OVSX_PAT }}" }
         run: npx ovsx publish agent-theatre.vsix -p "$OVSX_PAT"
+      - name: Bump the Homebrew formula
+        if: env.TAP_TOKEN != ''
+        env: { TAP_TOKEN: "${{ secrets.TAP_TOKEN }}" }
+        run: |
+          v=$(node -p "require('./packages/cli/package.json').version")
+          for i in 1 2 3 4 5 6; do curl -fsSL "https://registry.npmjs.org/agent-theatre/-/agent-theatre-$v.tgz" -o /tmp/at.tgz && break || sleep 20; done
+          sha=$(sha256sum /tmp/at.tgz | cut -d' ' -f1)
+          git clone -q "https://x-access-token:${TAP_TOKEN}@github.com/shreyassaw5394/homebrew-tap.git" /tmp/tap
+          sed -i "s#agent-theatre-[0-9.]*\.tgz#agent-theatre-$v.tgz#; s#sha256 \"[0-9a-f]*\"#sha256 \"$sha\"#" /tmp/tap/Formula/agent-theatre.rb
+          cd /tmp/tap && git config user.name release-bot && git config user.email release@agenttheatre.dev && git commit -qam "agent-theatre $v" && git push -q
       - name: GitHub release with the .vsix
         uses: softprops/action-gh-release@v2
         with:

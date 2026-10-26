@@ -47,3 +47,8 @@ await t.listen(0); // t.url → http://127.0.0.1:<port>/
 MIT · source: https://github.com/shreyassaw5394/agent-theatre
 
 Community: https://discord.gg/PPGeQWd7r
+
+## Other ways in
+
+- **Claude Code plugin:** `/plugin install agent-theatre --marketplace shreyassaw5394/agent-theatre` — hooks, a `/theatre` command and a skill.
+- **Homebrew:** `brew install shreyassaw5394/tap/agent-theatre`

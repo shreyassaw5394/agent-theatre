@@ -61,6 +61,14 @@ Flags: `--port <n>`, `--no-open`, `--set <stage-id>`; `replay --latest` skips th
 
 In the stage: hover anything for what it is and what happened to it this session; live stages show **Live** at the edge and a **Go live** button whenever you have scrubbed back; **Whole repo** pulls back to every building (wheel to zoom), **Export clip** records what you see and hear to a `.webm` you can post. When the agent needs you, the stage says so and points you back to Claude Code (in VS Code it focuses the Claude Code input); you answer there, never on the stage. Install globally if you prefer: `npm i -g agent-theatre`.
 
+**Claude Code plugin** (hooks + a `/theatre` command + a skill, one step on Claude Code 2.1.275+):
+
+```
+/plugin install agent-theatre --marketplace shreyassaw5394/agent-theatre
+```
+
+**Homebrew**: `brew install shreyassaw5394/tap/agent-theatre`
+
 **VS Code**: download `agent-theatre.vsix` from the [latest release](https://github.com/shreyassaw5394/agent-theatre/releases/latest), then *Extensions → ⋯ → Install from VSIX…* (or `code --install-extension agent-theatre.vsix`). Commands: *Agent Theatre: Open the stage (live)*, *Replay a session…*, *Install hooks*. Marketplace listing is coming.
 
 **Just watch**: [agenttheatre.dev](https://agenttheatre.dev) plays six synthetic episodes in the browser, no install.
