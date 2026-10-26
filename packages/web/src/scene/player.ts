@@ -365,6 +365,8 @@ export class ScenePlayer {
   /** Wheel/pinch multiplier on top of the director's zoom. */
   userZoom = 1;
   setOverview(on: boolean): void { this.overview = on; this.userZoom = 1; }
+  /** The viewport changed (full screen, window resize): re-centre on the subject instead of leaving it at an edge. */
+  resized(): void { this.camTarget = null; }
   zoomBy(factor: number): void { this.userZoom = Math.max(0.4, Math.min(3, this.userZoom * factor)); }
   private cameraStep(cur: Beat | null, dtMs: number): void {
     // renderer.screen is the logical (CSS-pixel) view; renderer.width already is too in Pixi 8 — dividing by resolution halved the view on Retina
