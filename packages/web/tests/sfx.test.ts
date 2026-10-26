@@ -38,3 +38,11 @@ describe("per-scene sound", () => {
     expect(voices.size, "distinct voices").toBeGreaterThanOrEqual(12);
   });
 });
+
+describe("sound toggles are independent", () => {
+  it("muting effects never touches the ambience bus or the master", async () => {
+    const src = await import("node:fs").then((fs) => fs.readFileSync(new URL("../src/audio/engine.ts", import.meta.url), "utf8"));
+    const apply = src.slice(src.indexOf("private applyGain"), src.indexOf("}", src.indexOf("private applyGain") + 200));
+    expect(apply).toContain("sfxBus.gain"); expect(apply).not.toMatch(/master\.gain\.setTargetAtTime\(this\._muted/); expect(apply).not.toContain("ambBus");
+  });
+});

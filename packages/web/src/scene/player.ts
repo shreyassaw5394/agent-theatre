@@ -99,6 +99,10 @@ export class ScenePlayer {
   pause(): void { this._playing = false; }
   setRate(r: number): void { this.rate = r; }
   setSignal(s: "ok" | "lost"): void { this.signal = s; }
+  /** 0 = active, 1 = thinking (20 s+), 2 = quiet (90 s+): dims the stage and sits the lead down. Eased, never a cut. */
+  quietLevel = 0;
+  private dim = 0;
+  setQuiet(level: number): void { this.quietLevel = level; }
   seek(ms: number): void {
     this.t = Math.max(0, Math.min(this.duration, ms));
     this.rebuild(this.t);
@@ -115,6 +119,7 @@ export class ScenePlayer {
     if (this.reducedMotion) return;
     const w = this.wall / 1000;
     a.moving = false;
+    if (this.quietLevel >= 2) { a.sy = 0.84 + 0.012 * Math.sin(w * 0.9); a.sx = 1.1; a.look = "down"; a.lean = 0.03 * Math.sin(w * 0.3); return; } // sat down, dozing
     a.sy = 1 + 0.025 * Math.sin(w * 1.1); a.sx = 1 / a.sy;                 // breathing / weight shift
     a.lean = 0.04 * Math.sin(w * 0.37);                                      // slow sway
     const phase = (w % 7.3);                                                 // a glance cycle every ~7 s
@@ -133,6 +138,10 @@ export class ScenePlayer {
   private wall = 0;
   update(dtMs: number): void {
     this.wall += dtMs;
+    // quiet: the house lights come down over ~2 s, and back up the instant something happens
+    const wantDim = this.quietLevel >= 2 ? 0.55 : this.quietLevel === 1 ? 0.18 : 0;
+    this.dim += (wantDim - this.dim) * (1 - Math.pow(wantDim > this.dim ? 0.2 : 0.02, dtMs / 1000));
+    this.stage.alpha = 1 - this.dim;
     if (this._playing) {
       this.t = Math.min(this.duration, this.t + dtMs * this.rate);
       if (this.t >= this.duration && this.duration > 0) this._playing = false;
@@ -325,6 +334,7 @@ export class ScenePlayer {
         case "idle": this.idleBusiness(a); break;
         default: break;
       }
+      if (actor === "pip" && this.quietLevel >= 2 && !a.moving) { const w = this.wall / 1000; a.sy = 0.84 + 0.012 * Math.sin(w * 0.9); a.sx = 1.1; a.look = "down"; a.lift = 0; } // sat down, dozing — whatever the last beat was
       if (this.claimGremlinId && mine.kind !== "unverified_claim") { const g = this.gremlins.get(this.claimGremlinId); if (g) { g.x = a.x - a.face * 14; g.y = a.y - 2; } }
       // depth: feet y → grid depth
       ch.container.zIndex = a.y / (TH / 2) + 0.6;

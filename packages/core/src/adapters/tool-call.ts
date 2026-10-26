@@ -109,6 +109,8 @@ export function toolCallToOutcome(call: ToolCall, ctx: PathContext): ToolCallOut
       if (c.intent === "test") {
         const sum = parseTestSummary(responseText(resp));
         if (sum) bodies.push({ kind: "test_result", ok: sum.failed === 0 && ok, passed: sum.passed, failed: sum.failed, ...(sum.skipped !== undefined ? { skipped: sum.skipped } : {}), framework: sum.framework, ...dur });
+        // nothing recognisable: exit status alone decides — but a pipe (`| grep`, `| head`) reports the LAST command's status,
+        // so a zero exit with no counts is "unknown", never a pass the stage would celebrate
         else bodies.push({ kind: "test_result", ok, passed: 0, failed: 0, framework: "unknown", ...dur });
       }
       return { bodies };

@@ -107,3 +107,18 @@ describe("no cross-origin access", () => {
     await t.close();
   });
 });
+
+describe("quiet heartbeat", () => {
+  it("broadcasts how long since the last event, and 0 right after one", async () => {
+    const { Theatre } = await import("../src/server.js");
+    const { mkdtempSync } = await import("node:fs"); const { tmpdir } = await import("node:os"); const { join } = await import("node:path");
+    const t = new Theatre({ cwd: "/tmp/repo", repoId: "repo", files: [{ path: "a.ts", loc: 10 }], home: mkdtempSync(join(tmpdir(), "at-quiet-")) });
+    await t.listen(0);
+    const got: Array<{ type: string; ms?: number; open?: boolean }> = [];
+    t.listeners.add((m) => got.push(m as { type: string; ms?: number }));
+    await fetch(`${t.url}hook`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ session_id: "q", transcript_path: "/x", cwd: "/tmp/repo", permission_mode: "default", hook_event_name: "PostToolUse", tool_name: "Read", tool_use_id: "toolu_q_1", tool_input: { file_path: "/tmp/repo/a.ts" }, tool_response: { type: "text", file: { filePath: "/tmp/repo/a.ts", content: "x\n", numLines: 1, startLine: 1, totalLines: 1 } } }) });
+    const q = got.find((m) => m.type === "quiet");
+    expect(q).toBeTruthy(); expect(q!.ms).toBe(0); expect(q!.open).toBe(false); // no SessionStart was seen
+    await t.close();
+  });
+});

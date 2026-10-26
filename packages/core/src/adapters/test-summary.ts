@@ -55,5 +55,12 @@ export function parseTestSummary(output: string): TestSummary | null {
   const pf = tail.match(/^\s*(\d+)\s+failed\b/m);
   if (pp || pf) return { passed: num(pp?.[1]), failed: num(pf?.[1]), framework: "playwright" };
 
+  // No summary line (output was cut by `head`, `grep`, a crash…): failure markers still count.
+  // "Failed Tests 3", per-test "×" / "✗" / "FAIL " lines, assertion errors. A pass is never inferred this way.
+  const ft = tail.match(/Failed Tests\s+(\d+)/);
+  const marks = (tail.match(/^\s*[×✗✖]\s+\S/gm) ?? []).length + (tail.match(/^\s*FAIL\s+\S+\.(?:test|spec)\.[jt]sx?/gm) ?? []).length;
+  const assertion = /\b(?:AssertionError|AssertionFailed|assert(?:ion)? failed)\b/.test(tail);
+  if (ft || marks || assertion) return { passed: 0, failed: Math.max(num(ft?.[1]), marks, 1), framework: "markers" };
+
   return null;
 }
