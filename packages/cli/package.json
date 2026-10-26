@@ -43,7 +43,7 @@
     "open": "^10.1.0",
     "picocolors": "^1.1.0",
     "ws": "^8.18.0",
-    "zod": "^3.23.8"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@agent-theatre/core": "workspace:*",
