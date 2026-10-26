@@ -56,6 +56,7 @@ Pick whichever fits how you work. All of them run the same local stage; nothing 
 | **Homebrew** | `brew install shreyassaw5394/tap/agent-theatre` | tap: [shreyassaw5394/homebrew-tap](https://github.com/shreyassaw5394/homebrew-tap) |
 | **VS Code** | `agent-theatre.vsix` from the [latest release](https://github.com/shreyassaw5394/agent-theatre/releases/latest) → *Extensions → ⋯ → Install from VSIX…* | commands: *Open the stage (live)*, *Replay a session…*, *Switch folder*. Marketplace and Open VSX listings coming |
 | **Cursor / Windsurf / VSCodium** | same `.vsix` | Open VSX listing coming |
+| **MCP server** (Cursor, Windsurf, Claude Desktop, Codex, Gemini CLI, VS Code Copilot) | `npx agent-theatre init` | registers `agent-theatre serve` with every agent on your machine; `--repo` writes `.mcp.json` / `.cursor/mcp.json` / `.vscode/mcp.json` for the team. One-click: [![Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=agent-theatre&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsImFnZW50LXRoZWF0cmVAbGF0ZXN0Iiwic2VydmUiXX0=) [![VS Code](https://img.shields.io/badge/VS_Code-Install-0098FF?style=flat-square&logo=visualstudiocode&logoColor=white)](https://vscode.dev/redirect/mcp/install?name=agent-theatre&config=%7B%22name%22%3A%22agent-theatre%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22agent-theatre%40latest%22%2C%22serve%22%5D%7D) |
 | **Just watch** | [agenttheatre.dev](https://agenttheatre.dev) | six synthetic episodes, no install |
 
 **First run (CLI):**
@@ -71,6 +72,20 @@ npx agent-theatre hooks uninstall # reverses the install byte-for-byte
 Flags: `--port <n>`, `--no-open`, `--set <stage-id>`; `replay --latest` skips the picker. Global install if you prefer: `npm i -g agent-theatre`.
 
 **In the stage:** hover anything for what it is and what happened to it this session. Live stages show **Live** at the edge and a **Go live** button whenever you have scrubbed back. **Whole repo** pulls back to every building (wheel to zoom). **Export clip** records what you see and hear to mp4/webm with a share sheet (download, system share, X, LinkedIn). When the agent needs you, the stage says so and points you back to Claude Code (in VS Code it focuses the Claude Code input); you answer there, never on the stage. A stage watches the folder it was started in; several stages at once (browser, VS Code, another repo) all receive events.
+
+## MCP tools
+
+`agent-theatre serve` is an MCP server (stdio). Any MCP client can:
+
+| Tool | Does |
+|---|---|
+| `open_stage` | start (or reuse) the live stage for a folder → URL |
+| `list_sessions` | past Claude Code sessions of a folder: ids, titles, times |
+| `replay_session` | open a replay of one session (newest by default) → URL |
+| `stage_status` | event/beat counts and the last few event kinds; never contents |
+| `install_hooks` | install the Claude Code hooks (not needed with the plugin) |
+
+Listed on the [MCP Registry](https://registry.modelcontextprotocol.io) as `io.github.shreyassaw5394/agent-theatre`.
 
 ## How it works
 

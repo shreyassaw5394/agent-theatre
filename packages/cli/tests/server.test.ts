@@ -74,3 +74,13 @@ describe("duplicate delivery", () => {
     await t.close();
   });
 });
+
+describe("mcp", () => {
+  it("server.json names the npm package and the serve argument, version in step with the package", async () => {
+    const { readFileSync } = await import("node:fs"); const { fileURLToPath } = await import("node:url");
+    const root = (p: string) => fileURLToPath(new URL(`../../../${p}`, import.meta.url));
+    const srv = JSON.parse(readFileSync(root("server.json"), "utf8")) as { version: string; packages: Array<{ identifier: string; packageArguments: Array<{ value: string }> }> };
+    const pkg = JSON.parse(readFileSync(root("packages/cli/package.json"), "utf8")) as { version: string };
+    expect(srv.packages[0]!.identifier).toBe("agent-theatre"); expect(srv.packages[0]!.packageArguments[0]!.value).toBe("serve"); expect(srv.version).toBe(pkg.version);
+  });
+});

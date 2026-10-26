@@ -74,6 +74,26 @@ program
     process.on("SIGINT", bye); process.on("SIGTERM", bye);
   });
 
+program
+  .command("serve")
+  .alias("mcp")
+  .description("run the MCP server over stdio (tools: open_stage, list_sessions, replay_session, stage_status, install_hooks)")
+  .action(async () => { const { serveMcp } = await import("./mcp.js"); await serveMcp(); });
+
+program
+  .command("init")
+  .description("register the MCP server with your agents: Claude Code, Claude Desktop, Cursor, Windsurf, Codex, Gemini CLI (user scope) or this repo's .mcp.json / .cursor / .vscode (--repo)")
+  .option("--repo", "write repo-level config files in the current folder instead of user-level ones")
+  .option("--only <agents>", "comma-separated subset, e.g. cursor,windsurf")
+  .option("--all", "user scope: also write configs for agents that are not installed yet")
+  .option("--dry-run", "show what would change")
+  .action(async (o: { repo?: boolean; only?: string; all?: boolean; dryRun?: boolean }) => {
+    const { init } = await import("./setup.js");
+    const rows = init({ scope: o.repo ? "repo" : "user", dir: process.cwd(), ...(o.only ? { only: o.only.split(",") } : {}), ...(o.all ? { all: true } : {}), ...(o.dryRun ? { dryRun: true } : {}) });
+    for (const r of rows) console.log(`${(r.result.startsWith("written") || r.result === "would write" ? pc.green("✓") : r.result === "unchanged" ? pc.dim("=") : pc.dim("·"))} ${r.agent.padEnd(20)} ${pc.dim(r.file)}  ${r.result}`);
+    console.log(pc.dim("Restart the agent to pick up the new MCP server. Tools: open_stage, list_sessions, replay_session, stage_status, install_hooks."));
+  });
+
 const hooks = program.command("hooks").description("install, remove or inspect the Claude Code hooks");
 hooks.command("install").description("merge our hooks into ~/.claude/settings.json (backup kept, nothing else touched)").action(() => {
   const r = installHooks();

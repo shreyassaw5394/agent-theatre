@@ -28,6 +28,10 @@ Node 22+. Works with the Claude Code CLI, desktop app and IDE extensions — any
 
 Stage ids: `island orbit metropolis harbour observatory greenhouse workshop arcade kingdom outpost snowfield canopy lagoon volcano cloudtop reef bazaar monastery moonbase lanterns`. The picker suggests the ones that fit your repo.
 
+## MCP
+
+`agent-theatre serve` runs an MCP server over stdio (tools: `open_stage`, `list_sessions`, `replay_session`, `stage_status`, `install_hooks`). `agent-theatre init` registers it with Claude Code, Claude Desktop, Cursor, Windsurf, Codex and Gemini CLI; `init --repo` writes the repo-level files instead.
+
 ## Privacy
 
 Runs entirely on your machine and listens only on `127.0.0.1`. Events carry repo-relative paths, line counts, a command's first word and a classified intent — never file contents, prompts, command bodies or search queries. A test in the repo plants marker strings in all of those and asserts zero leaks. Paths outside the repo appear as `//ext/<name>`; your home directory as `~/`. The hook always exits 0 and never blocks a tool call.
