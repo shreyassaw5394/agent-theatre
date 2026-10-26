@@ -51,7 +51,7 @@ jobs:
           sed -i "s#agent-theatre-[0-9.]*\.tgz#agent-theatre-$v.tgz#; s#sha256 \"[0-9a-f]*\"#sha256 \"$sha\"#" /tmp/tap/Formula/agent-theatre.rb
           cd /tmp/tap && git config user.name release-bot && git config user.email release@agenttheatre.dev && git commit -qam "agent-theatre $v" && git push -q
       - name: GitHub release with the .vsix
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: packages/vscode/agent-theatre.vsix
           generate_release_notes: true
