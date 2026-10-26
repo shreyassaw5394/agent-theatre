@@ -16,6 +16,8 @@ export interface Transport {
   onSignal?(cb: (state: "ok" | "lost") => void): void;
   /** Live only: a Claude Code session is running in another folder. */
   onElsewhere?(cb: (cwd: string) => void): void;
+  /** Live only: milliseconds since the agent's last event, and whether a session is still open. */
+  onQuiet?(cb: (ms: number, open: boolean) => void): void;
 }
 
 export class StaticTransport implements Transport {
@@ -43,10 +45,11 @@ export class WsTransport implements Transport {
       const origin = /^https?:/.test(this.base) ? this.base : location.origin + this.base;
       const ws = new WebSocket(`${origin.replace(/^http/, "ws")}/live`);
       ws.onmessage = (m) => {
-        const msg = JSON.parse(String(m.data)) as { type: string; beats?: Beat[]; events?: AgentEvent[]; state?: "ok" | "lost"; cwd?: string };
+        const msg = JSON.parse(String(m.data)) as { type: string; beats?: Beat[]; events?: AgentEvent[]; state?: "ok" | "lost"; cwd?: string; ms?: number; open?: boolean };
         if (msg.type === "beats" && msg.beats) this.beatsCb?.(msg.beats, msg.events ?? []);
         if (msg.type === "signal" && msg.state) this.signalCb?.(msg.state);
         if (msg.type === "elsewhere" && msg.cwd) this.elsewhereCb?.(msg.cwd);
+        if (msg.type === "quiet" && typeof msg.ms === "number") this.quietCb?.(msg.ms, !!msg.open);
       };
       ws.onclose = () => { this.signalCb?.("lost"); setTimeout(open, 2000); };
     };
@@ -57,6 +60,8 @@ export class WsTransport implements Transport {
   onSignal(cb: (s: "ok" | "lost") => void): void { this.signalCb = cb; }
   private elsewhereCb: ((cwd: string) => void) | null = null;
   onElsewhere(cb: (cwd: string) => void): void { this.elsewhereCb = cb; }
+  private quietCb: ((ms: number, open: boolean) => void) | null = null;
+  onQuiet(cb: (ms: number, open: boolean) => void): void { this.quietCb = cb; }
 }
 
 /** Inside a VS Code webview: the extension host fetches from the local server and relays its broadcasts. */
@@ -71,6 +76,7 @@ export class HostTransport implements Transport {
     addEventListener("message", (ev: MessageEvent) => {
       const m = ev.data as { type?: string; payload?: ScenePayload & { signal?: "ok" | "lost"; title?: string }; beats?: Beat[]; events?: AgentEvent[]; state?: "ok" | "lost"; cwd?: string };
       if (m?.type === "elsewhere" && m.cwd) this.elsewhereCb?.(m.cwd);
+      if (m?.type === "quiet" && typeof (m as { ms?: unknown }).ms === "number") this.quietCb?.((m as { ms: number }).ms, !!(m as { open?: boolean }).open);
       if (m?.type === "scene" && m.payload) {
         const p = m.payload, payload = { world: p.world, events: p.events, beats: p.beats, repoId: p.title ? `${p.repoId} — ${p.title}` : p.repoId, ...(p.cwd ? { cwd: p.cwd } : {}), elsewhere: p.elsewhere ?? null };
         if (this.readyCb) this.readyCb(payload); else this.pending = payload;
@@ -86,6 +92,8 @@ export class HostTransport implements Transport {
   onSignal(cb: (s: "ok" | "lost") => void): void { this.signalCb = cb; }
   private elsewhereCb: ((cwd: string) => void) | null = null;
   onElsewhere(cb: (cwd: string) => void): void { this.elsewhereCb = cb; }
+  private quietCb: ((ms: number, open: boolean) => void) | null = null;
+  onQuiet(cb: (ms: number, open: boolean) => void): void { this.quietCb = cb; }
 }
 
 /** Replay of a real session served by the CLI. */

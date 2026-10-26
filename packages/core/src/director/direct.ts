@@ -101,10 +101,11 @@ export class Director {
       case "test_result": {
         const beacon = this.pendingBeacon ?? this.beaconFor([]);
         this.pendingBeacon = null;
-        const outcome: TestOutcome = e.framework === "unknown" && e.passed === 0 && e.failed === 0 ? (e.ok ? "pass" : "fail") : e.ok ? "pass" : "fail";
+        // unknown runner with no counts: a non-zero exit is a fail; a zero exit is unknown (no celebration, no evidence)
+        const outcome: TestOutcome = e.framework === "unknown" && e.passed === 0 && e.failed === 0 ? (e.ok ? "unknown" : "fail") : e.ok ? "pass" : "fail";
         if (outcome === "pass") {
           this.emit(e, actor, { kind: "test_outcome", target: beacon.id, outcome, passed: e.passed, failed: e.failed }, 800, this.mood.onPass());
-          if (e.passed > 0 || e.framework === "unknown") { this.verifiedSinceEdit = true; this.everVerified = true; }
+          if (e.passed > 0) { this.verifiedSinceEdit = true; this.everVerified = true; } // evidence is a counted pass, never a bare zero exit
           for (const [gid] of this.gremlins) this.emit(e, actor, { kind: "banish", gremlinId: gid }, 700, "happy");
           this.gremlins.clear();
           if (this.claimGremlin) { this.emit(e, actor, { kind: "banish", gremlinId: this.claimGremlin }, 700, "happy"); this.claimGremlin = null; }

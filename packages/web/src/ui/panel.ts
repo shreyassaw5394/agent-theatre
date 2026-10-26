@@ -37,6 +37,14 @@ export class Panel {
   }
   nudgeSeen(): void { this.nudge.hidden = true; try { localStorage.setItem("at:nudged", "1"); } catch { /* fine */ } }
   private readonly overviewBtn: HTMLButtonElement; private overviewOn = false; readonly exportBtn: HTMLButtonElement;
+  private readonly fsBtn: HTMLButtonElement;
+  /** Full screen keeps the stage, the caption and the live controls; the side panels and header go. */
+  toggleFullscreen(): void {
+    const root = this.root;
+    if (document.fullscreenElement) { void document.exitFullscreen(); return; }
+    if (root.requestFullscreen) void root.requestFullscreen({ navigationUI: "hide" }).catch(() => {});
+    else { document.documentElement.classList.toggle("fullscreen"); dispatchEvent(new Event("resize")); } // no API (old Safari): CSS-only full-bleed
+  }
   private readonly liveBtn: HTMLButtonElement;
   private readonly tip: HTMLElement;
   /** Set by the host: screen point → what is there. */
@@ -76,7 +84,11 @@ export class Panel {
     this.ambBtn = el("button", "btn ghost", "Ambience on"); this.ambBtn.type = "button"; this.ambBtn.title = "Background sound"; this.ambBtn.onclick = () => h.onAmbience();
     this.overviewBtn = el("button", "btn ghost", "Whole repo"); this.overviewBtn.type = "button"; this.overviewBtn.title = "Pull back to see every building (follow camera off)"; this.overviewBtn.onclick = () => { this.overviewOn = !this.overviewOn; this.overviewBtn.textContent = this.overviewOn ? "Follow" : "Whole repo"; this.overviewBtn.setAttribute("aria-pressed", String(this.overviewOn)); h.onOverview(this.overviewOn); };
     this.exportBtn = el("button", "btn ghost", "Export clip"); this.exportBtn.type = "button"; this.exportBtn.title = "Record the stage (with sound) to a .webm you can share"; this.exportBtn.onclick = () => h.onExport();
-    tb.append(this.setBtn, this.overviewBtn, this.muteBtn, this.ambBtn, this.exportBtn);
+    this.fsBtn = el("button", "btn ghost", "⤢ Full screen"); this.fsBtn.type = "button"; this.fsBtn.title = "Stage only, full screen (F or Esc to leave)";
+    this.fsBtn.onclick = () => this.toggleFullscreen();
+    tb.append(this.setBtn, this.overviewBtn, this.muteBtn, this.ambBtn, this.exportBtn, this.fsBtn);
+    document.addEventListener("fullscreenchange", () => { const on = !!document.fullscreenElement; document.documentElement.classList.toggle("fullscreen", on); this.fsBtn.textContent = on ? "⤡ Exit full screen" : "⤢ Full screen"; dispatchEvent(new Event("resize")); });
+    addEventListener("keydown", (ev) => { if (ev.key === "f" && !(ev.target instanceof HTMLInputElement) && !ev.metaKey && !ev.ctrlKey) this.toggleFullscreen(); });
     this.nudge = el("div", "nudge", "Sound is off — turn on effects and ambience to hear the stage"); this.nudge.hidden = true; tb.append(this.nudge);
     header.append(brand, tb);
     const grid = el("div", "grid");
@@ -129,6 +141,8 @@ export class Panel {
   repoId = "";
   /** Live: the folder this stage watches, and (if any) another folder where Claude Code is actually running. */
   cwd = ""; elsewhere = "";
+  /** Live: ms since the last event and whether a session is open; drives the quiet banner. */
+  quietMs = 0; sessionOpen = true; quietAfterMs = 90000;
 
   setTitle(repoId: string, episode?: string): void {
     // "github.com/org/repo" → "repo", "/Users/me/projects/x" → "x"; the full id stays in the tooltip
@@ -245,7 +259,14 @@ export class Panel {
         ? `This stage watches ${short}, but Claude Code is working in ${other}. Start a stage there: cd ${this.elsewhere} && npx agent-theatre`
         : `Waiting for a Claude Code session in ${short}. Run \`claude\` in that folder and the stage comes alive.`;
     }
-    this.signal.hidden = s.signal === "ok" || !this.liveMode; this.signal.className = `signal ${s.signal}`; (this.signal.lastElementChild as HTMLElement).textContent = s.signal === "lost" ? "quiet — no events for 90 s" : "live";
+    // quiet banner: 20 s → thinking, 90 s → quiet with elapsed time, session closed → ended
+    const q = this.liveMode ? this.quietMs : 0;
+    const mins = Math.floor(q / 60000), secs = Math.floor((q % 60000) / 1000);
+    const ago = mins ? `${mins} min ${secs} s` : `${secs} s`;
+    const quietAfter = this.quietAfterMs, thinkAfter = quietAfter * 0.22;
+    this.signal.hidden = !this.liveMode || (q < thinkAfter && this.sessionOpen && s.signal === "ok");
+    this.signal.className = `signal ${!this.sessionOpen ? "ended" : q >= quietAfter ? "lost" : "thinking"}`;
+    (this.signal.lastElementChild as HTMLElement).textContent = !this.sessionOpen ? `session ended · last event ${ago} ago` : q >= quietAfter ? `quiet · nothing from the agent for ${ago}` : `thinking… ${ago}`;
     // acts
     let ai = 0; this.acts.forEach((a, i) => { if (s.t >= a.fromMs) ai = i; });
     if (ai !== this.lastAct) { this.lastAct = ai; this.actBtns.forEach((b, i) => { b.classList.toggle("on", i < ai); b.classList.toggle("now", i === ai); }); this.actLabels.forEach((l, i) => l.classList.toggle("now", i === ai)); }

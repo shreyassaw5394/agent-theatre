@@ -172,6 +172,18 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
   });
   transport.onSignal?.((s) => player?.setSignal(s));
   transport.onElsewhere?.((cwd) => { panel.elsewhere = cwd; wake(); });
+  // quiet tiers: the server heartbeats every 5 s; between beats the page keeps counting
+  let quietBase = 0, quietAt = performance.now();
+  panel.quietAfterMs = Number(q.get("quiet")) || 90000;
+  transport.onQuiet?.((ms, open) => { quietBase = ms; quietAt = performance.now(); panel.sessionOpen = open; wake(); });
+  const quietTick = () => {
+    if (!player || transport.mode !== "live") return;
+    const ms = quietBase + (performance.now() - quietAt);
+    panel.quietMs = ms;
+    const quietAfter = Number(q.get("quiet")) || 90000, thinkAfter = quietAfter * 0.22;
+    const level = !panel.sessionOpen || ms >= quietAfter ? 2 : ms >= thinkAfter ? 1 : 0;
+    if (level !== player.quietLevel) { player.setQuiet(level); audio.setQuietGain(level === 2 ? 0.12 : level === 1 ? 0.35 : 1); wake(); }
+  };
 
   // Render loop with a scheduler: runs while playing or settling; a paused, settled scene costs nothing.
   // `?step=<ms>` advances the scene by a fixed amount per frame (deterministic capture for clips/GIFs).
@@ -181,6 +193,7 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
     scheduled = false;
     const dt = fixedStep || Math.min(50, now - last); last = now;
     if (player && !document.hidden) {
+      quietTick();
       // live: stay on the live edge. Open late → jump near the end; fall behind → catch up at up to 4x, then settle at 1x.
       if (transport.mode === "live" && player.playing && followLive) {
         const behind = player.state.duration - player.state.t;
@@ -200,13 +213,63 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
   wake = () => { settle = 45; last = performance.now(); schedule(); };
   wake();
   for (const ev of ["pointerdown", "keydown", "resize"]) addEventListener(ev, wake, { passive: true });
+  addEventListener("resize", () => player?.resized(), { passive: true });
   document.addEventListener("visibilitychange", () => { if (!document.hidden) wake(); });
   const origPlay = ScenePlayer.prototype.play; ScenePlayer.prototype.play = function (this: ScenePlayer) { origPlay.call(this); wake(); };
   const origSeek = ScenePlayer.prototype.seek; ScenePlayer.prototype.seek = function (this: ScenePlayer, ms: number) { origSeek.call(this, ms); wake(); };
 }
 
 // ?portrait=<castId> — one character, idle, on a transparent canvas. The site renders the cast from this.
+/** ?portrait=all — the whole cast in a row on a transparent canvas, each doing its own business. The site's cast section. */
+async function castWall(): Promise<void> {
+  const { Application, Text, TextStyle } = await import("pixi.js");
+  const { Pip } = await import("./scene/pip.js");
+  const { CAST } = await import("./scene/cast.js");
+  const theme = setById(q.get("set") ?? "island");
+  const W = Number(q.get("w")) || 1200, H = Number(q.get("h")) || 300, cols = Number(q.get("cols")) || CAST.length;
+  document.documentElement.style.background = "transparent"; document.body.style.background = "transparent"; document.body.style.margin = "0";
+  const app = new Application();
+  await app.init({ width: W, height: H, backgroundAlpha: 0, antialias: true, resolution: Math.min(2, devicePixelRatio || 1), autoDensity: true, preference: "webgl" });
+  document.body.replaceChildren(app.canvas);
+  const rows = Math.ceil(CAST.length / cols), cellW = W / cols, cellH = H / rows, scale = Math.min(cellW / 60, cellH / 95) * 0.9;
+  const style = new TextStyle({ fontFamily: "Fredoka, Trebuchet MS, sans-serif", fontSize: Math.max(12, scale * 3.2), fontWeight: "600", fill: 0xffffff });
+  const moods = { pip: "curious", mo: "focused", juno: "happy", rook: "focused", fen: "focused", sol: "happy", ivy: "focused", bolt: "curious", ash: "focused", nimbus: "curious", ember: "uneasy", tove: "happy" } as const;
+  const actors = CAST.map((spec, i) => {
+    const pip = new Pip(theme, false, spec); pip.container.scale.set(scale * spec.size);
+    const cx = (i % cols + 0.5) * cellW, cy = Math.floor(i / cols) * cellH + cellH * 0.72;
+    pip.pose.x = cx; pip.pose.y = cy; pip.pose.mood = moods[spec.id as keyof typeof moods] ?? "curious";
+    const label = new Text({ text: spec.name, style }); label.anchor.set(0.5, 0); label.position.set(cx, cy + 6); label.alpha = 0.9;
+    app.stage.addChild(pip.container, label);
+    return { pip, cx, cy, phase: i * 0.9 };
+  });
+  let t = 0;
+  app.ticker.add((tk) => {
+    t += tk.deltaMS / 1000;
+    for (const { pip, cx, cy, phase } of actors) {
+      const a = pip.pose, w = t + phase; a.x = cx; a.y = cy; a.lift = 0; a.sx = 1; a.sy = 1; a.lean = 0; a.look = "fwd"; a.moving = false;
+      const cyc = w % 6;
+      switch (pip.spec.id) {
+        case "pip": if (cyc < 1.2) { a.lift = Math.abs(Math.sin(cyc * Math.PI * 2.5)) * 10; a.moving = true; } else a.face = cyc < 3.6 ? -1 : 1; a.look = cyc > 4.5 ? "up" : "fwd"; break; // curious: hops, looks around
+        case "mo": a.lean = 0.05 * Math.sin(w * 0.5); a.sy = 1 + 0.02 * Math.sin(w * 0.8); a.look = cyc > 4 ? "down" : "fwd"; break; // calm, measures twice
+        case "juno": a.face = Math.sin(w * 2.2) > 0 ? 1 : -1; a.lift = Math.abs(Math.sin(w * 4)) * 3; a.sy = 1 + 0.04 * Math.sin(w * 8); a.sx = 1 / a.sy; break; // chatty
+        case "rook": a.face = cyc < 3 ? 1 : -1; a.lean = (cyc < 3 ? 1 : -1) * 0.04; a.look = cyc % 3 > 2.2 ? "up" : "fwd"; break; // deliberate turns
+        case "fen": a.sy = 1 + 0.015 * Math.sin(w * 1.1); if (cyc > 5.2) a.look = "up"; else if (cyc > 2 && cyc < 2.4) a.face = -1; break; // still, then a sharp glance
+        case "sol": a.sy = 1 + 0.1 * Math.sin(w * 6); a.sx = 1 / a.sy; a.lean = 0.12 * Math.sin(w * 3); a.lift = Math.max(0, Math.sin(w * 6)) * 5; a.moving = true; break; // dancing
+        case "ivy": a.lean = 0.06 * Math.sin(w * 0.7); a.look = cyc > 3 ? "down" : "fwd"; a.sy = 1 + 0.02 * Math.sin(w * 0.9); break; // tending
+        case "bolt": a.x = cx + Math.sin(w * 2.4) * cellW * 0.18; a.face = Math.cos(w * 2.4) > 0 ? 1 : -1; a.moving = true; a.lift = Math.abs(Math.sin(w * 12)) * 2; break; // pacing
+        case "ash": a.lean = 0.03 * Math.sin(w * 0.4); if (cyc > 5.4) a.lift = Math.sin((cyc - 5.4) / 0.6 * Math.PI) * 6; break; // one dry hop
+        case "nimbus": a.lift = 8 + Math.sin(w * 1.3) * 6; a.lean = 0.06 * Math.sin(w * 0.9); break; // floats
+        case "ember": a.sx = 1 + 0.05 * Math.sin(w * 14); a.sy = 1 - 0.04 * Math.sin(w * 14); a.face = Math.sin(w * 1.7) > 0.3 ? -1 : 1; break; // runs hot
+        case "tove": a.lean = 0.08 * Math.sign(Math.sin(w * 4)); a.lift = Math.abs(Math.sin(w * 4)) * 4; a.moving = true; break; // marching
+      }
+      pip.update(tk.deltaMS);
+    }
+  });
+  (globalThis as any).__agentTheatre = { app, player: true };
+}
+
 async function portrait(id: string): Promise<void> {
+  if (id === "all") return castWall();
   const { Application } = await import("pixi.js");
   const { Pip } = await import("./scene/pip.js");
   const { castById, CAST } = await import("./scene/cast.js");

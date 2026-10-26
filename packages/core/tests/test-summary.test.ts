@@ -33,3 +33,13 @@ describe("parseTestSummary", () => {
     expect(parseTestSummary("")).toBeNull();
   });
 });
+
+import { parseTestSummary as pts } from "../src/adapters/test-summary.js";
+describe("failures without a summary line", () => {
+  it("counts × lines and 'Failed Tests N' when the output was cut by a pipe", () => {
+    expect(pts("   × quiet heartbeat > broadcasts how long since the last event 6ms\n⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯\n")).toEqual({ passed: 0, failed: 1, framework: "markers" });
+    expect(pts(" × a\n × b\n")).toMatchObject({ failed: 2 });
+    expect(pts("AssertionError: expected false to be true")).toMatchObject({ failed: 1 });
+  });
+  it("never infers a pass from markers alone", () => { expect(pts("  ✓ a\n  ✓ b\n")).toBeNull(); });
+});

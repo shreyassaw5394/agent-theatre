@@ -16,7 +16,11 @@ export class AudioEngine {
   private _volume = 0.6;
   private _ambience = true;
   get ambienceEnabled(): boolean { return this._ambience; }
-  setAmbienceEnabled(on: boolean): void { this._ambience = on; if (this.ambBus && this.ctx) this.ambBus.gain.setTargetAtTime(on ? 0.35 : 0, this.ctx.currentTime, 0.1); }
+  private quietGain = 1;
+  setAmbienceEnabled(on: boolean): void { this._ambience = on; this.applyAmbience(); }
+  /** 1 = full, 0.35 = thinking, 0.12 = quiet. Long ramp so it reads as the room settling, not a cut. */
+  setQuietGain(g: number): void { this.quietGain = g; this.applyAmbience(3); }
+  private applyAmbience(ramp = 0.1): void { if (this.ambBus && this.ctx) this.ambBus.gain.setTargetAtTime(this._ambience ? 0.35 * this.quietGain : 0, this.ctx.currentTime, ramp); }
   private noiseBuf: AudioBuffer | null = null;
 
   get ready(): boolean { return !!this.ctx && this.ctx.state === "running"; }
@@ -44,7 +48,12 @@ export class AudioEngine {
   }
   setMuted(m: boolean): void { this._muted = m; this.applyGain(); }
   setVolume(v: number): void { this._volume = Math.max(0, Math.min(1, v)); this.applyGain(); }
-  private applyGain(): void { if (this.master) this.master.gain.setTargetAtTime(this._muted ? 0 : this._volume, this.ctx!.currentTime, 0.02); }
+  /** "Effects off" silences only the effects bus; ambience has its own toggle and keeps playing. */
+  private applyGain(): void {
+    if (!this.ctx) return;
+    if (this.master) this.master.gain.setTargetAtTime(this._volume, this.ctx.currentTime, 0.02);
+    if (this.sfxBus) this.sfxBus.gain.setTargetAtTime(this._muted ? 0 : 1, this.ctx.currentTime, 0.02);
+  }
 
   /** Lower the ambience briefly so an effect reads clearly. */
   private duckAmbience(amount = 0.5, ms = 350): void {

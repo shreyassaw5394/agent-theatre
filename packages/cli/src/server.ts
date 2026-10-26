@@ -115,6 +115,7 @@ export class Theatre {
     }
     l.beats.push(...out);
     l.lastEventAt = Date.now();
+    this.broadcast({ type: "quiet", ms: 0, open: l.sessionOpen });
     if (this.signal !== "ok") { this.signal = "ok"; this.broadcast({ type: "signal", state: "ok" }); }
     this.broadcast({ type: "beats", beats: out, events });
     return out;
@@ -148,11 +149,14 @@ export class Theatre {
     mkdirSync(join(home, "ports"), { recursive: true });
     for (const f of readdirSync(join(home, "ports"))) { const n = parseInt(f, 10); if (n > 0 && n !== this.port && !portAlive(n)) { try { rmSync(join(home, "ports", f)); } catch { /* fine */ } } }
     writeFileSync(join(home, "ports", String(this.port)), this.opts.cwd);
-    const lostAfter = this.opts.lostAfterMs ?? 90_000;
+    const lostAfter = this.opts.lostAfterMs ?? (Number(process.env.AGENT_THEATRE_QUIET_MS) || 90_000);
+    const beat = Number(process.env.AGENT_THEATRE_HEARTBEAT_MS) || 5_000;
     this.timer = setInterval(() => {
       const l = this.live;
       if (l.sessionOpen && l.lastEventAt && Date.now() - l.lastEventAt > lostAfter && this.signal === "ok") { this.signal = "lost"; this.broadcast({ type: "signal", state: "lost" }); }
-    }, 5_000);
+      // heartbeat: how long since the agent last did anything, so the stage can dim and tell the person
+      if (l.lastEventAt) this.broadcast({ type: "quiet", ms: Date.now() - l.lastEventAt, open: l.sessionOpen });
+    }, beat);
     this.timer.unref();
     return this.port;
   }
