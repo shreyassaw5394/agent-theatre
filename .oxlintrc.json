@@ -1,9 +1,4 @@
 {
-  "plugins": ["typescript"],
-  "categories": { "correctness": "error", "suspicious": "warn" },
-  "rules": {
-    "no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
-    "typescript/no-explicit-any": "off"
-  },
-  "ignorePatterns": ["dist", "node_modules", "fixtures"]
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "ignorePatterns": ["**/dist/**", "**/dist-vscode/**", "packages/cli/web/**", "packages/vscode/web/**", "site/dist/**", "**/node_modules/**"]
 }
