@@ -644,3 +644,8 @@ sound with MediaRecorder to a .webm, entirely in the browser.
 person's terminal, and its SessionEnd (same session id) dropped the live curtain. The stage now never
 prompts: the waiting banner redirects to Claude Code, and a *live* stage never shows the replay ending —
 "Every agent run has a story" is for replays only.
+
+**Tools in hand (1.5.0).** `CharacterPose.tool` + `toolPhase`; `Pip.drawTool` draws the prop at the hand
+each frame. build → hammer (wind-up/strike follows the hammer rhythm), forge → wrench, read → book,
+search → magnifying lens sweeping, raise → trowel setting a block, run_tests → clipboard (tick appears),
+chase/banish → net, summon_helper → flag. 1.6× hand scale so they read from the camera's distance.
