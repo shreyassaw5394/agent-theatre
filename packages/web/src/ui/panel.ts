@@ -11,7 +11,7 @@ const PLAY = '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 2.8v10.
 const PAUSE = '<svg viewBox="0 0 16 16" fill="currentColor"><rect x="3.5" y="3" width="3" height="10" rx="1"/><rect x="9.5" y="3" width="3" height="10" rx="1"/></svg>';
 const CHECK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3L13 4.5"/></svg>';
 
-export interface PanelHandlers { onPlayPause(): void; onSeek(ms: number): void; onRate(): void; onMute(): void; onAmbience(): void; onPickSet(id: SetTheme["id"]): void; onShuffle(): void; onOverview(on: boolean): void; onZoom(factor: number): void; onExport(): void; onPrompt(text: string): Promise<string> }
+export interface PanelHandlers { onGoLive(): void; onPlayPause(): void; onSeek(ms: number): void; onRate(): void; onMute(): void; onAmbience(): void; onPickSet(id: SetTheme["id"]): void; onShuffle(): void; onOverview(on: boolean): void; onZoom(factor: number): void; onExport(): void; onPrompt(text: string): Promise<string> }
 
 /** All DOM. Reads PlayerState every frame; never touches Pixi. */
 export class Panel {
@@ -38,6 +38,25 @@ export class Panel {
   nudgeSeen(): void { this.nudge.hidden = true; try { localStorage.setItem("at:nudged", "1"); } catch { /* fine */ } }
   private readonly overviewBtn: HTMLButtonElement; private overviewOn = false; readonly exportBtn: HTMLButtonElement;
   private readonly prompt: HTMLElement;
+  private readonly liveBtn: HTMLButtonElement;
+  private readonly tip: HTMLElement;
+  /** Set by the host: screen point → what is there. */
+  hitTester: ((x: number, y: number) => ReturnType<import("../scene/player.js").ScenePlayer["hitTest"]>) | null = null;
+  private fileStats = new Map<string, { reads: number; edits: number; added: number; removed: number; tests?: string }>();
+  private describeHit(hit: NonNullable<ReturnType<import("../scene/player.js").ScenePlayer["hitTest"]>>): string {
+    if (hit.kind === "lead") return `<b>${esc(hit.name)}</b> — the agent, your lead.<br><span>Mood: ${esc(hit.mood)}. The light on its head shows it.</span>`;
+    if (hit.kind === "helper") return `<b>${esc(hit.name)}</b> — a helper (subagent).<br><span>Arrived at the dock; working on its own task.</span>`;
+    const p = hit.place, st = this.fileStats.get(p.path);
+    const activity = st ? [st.reads ? `read ${st.reads}×` : "", st.edits ? `edited ${st.edits}× (+${st.added} −${st.removed})` : ""].filter(Boolean).join(" · ") : "";
+    switch (p.kind) {
+      case "forge": return `<b>The forge</b> — shell work.<br><span>Commands that touch no particular file (installs, builds, git) happen here.</span>`;
+      case "dock": return `<b>The dock</b> — where helpers arrive.<br><span>Subagents row in here and fan out to their districts.</span>`;
+      case "beacon": return `<b>${esc(p.label)}</b> — a test suite.<br><span>${esc(p.path)}${st?.tests ? ` · last run: ${esc(st.tests)}` : ""}. Its lamp scans while tests run, goes red on failure, green on a pass.</span>`;
+      case "archive": return `<b>${esc(p.label)}</b> — docs / data.<br><span>${esc(p.path)}${activity ? " · " + activity : ""}</span>`;
+      case "overflow": return `<b>${esc(p.label)}</b> — the rest of this folder.<br><span>Files below the relevance cap share this building; activity on them lands here.</span>`;
+      default: return `<b>${esc(p.label)}</b> — a file.<br><span>${esc(p.path)} · size class ${p.height}/5${activity ? " · " + activity : " · untouched this session"}</span>`;
+    }
+  }
   private readonly waiting: HTMLElement; private readonly vscode: { postMessage: (m: unknown) => void } | null; private notifiedFor = "";
   private readonly overlay: HTMLElement; private readonly caption: HTMLElement; private readonly chip: HTMLElement; private readonly signal: HTMLElement;
   private readonly title: HTMLElement; private readonly end: HTMLElement; private readonly picker: HTMLElement;
@@ -51,7 +70,7 @@ export class Panel {
   constructor(host: HTMLElement, private readonly h: PanelHandlers) {
     this.root = el("div", "wrap");
     const header = el("header");
-    const brand = el("div", "brand", `<a class="eyebrow" href="https://agenttheatre.dev/" title="Back to agenttheatre.dev">← Agent Theatre</a><h1 id="title">Loading…</h1>`);
+    const brand = el("div", "brand", `<div class="eyebrow"><a href="https://agenttheatre.dev/" title="Back to agenttheatre.dev">← Agent Theatre</a><span class="for"> · the stage for</span></div><h1 id="title">Loading…</h1>`);
     const tb = el("div", "toolbar");
     this.setBtn = el("button", "btn ghost", "Set"); this.setBtn.type = "button"; this.setBtn.onclick = () => this.showPicker(true);
     this.muteBtn = el("button", "btn ghost", "Effects on"); this.muteBtn.type = "button"; this.muteBtn.title = "Sound effects"; this.muteBtn.onclick = () => h.onMute();
@@ -79,7 +98,17 @@ export class Panel {
     // your turn: say what's next from here (resumes the session headlessly through the local server)
     this.prompt = el("form", "prompt", `<div class="note" hidden></div><div class="row"><input type="text" placeholder="" autocomplete="off" spellcheck="false"><button type="submit">Send</button><span class="st"></span></div>`); this.prompt.hidden = true;
     this.prompt.addEventListener("submit", (ev) => { ev.preventDefault(); const inp = this.prompt.querySelector("input") as HTMLInputElement, st = this.prompt.querySelector(".st") as HTMLElement; const text = inp.value.trim(); if (!text) return; st.textContent = "sending…"; void h.onPrompt(text).then((r) => { st.textContent = r; inp.value = ""; }); });
-    this.stageEl.append(el("div", "vignette"), this.overlay, this.signal, this.chip, this.caption, this.title, this.end, this.picker, this.waiting, this.prompt);
+    this.tip = el("div", "tip"); this.tip.hidden = true;
+    this.stageEl.append(el("div", "vignette"), this.overlay, this.signal, this.chip, this.caption, this.title, this.end, this.picker, this.waiting, this.prompt, this.tip);
+    // hover help: what is this building, and what happened to it this session
+    this.stageEl.addEventListener("pointermove", (ev) => {
+      const r = this.stageEl.getBoundingClientRect(); const hit = this.hitTester?.(ev.clientX - r.left, ev.clientY - r.top) ?? null;
+      if (!hit) { this.tip.hidden = true; return; }
+      this.tip.innerHTML = this.describeHit(hit); this.tip.hidden = false;
+      const x = Math.min(ev.clientX - r.left + 14, r.width - this.tip.offsetWidth - 10), y = ev.clientY - r.top + 16;
+      this.tip.style.left = `${Math.max(8, x)}px`; this.tip.style.top = `${Math.min(y, r.height - this.tip.offsetHeight - 10)}px`;
+    });
+    this.stageEl.addEventListener("pointerleave", () => { this.tip.hidden = true; });
     // wheel = zoom
     this.stageEl.addEventListener("wheel", (ev) => { if (!ev.ctrlKey && Math.abs(ev.deltaY) < 1) return; ev.preventDefault(); h.onZoom(Math.exp(-ev.deltaY * 0.0015)); }, { passive: false });
     const controls = el("div", "controls");
@@ -87,8 +116,9 @@ export class Panel {
     const track = el("div", "track"); this.actsEl = el("div", "acts"); this.labelsEl = el("div", "actlabels"); this.head = el("div", "head"); track.append(this.actsEl, this.labelsEl, this.head);
     track.addEventListener("pointerdown", (e) => { const r = this.actsEl.getBoundingClientRect(); const u = (e.clientX - r.left) / r.width; h.onSeek(u * this.durationMs); });
     this.time = el("div", "time", "0:00 / 0:00");
+    this.liveBtn = el("button", "btn golive", `<i class="dot"></i><span>Go live</span>`); this.liveBtn.type = "button"; this.liveBtn.title = "Jump back to what is happening now"; this.liveBtn.hidden = true; this.liveBtn.onclick = () => h.onGoLive();
     this.rateBtn = el("button", "btn ghost", "1×"); this.rateBtn.type = "button"; this.rateBtn.onclick = () => h.onRate();
-    controls.append(this.playBtn, track, this.time, this.rateBtn);
+    controls.append(this.playBtn, track, this.time, this.liveBtn, this.rateBtn);
     col.append(this.stageEl, controls);
     const aside = el("aside");
     const logPanel = el("section", "panel", `<h2>Event log</h2><p class="sub">Every scene is driven by one of these agent events. Tap one to jump there.</p>`);
@@ -115,6 +145,14 @@ export class Panel {
   setRate(r: number): void { this.rateBtn.textContent = `${r}×`; }
 
   loadTimeline(beats: Beat[], events: AgentEvent[], world: World): void {
+    this.fileStats = new Map();
+    const st = (path: string) => { let s = this.fileStats.get(path); if (!s) { s = { reads: 0, edits: 0, added: 0, removed: 0 }; this.fileStats.set(path, s); } return s; };
+    for (const e of events) {
+      if (e.kind === "read_file") st(e.path).reads++;
+      else if (e.kind === "edit_file") { const s = st(e.path); s.edits++; s.added += e.added; s.removed += e.removed; }
+      else if (e.kind === "write_file") { const s = st(e.path); s.edits++; s.added += e.added; }
+      else if (e.kind === "test_result") { const summary = e.failed ? `${e.failed} failed, ${e.passed} passed` : `${e.passed} passed`; for (const p of world.places) if (p.kind === "beacon") st(p.path).tests = summary; }
+    }
     this.durationMs = beats.length ? Math.max(...beats.map((b) => b.atMs + b.durationMs)) : 0;
     this.acts = deriveActs(beats);
     this.actsEl.innerHTML = ""; this.labelsEl.innerHTML = ""; this.actBtns = []; this.actLabels = [];
@@ -172,7 +210,11 @@ export class Panel {
   update(s: PlayerState, world: World, lampOf: (id: string) => string, helperLabel?: string): void {
     this.time.textContent = `${fmt(s.t)} / ${fmt(s.duration)}`;
     this.head.style.left = `${(s.t / Math.max(1, s.duration)) * 100}%`;
-    this.playBtn.innerHTML = s.playing ? `${PAUSE}<span>Pause</span>` : `${PLAY}<span>${s.t >= s.duration - 1 ? "Replay" : "Play"}</span>`;
+    // live: the end of the timeline is "now", not the end of a film — never offer a replay there
+    const atEnd = s.t >= s.duration - 1;
+    this.liveBtn.hidden = !(this.liveMode && s.duration - s.t > 1500);
+    this.playBtn.innerHTML = this.liveMode && atEnd ? `<i class="dot"></i><span>Live</span>` : s.playing ? `${PAUSE}<span>Pause</span>` : `${PLAY}<span>${atEnd ? "Replay" : "Play"}</span>`;
+    this.playBtn.title = this.liveMode && atEnd ? "You are watching the live edge; new events play as they arrive" : "";
     const cur = s.current;
     // cards
     this.title.style.opacity = String(cur && cur.kind === "curtain_up" ? 1 - Math.min(1, Math.max(0, (s.t - cur.atMs - 600) / 700)) : s.t < 600 ? 1 : 0);

@@ -59,7 +59,7 @@ npx agent-theatre hooks uninstall # reverses the install byte-for-byte
 
 Flags: `--port <n>`, `--no-open`, `--set <stage-id>`; `replay --latest` skips the picker.
 
-In the stage: **Whole repo** pulls back to every building (wheel to zoom), **Export clip** records what you see and hear to a `.webm` you can post, and when the agent ends its turn a prompt box lets you say what's next — it resumes that session headlessly (needs Claude Code 2.x) and the reply plays out on stage. Install globally if you prefer: `npm i -g agent-theatre`.
+In the stage: hover anything for what it is and what happened to it this session; live stages show **Live** at the edge and a **Go live** button whenever you have scrubbed back; **Whole repo** pulls back to every building (wheel to zoom), **Export clip** records what you see and hear to a `.webm` you can post, and when the agent ends its turn a prompt box lets you say what's next — it resumes that session headlessly (needs Claude Code 2.x) and the reply plays out on stage. Install globally if you prefer: `npm i -g agent-theatre`.
 
 **VS Code**: download `agent-theatre.vsix` from the [latest release](https://github.com/shreyassaw5394/agent-theatre/releases/latest), then *Extensions → ⋯ → Install from VSIX…* (or `code --install-extension agent-theatre.vsix`). Commands: *Agent Theatre: Open the stage (live)*, *Replay a session…*, *Install hooks*. Marketplace listing is coming.
 

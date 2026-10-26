@@ -76,6 +76,21 @@ export class ScenePlayer {
   // ---------- control ----------
   load(beats: Beat[]): void { this.beats = beats; this.duration = beats.length ? Math.max(...beats.map((b) => b.atMs + b.durationMs)) : 0; this.seek(0); }
   get beatCount(): number { return this.beats.length; }
+  /** What is under a stage-local screen point: a place, the lead, or a helper. Smallest hit wins. */
+  hitTest(sx: number, sy: number): { kind: "place"; place: import("@agent-theatre/core").Place } | { kind: "lead"; name: string; mood: string } | { kind: "helper"; name: string } | null {
+    const z = this.camera.scale;
+    const near = (p: { x: number; y: number }, r: number) => { const s = this.camera.toScreen(p.x, p.y); return Math.hypot(s.x - sx, s.y - sy) < r * z; };
+    const lp = this.pip.drawn; if (near({ x: lp.x, y: lp.y - 18 }, 26)) return { kind: "lead", name: this.company.lead.name, mood: this.pip.pose.mood };
+    for (const [id, h] of this.helpers) { const d = h.drawn; if (near({ x: d.x, y: d.y - 14 }, 22)) return { kind: "helper", name: this.company.helpers.find((c) => c.id === id)?.name ?? "Helper" }; }
+    let best: { place: import("@agent-theatre/core").Place; area: number } | null = null;
+    for (const p of this.world.places) {
+      const pos = this.worldLayer.positionOf(p.id); if (!pos) continue;
+      const g = this.camera.toScreen(pos.ground.x, pos.ground.y), t = this.camera.toScreen(pos.top.x, pos.top.y);
+      const hw = (p.footprint * 32 + 8) * z, bottom = g.y + p.footprint * 16 * z, top = t.y - 6 * z;
+      if (sx >= g.x - hw && sx <= g.x + hw && sy >= top && sy <= bottom) { const area = hw * (bottom - top); if (!best || area < best.area) best = { place: p, area }; }
+    }
+    return best ? { kind: "place", place: best.place } : null;
+  }
   append(beats: Beat[]): void { this.beats.push(...beats); this.duration = Math.max(this.duration, ...beats.map((b) => b.atMs + b.durationMs)); }
   get playing(): boolean { return this._playing; }
   play(): void { this._playing = true; this.amb.start(this.theme); }

@@ -58,13 +58,21 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
   audio.setMuted(muted); audio.setAmbienceEnabled(ambience);
 
   const panel = new Panel(host, {
-    onPlayPause: () => { if (!player) return; void unlockAudio(); if (player.playing) player.pause(); else { if (player.state.t >= player.state.duration - 1) player.seek(0); player.play(); } },
-    onSeek: (ms) => { player?.seek(ms); },
+    onPlayPause: () => {
+      if (!player) return; void unlockAudio();
+      const atEnd = player.state.t >= player.state.duration - 1;
+      // live at the edge: there is nothing to replay — stay live
+      if (transport.mode === "live" && atEnd) { followLive = true; player.seek(Math.max(0, player.state.duration - 1)); player.play(); return; }
+      if (player.playing) player.pause(); else { if (atEnd && transport.mode !== "live") player.seek(0); player.play(); }
+    },
+    // scrubbing back on a live stage means "let me watch this"; the stage stops yanking to the edge until Go live
+    onSeek: (ms) => { if (player && transport.mode === "live") followLive = ms >= player.state.duration - 1500; player?.seek(ms); },
     onRate: () => { rate = rate >= 4 ? 1 : rate * 2; player?.setRate(rate); panel.setRate(rate); },
     // The first click on either toggle may be the gesture that unlocks audio: honour the state it already shows instead of flipping it.
     onMute: () => { if (!audio.ready || justUnlocked) { void unlockAudio(); if (muted) { muted = false; audio.setMuted(false); store.set("at:muted", "0"); panel.setMuted(false); } panel.nudgeSeen(); return; } muted = !muted; panel.nudgeSeen(); audio.setMuted(muted); store.set("at:muted", muted ? "1" : "0"); panel.setMuted(muted); },
     onAmbience: () => { if (!audio.ready || justUnlocked) { void unlockAudio(); if (!ambience) { ambience = true; audio.setAmbienceEnabled(true); store.set("at:ambience", "1"); panel.setAmbience(true); } panel.nudgeSeen(); return; } ambience = !ambience; panel.nudgeSeen(); audio.setAmbienceEnabled(ambience); store.set("at:ambience", ambience ? "1" : "0"); panel.setAmbience(ambience); },
     onPickSet: (id) => { theme = setById(id); if (player) { store.set(`at:set:${player.world.repoId}`, id); rebuild(); } },
+    onGoLive: () => { followLive = true; if (player) { player.seek(Math.max(0, player.state.duration - 1)); player.play(); } wake(); },
     onOverview: (on) => { player?.setOverview(on); wake(); },
     onZoom: (f) => { player?.zoomBy(f); wake(); },
     onExport: () => { void exportClip(); },
@@ -118,7 +126,7 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
   let payload: Parameters<Parameters<Transport["onReady"]>[0]>[0] | null = null;
   /** Every set shows the repo in its own arrangement, so twenty stages never read as one island recoloured. */
   const worldFor = (base: World, set: SetTheme): World => relayoutWorld(base, LAYOUTS[(base.seed + SETS.findIndex((s) => s.id === set.id) * 7) % LAYOUTS.length]!);
-  let wasT = 0, wasPlaying = false, lastThemeId = "";
+  let wasT = 0, wasPlaying = false, lastThemeId = "", followLive = true;
   function rebuild(): void {
     if (!payload) return;
     if (player) { wasT = player.state.t; wasPlaying = player.playing; player.destroy(); }
@@ -129,6 +137,7 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
     (globalThis as any).__agentTheatre = { app, get player() { return player; }, panel };
     VS?.postMessage({ type: "ready", places: world.places.length });
     panel.leadName = player.leadName;
+    panel.hitTester = (x, y) => player?.hitTest(x, y) ?? null;
     player.load(beats); player.setRate(rate);
     // a new set is a new performance: start from the top (a same-set rebuild keeps its place)
     if (player.theme.id !== lastThemeId) { player.seek(0); player.play(); } else { player.seek(wasT); if (wasPlaying) player.play(); }
@@ -165,7 +174,7 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
     else { const all = direct(payload.events, player.world); player.append(all.slice(player.beatCount)); }
     // real time: a live stage shows what just happened now, not after replaying the backlog — jump to the newest beat
     const newest = Math.max(...beats.map((b) => b.atMs), 0);
-    if (player.state.duration - player.state.t > 1200 && newest > player.state.t) player.seek(newest);
+    if (followLive && player.state.duration - player.state.t > 1200 && newest > player.state.t) player.seek(newest);
     panel.loadTimeline(player.world === payload.world ? payload.beats : direct(payload.events, player.world), payload.events, player.world);
     if (!player.playing) player.play();
     wake();
@@ -181,7 +190,7 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
     const dt = fixedStep || Math.min(50, now - last); last = now;
     if (player && !document.hidden) {
       // live: stay on the live edge. Open late → jump near the end; fall behind → catch up at up to 4x, then settle at 1x.
-      if (transport.mode === "live" && player.playing) {
+      if (transport.mode === "live" && player.playing && followLive) {
         const behind = player.state.duration - player.state.t;
         if (behind > 6000) { if (player.state.rate !== 4) player.setRate(4); }
         else if (behind < 1500 && player.state.rate !== rate) player.setRate(rate);

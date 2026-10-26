@@ -80,6 +80,16 @@ aside{display:flex;flex-direction:column;gap:16px;min-width:0}
 .note{color:var(--muted);font-size:13px;max-width:72ch;margin:0}
 @media (prefers-reduced-motion:reduce){.bubble.pulse{animation:none}.caption span{backdrop-filter:none}}
 
+.golive{background:var(--coral);color:#fff;display:inline-flex;align-items:center}.golive .dot{width:8px;height:8px;border-radius:50%;background:#fff;display:inline-block;margin-right:6px;animation:livedot 1.4s ease-in-out infinite}
+.play .dot{width:8px;height:8px;border-radius:50%;background:var(--coral);box-shadow:0 0 8px var(--coral);display:inline-block;margin-right:6px;animation:livedot 1.4s ease-in-out infinite}
+@keyframes livedot{50%{opacity:.35}}
+
+/* hover help */
+.tip{position:absolute;z-index:7;pointer-events:none;max-width:320px;padding:8px 11px;border-radius:10px;background:rgba(14,18,28,.92);border:1px solid rgba(255,255,255,.14);box-shadow:0 10px 30px rgba(0,0,0,.4);color:#fff;font:600 12px/1.4 var(--body)}
+.tip b{font:600 13px var(--display);display:block;margin-bottom:2px}.tip span{color:#cfd8e6}
+.brand .eyebrow .for{color:var(--muted);letter-spacing:0;text-transform:none;font-family:var(--body);font-weight:600}
+html.cinema .tip{display:none}
+
 /* share sheet */
 .share{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,calc(100% - 28px));padding:18px 18px 14px;border-radius:18px;background:rgba(14,18,28,.92);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.16);box-shadow:0 30px 80px rgba(0,0,0,.5);z-index:6;color:#fff}
 .share .sh-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}.share .sh-head b{font:600 18px var(--display)}.share .sh-head span{font:600 12px var(--mono);color:#9fb0c8}

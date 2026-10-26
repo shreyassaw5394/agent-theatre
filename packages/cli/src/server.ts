@@ -143,7 +143,13 @@ export class Theatre {
     this.port = typeof addr === "object" && addr ? addr.port : port;
     const home = this.opts.home ?? join(homedir(), ".agent-theatre");
     mkdirSync(home, { recursive: true });
+    // a stage started by an older build only wrote `port`: keep it reachable by adopting it into the registry first
+    try { const old = parseInt(readFileSync(join(home, "port"), "utf8").trim(), 10); if (old > 0 && old !== this.port && portAlive(old) && !existsSync(join(home, "ports", String(old)))) { mkdirSync(join(home, "ports"), { recursive: true }); writeFileSync(join(home, "ports", String(old)), "(started by an older build)"); } } catch { /* no port file */ }
     writeFileSync(join(home, "port"), String(this.port));
+    // registry for fan-out: one file per running stage, holding the repo it is for; stale entries (dead ports) are pruned
+    mkdirSync(join(home, "ports"), { recursive: true });
+    for (const f of readdirSync(join(home, "ports"))) { const n = parseInt(f, 10); if (n > 0 && n !== this.port && !portAlive(n)) { try { rmSync(join(home, "ports", f)); } catch { /* fine */ } } }
+    writeFileSync(join(home, "ports", String(this.port)), this.opts.cwd);
     const lostAfter = this.opts.lostAfterMs ?? 90_000;
     this.timer = setInterval(() => {
       const l = this.live;
@@ -157,6 +163,7 @@ export class Theatre {
     if (this.timer) clearInterval(this.timer);
     const home = this.opts.home ?? join(homedir(), ".agent-theatre");
     try { if (readFileSync(join(home, "port"), "utf8").trim() === String(this.port)) rmSync(join(home, "port")); } catch { /* already gone */ }
+    try { rmSync(join(home, "ports", String(this.port))); } catch { /* already gone */ }
     for (const ws of this.wss?.clients ?? []) ws.close();
     this.wss?.close();
     await new Promise<void>((res) => (this.server ? this.server.close(() => res()) : res()));
@@ -186,4 +193,12 @@ export function claudeBinary(): string | null {
     try { const r = spawnSync(c, ["--version"], { encoding: "utf8", timeout: 4000 }); const m = /^(\d+)\./.exec(r.stdout.trim()); if (r.status === 0 && m && Number(m[1]) >= 2) return c; } catch { /* next */ }
   }
   return null;
+}
+
+/** Is something listening on this loopback port right now? (sync, bounded; used to prune the fan-out registry) */
+function portAlive(port: number): boolean {
+  const r = spawnSync("lsof", ["-nP", `-iTCP:${port}`, "-sTCP:LISTEN", "-t"], { encoding: "utf8", timeout: 2000 });
+  if (r.status === 0 && r.stdout.trim()) return true;
+  if (r.error) return true; // lsof missing (Windows): keep the entry; the hook tolerates dead ports anyway
+  return false;
 }
