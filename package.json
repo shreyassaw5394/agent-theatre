@@ -2,7 +2,9 @@
   "name": "agent-theatre-monorepo",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "packageManager": "pnpm@9.15.4",
   "scripts": {
     "typecheck": "pnpm -r typecheck",
@@ -17,6 +19,14 @@
     "tsup": "^8.3.0",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",
-    "vitest": "^3.0.0"
+    "vitest": "^4.1.12"
+  },
+  "pnpm": {
+    "overrides": {
+      "@azure/msal-node": ">=7.1.0",
+      "esbuild": ">=0.28.1",
+      "tinypool": ">=2.1.2",
+      "@vitest/mocker": ">=4.1.12"
+    }
   }
 }
