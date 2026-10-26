@@ -1,7 +1,7 @@
 {
   "name": "agent-theatre",
-  "version": "1.4.0",
-  "description": "Watch your coding agent work — as a film, not a log. Local, honest visualiser for Claude Code sessions.",
+  "version": "1.4.1",
+  "description": "Watch your coding agent work \u2014 as a film, not a log. Local, honest visualiser for Claude Code sessions.",
   "license": "MIT",
   "type": "module",
   "repository": {
@@ -58,5 +58,6 @@
     "./package.json": "./package.json"
   },
   "main": "dist/index.js",
-  "types": "dist/index.d.ts"
+  "types": "dist/index.d.ts",
+  "mcpName": "io.github.shreyassaw5394/agent-theatre"
 }
