@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import pc from "picocolors";
 import { Theatre } from "./server.js";
@@ -25,7 +26,7 @@ program
   .action(async (o: { port: string; open: boolean; set?: string }) => {
     const cwd = process.cwd();
     const st = hooksStatus();
-    if (!st.installed) console.log(pc.yellow("Hooks are not installed — the scene will stay empty until you run:"), pc.bold("agent-theatre hooks install"));
+    if (!st.installed && !pluginInstalled()) console.log(pc.yellow("Hooks are not installed — the scene will stay empty until you run:"), pc.bold("agent-theatre hooks install"), pc.dim("(or install the Claude Code plugin)"));
     const files = scanRepo(cwd);
     const theatre = new Theatre({ cwd, repoId: repoIdFor(cwd), files, ...(webDir ? { webDir } : {}) });
     await theatre.listen(Number(o.port) || 0);
@@ -89,3 +90,8 @@ hooks.command("status").action(() => {
 });
 
 program.parseAsync(process.argv).catch((err) => { console.error(pc.red(String(err?.message ?? err))); process.exit(1); });
+
+/** The Claude Code plugin brings its own hooks; don't nag about `hooks install` when it is present. */
+function pluginInstalled(): boolean {
+  try { const p = join(process.env.CLAUDE_CONFIG_DIR || join(homedir(), ".claude"), "plugins", "installed_plugins.json"); return readFileSync(p, "utf8").includes("agent-theatre"); } catch { return false; }
+}

@@ -59,3 +59,18 @@ describe("hook routing", () => {
     expect(isWithin("/tmp/other", "/tmp/repo-a")).toBe(false);
   });
 });
+
+describe("duplicate delivery", () => {
+  it("the same hook payload delivered twice yields one event", async () => {
+    const { Theatre } = await import("../src/server.js");
+    const { mkdtempSync } = await import("node:fs"); const { tmpdir } = await import("node:os"); const { join } = await import("node:path");
+    const home = mkdtempSync(join(tmpdir(), "at-dedupe-"));
+    const t = new Theatre({ cwd: "/tmp/repo", repoId: "repo", files: [{ path: "a.ts", loc: 10 }], home });
+    await t.listen(0);
+    const payload = { session_id: "s", transcript_path: "/x", cwd: "/tmp/repo", permission_mode: "default", hook_event_name: "PostToolUse", tool_name: "Read", tool_use_id: "toolu_dup_1", tool_input: { file_path: "/tmp/repo/a.ts" }, tool_response: { type: "text", file: { filePath: "/tmp/repo/a.ts", content: "x\n", numLines: 1, startLine: 1, totalLines: 1 } } };
+    for (let i = 0; i < 2; i++) await fetch(`${t.url}hook`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
+    const scene = await (await fetch(`${t.url}api/scene`)).json() as { events: unknown[] };
+    expect(scene.events.length).toBe(1);
+    await t.close();
+  });
+});

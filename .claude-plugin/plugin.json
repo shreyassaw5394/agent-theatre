@@ -1,6 +1,6 @@
 {
   "name": "agent-theatre",
-  "version": "1.3.9",
+  "version": "1.3.10",
   "description": "Agent Theatre: watch your coding agent work — as a film, not a log. Your repo becomes a stage, the agent a character; every read, edit and test is a beat, and if it claims success without a passing test a gremlin hides behind it. Local only, nothing leaves your machine.",
   "author": { "name": "Shreyas Sawant", "url": "https://github.com/shreyassaw5394" },
   "homepage": "https://agenttheatre.dev",

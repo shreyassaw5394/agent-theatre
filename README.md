@@ -51,7 +51,7 @@ end-to-end on real repos. Design notes in [docs/design.md](docs/design.md).
 
 ```sh
 cd your-repo
-npx agent-theatre hooks install   # once: adds hooks to ~/.claude/settings.json, keeps a backup
+npx agent-theatre hooks install   # once (skip if you installed the Claude Code plugin — it brings the hooks)
 npx agent-theatre                 # opens the stage for this repo; run Claude Code in another terminal
 npx agent-theatre replay          # pick any past Claude Code session of this repo and watch it
 npx agent-theatre hooks uninstall # reverses the install byte-for-byte

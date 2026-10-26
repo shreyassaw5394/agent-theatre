@@ -38,6 +38,7 @@ export class Theatre {
   /** The most recent cwd of a Claude Code session that is NOT this repo (so an empty stage can point the person there). */
   private elsewhere: string | null = null;
   private readonly openSessions = new Set<string>();
+  private readonly seen = new Set<string>();
   private timer: NodeJS.Timeout | null = null;
   port = 0;
 
@@ -64,6 +65,8 @@ export class Theatre {
       // any session that speaks to this stage is open until its SessionEnd (a stage started mid-session never saw the SessionStart)
       if (typeof sid === "string" && sid) { if (hookName === "SessionEnd") this.openSessions.delete(sid); else this.openSessions.add(sid); }
       let { events } = hookPayloadToEvents(payload, { home: homedir() });
+      // the plugin and a CLI-installed hook can both deliver the same payload: an event id seen already is dropped
+      events = events.filter((e) => { if (this.seen.has(e.id)) return false; this.seen.add(e.id); if (this.seen.size > 5000) { const first = this.seen.values().next().value; if (first !== undefined) this.seen.delete(first); } return true; });
       // several Claude Code sessions can share a repo (a terminal, VS Code, a headless resume): the curtain falls only when the last one ends
       if (this.openSessions.size > 0) events = events.filter((e) => e.kind !== "session_end");
       if (events.length) this.ingest(events);
