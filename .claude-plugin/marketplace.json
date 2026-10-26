@@ -1,13 +1,13 @@
 {
   "name": "agent-theatre",
   "owner": { "name": "Shreyas Sawant", "url": "https://github.com/shreyassaw5394" },
-  "metadata": { "description": "Agent Theatre. Watch your coding agent work — as a film, not a log.", "version": "1.4.3" },
+  "metadata": { "description": "Agent Theatre. Watch your coding agent work — as a film, not a log.", "version": "1.4.4" },
   "plugins": [
     {
       "name": "agent-theatre",
       "source": "./",
       "description": "Turns every Claude Code session in this repo into an animated scene. Installs the stage hooks, a /theatre command and a skill so Claude can open or replay the stage when you ask.",
-      "version": "1.4.3",
+      "version": "1.4.4",
       "category": "productivity",
       "keywords": ["visualization", "replay", "session", "hooks"],
       "homepage": "https://agenttheatre.dev"
