@@ -86,10 +86,25 @@ export function hookPayloadToEvents(payload: unknown, opts: HookOptions = {}): A
   return { events: [], warnings: [{ code: "unknown_row_type", detail: name }] };
 }
 
-/** The closing message, shortened to what fits on a stage: the last 240 characters of its final paragraph. */
+/**
+ * The closing message, reduced to what the person needs: the agent's question if it asked one (the last one),
+ * else the first sentence of its final paragraph. Markdown stripped, whole sentences only, ≤ 200 chars.
+ */
 export function noteOf(text: string | undefined): { note?: string } {
   if (!text) return {};
-  const para = text.trim().split(/\n{2,}/).filter((x) => x.trim()).pop()?.replace(/\s+/g, " ").trim() ?? "";
-  if (!para) return {};
-  return { note: para.length > 240 ? "…" + para.slice(-239) : para };
+  const clean = text
+    .replace(/```[\s\S]*?```/g, " ")            // code blocks
+    .replace(/`([^`]*)`/g, "$1")                 // inline code
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")   // links
+    .replace(/\*+|#+|>+/g, "")                   // emphasis, headings, quotes
+    .replace(/(^|\s)_+|_+(?=\s|$)/g, "$1")        // underscore emphasis, not snake_case
+    .replace(/^\s*[-•\d.)]+\s+/gm, "")           // list bullets
+    .replace(/\s+/g, " ").trim();
+  if (!clean) return {};
+  const sentences = clean.match(/[^.!?]+[.!?]+(?=\s|$)|[^.!?]+$/g)?.map((x) => x.trim()).filter(Boolean) ?? [clean];
+  const questions = sentences.filter((x) => x.endsWith("?"));
+  let note = questions.length ? questions[questions.length - 1]! : sentences[0]!;
+  if (!questions.length) for (const next of sentences.slice(1)) { if (!/[.!?]$/.test(next) || note.length + next.length + 1 > 160) break; note = `${note} ${next}`; }
+  if (note.length > 200) note = note.slice(0, 197).replace(/\s+\S*$/, "") + "…";
+  return { note };
 }
