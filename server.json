@@ -1,9 +1,12 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
   "name": "io.github.shreyassaw5394/agent-theatre",
-  "description": "Watch your coding agent work, as a film, not a log. Opens and replays the Agent Theatre stage for a repo.",
+  "description": "Watch your coding agent work as a film: opens and replays the Agent Theatre stage for a repo.",
   "status": "active",
-  "repository": { "url": "https://github.com/shreyassaw5394/agent-theatre", "source": "github" },
+  "repository": {
+    "url": "https://github.com/shreyassaw5394/agent-theatre",
+    "source": "github"
+  },
   "version": "1.4.0",
   "packages": [
     {
@@ -12,8 +15,15 @@
       "identifier": "agent-theatre",
       "version": "1.4.0",
       "runtimeHint": "npx",
-      "transport": { "type": "stdio" },
-      "packageArguments": [{ "type": "positional", "value": "serve" }]
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "serve"
+        }
+      ]
     }
   ],
   "websiteUrl": "https://agenttheatre.dev"

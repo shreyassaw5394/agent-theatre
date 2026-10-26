@@ -84,3 +84,11 @@ describe("mcp", () => {
     expect(srv.packages[0]!.identifier).toBe("agent-theatre"); expect(srv.packages[0]!.packageArguments[0]!.value).toBe("serve"); expect(srv.version).toBe(pkg.version);
   });
 });
+
+describe("mcp registry limits", () => {
+  it("server.json description fits the registry's 100-char limit", async () => {
+    const { readFileSync } = await import("node:fs"); const { fileURLToPath } = await import("node:url");
+    const srv = JSON.parse(readFileSync(fileURLToPath(new URL("../../../server.json", import.meta.url)), "utf8")) as { description: string };
+    expect(srv.description.length).toBeLessThanOrEqual(100);
+  });
+});
