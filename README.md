@@ -109,7 +109,8 @@ fixture session and asserts none reach the stream).
 |---|---|---|---|
 | File paths | yes | repo-relative | never |
 | File contents | counted only (±lines) | no | never |
-| Prompts / agent messages | tail scanned for a success claim | no | never |
+| Your prompts | tail never read; never stored | no | never |
+| The agent's closing message | last paragraph, truncated to 240 chars (`turn_end.note`) | yes — shown with "your turn" so you know what it asked | never |
 | Command text | first word + classified intent + redirect targets | no | never |
 | Test output | summary counts only | pass/fail | never |
 | Telemetry | — | — | none, ever |

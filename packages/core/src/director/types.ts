@@ -35,7 +35,7 @@ export type BeatBody =
   | { kind: "summon_helper"; helperId: string; label?: string }
   | { kind: "dismiss_helper"; helperId: string; ok: boolean }
   | { kind: "blocked_on_you"; reason: "permission" | "question" }
-  | { kind: "your_turn" }
+  | { kind: "your_turn"; note?: string }
   | { kind: "stumble"; retrying: boolean }
   | { kind: "celebrate"; target?: PlaceId }
   | { kind: "idle" }

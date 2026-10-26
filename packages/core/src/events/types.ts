@@ -68,7 +68,8 @@ export type AgentEventBody =
   | { kind: "subagent_stop"; childId: string; ok: boolean }
   | { kind: "waiting_for_user"; reason: WaitReason }
   /** The agent finished a turn (Stop hook / end_turn). Carries the claim-check input. */
-  | { kind: "turn_end"; claimedSuccess: boolean }
+  /** `note`: the agent's own closing words, truncated — the one piece of text the stage carries, so the person knows what their turn is. Never the person's prompt. */
+  | { kind: "turn_end"; claimedSuccess: boolean; note?: string }
   | { kind: "error"; where: string; retrying: boolean }
   | { kind: "session_end"; reason: SessionEndReason; claimedSuccess: boolean };
 

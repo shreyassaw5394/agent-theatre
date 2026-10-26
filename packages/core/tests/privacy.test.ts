@@ -5,7 +5,8 @@ import { parseTranscript } from "../src/adapters/transcript.js";
 import { findLeaks } from "../src/privacy/leaks.js";
 import { fixturePath, readFixture, readJson } from "./_fixtures.js";
 
-const markers = Object.values(readJson<Record<string, string>>("secrets.markers.json"));
+// the agent's closing message (`text`) is carried on purpose, truncated, as turn_end.note — everything else must never leak
+const markers = Object.entries(readJson<Record<string, string>>("secrets.markers.json")).filter(([k]) => k !== "text").map(([, v]) => v);
 
 describe("privacy invariant", () => {
   it("no planted prompt, file content, command body, stdout, query or agent prompt reaches the event stream or warnings", () => {
@@ -25,7 +26,7 @@ describe("privacy invariant", () => {
       const forbidden = [
         JSON.stringify(payload.tool_input ?? "\u0000"),
         JSON.stringify(payload.tool_response ?? "\u0000"),
-        String(payload.last_assistant_message ?? "\u0000"),
+        // the closing message is carried on purpose (turn_end.note) so the person knows what their turn is
         String(payload.transcript_path ?? "\u0000"),
         String(payload.message ?? "\u0000"),
       ].filter((s) => s.length > 3);

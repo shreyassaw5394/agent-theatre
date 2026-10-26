@@ -51,7 +51,7 @@ export function hookPayloadToEvents(payload: unknown, opts: HookOptions = {}): A
     case "SessionEnd":
       return one({ kind: "session_end", reason: endReason(str(p.reason)), claimedSuccess: false });
     case "Stop":
-      return one({ kind: "turn_end", claimedSuccess: claimsSuccess(str(p.last_assistant_message)) });
+      return one({ kind: "turn_end", claimedSuccess: claimsSuccess(str(p.last_assistant_message)), ...noteOf(str(p.last_assistant_message)) });
     case "SubagentStart": {
       const id = str(p.agent_id) ?? "";
       const label = str(p.agent_type);
@@ -84,4 +84,12 @@ export function hookPayloadToEvents(payload: unknown, opts: HookOptions = {}): A
       return { events: [], warnings: [] };
   }
   return { events: [], warnings: [{ code: "unknown_row_type", detail: name }] };
+}
+
+/** The closing message, shortened to what fits on a stage: the last 240 characters of its final paragraph. */
+export function noteOf(text: string | undefined): { note?: string } {
+  if (!text) return {};
+  const para = text.trim().split(/\n{2,}/).filter((x) => x.trim()).pop()?.replace(/\s+/g, " ").trim() ?? "";
+  if (!para) return {};
+  return { note: para.length > 240 ? "…" + para.slice(-239) : para };
 }

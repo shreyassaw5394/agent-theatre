@@ -77,7 +77,7 @@ export class Panel {
     this.vscode = (globalThis as { __vsapi?: { postMessage: (m: unknown) => void } | null }).__vsapi ?? null;
     (this.waiting.querySelector(".go") as HTMLButtonElement).onclick = () => { if (this.vscode) this.vscode.postMessage({ type: "focus-agent" }); else void this.notify(); };
     // your turn: say what's next from here (resumes the session headlessly through the local server)
-    this.prompt = el("form", "prompt", `<input type="text" placeholder="" autocomplete="off" spellcheck="false"><button type="submit">Send</button><span class="st"></span>`); this.prompt.hidden = true;
+    this.prompt = el("form", "prompt", `<div class="note" hidden></div><div class="row"><input type="text" placeholder="" autocomplete="off" spellcheck="false"><button type="submit">Send</button><span class="st"></span></div>`); this.prompt.hidden = true;
     this.prompt.addEventListener("submit", (ev) => { ev.preventDefault(); const inp = this.prompt.querySelector("input") as HTMLInputElement, st = this.prompt.querySelector(".st") as HTMLElement; const text = inp.value.trim(); if (!text) return; st.textContent = "sending…"; void h.onPrompt(text).then((r) => { st.textContent = r; inp.value = ""; }); });
     this.stageEl.append(el("div", "vignette"), this.overlay, this.signal, this.chip, this.caption, this.title, this.end, this.picker, this.waiting, this.prompt);
     // wheel = zoom
@@ -189,7 +189,10 @@ export class Panel {
     // your turn (live only): a prompt box on the stage
     const yourTurn = this.liveMode && cur?.kind === "your_turn" && this.promptEnabled;
     this.prompt.hidden = !yourTurn;
-    if (yourTurn) (this.prompt.querySelector("input") as HTMLInputElement).placeholder = `${this.leadName || "The agent"} is done. What's next?`;
+    if (yourTurn && cur?.kind === "your_turn") {
+      (this.prompt.querySelector("input") as HTMLInputElement).placeholder = `${this.leadName || "The agent"} is done. What's next?`;
+      const n = this.prompt.querySelector(".note") as HTMLElement; n.hidden = !cur.note; n.textContent = cur.note ? `${this.leadName || "The agent"}: ${cur.note}` : "";
+    }
     // waiting banner (live only): permission or question → the person is the next actor
     const waitingNow = this.liveMode && cur?.kind === "blocked_on_you";
     this.waiting.hidden = !waitingNow;
@@ -211,7 +214,7 @@ export class Panel {
     if (ai !== this.lastAct) { this.lastAct = ai; this.actBtns.forEach((b, i) => { b.classList.toggle("on", i < ai); b.classList.toggle("now", i === ai); }); this.actLabels.forEach((l, i) => l.classList.toggle("now", i === ai)); }
     // log
     let ei = -1; this.logBtns.forEach((l, i) => { if (s.t >= l.ms) ei = i; });
-    if (ei !== this.lastEv) { this.lastEv = ei; this.logBtns.forEach((l, i) => { l.btn.classList.toggle("done", i < ei); l.btn.classList.toggle("now", i === ei); }); this.logBtns[ei]?.btn.scrollIntoView({ block: "nearest", behavior: "smooth" }); }
+    if (ei !== this.lastEv) { this.lastEv = ei; this.logBtns.forEach((l, i) => { l.btn.classList.toggle("done", i < ei); l.btn.classList.toggle("now", i === ei); }); const b = this.logBtns[ei]?.btn; if (b) scrollWithin(b); }
     // tags
     const r = this.stageEl.getBoundingClientRect();
     const narrow = r.width < 600;
@@ -250,4 +253,13 @@ function describe(e: AgentEvent, world: World): [string, string] {
   void world;
 }
 const hashSeed = (s: string) => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
+/** Scroll the event log's own pane to keep a row visible — never the page (scrollIntoView yanked the stage out of view). */
+function scrollWithin(el: HTMLElement): void {
+  let c: HTMLElement | null = el.parentElement;
+  while (c && !/(auto|scroll)/.test(getComputedStyle(c).overflowY)) c = c.parentElement;
+  if (!c) return;
+  const top = el.offsetTop - c.offsetTop, bottom = top + el.offsetHeight;
+  if (top < c.scrollTop) c.scrollTo({ top, behavior: "smooth" });
+  else if (bottom > c.scrollTop + c.clientHeight) c.scrollTo({ top: bottom - c.clientHeight, behavior: "smooth" });
+}
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] ?? c));

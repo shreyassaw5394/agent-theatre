@@ -96,6 +96,7 @@ html.cinema .nudge{display:none}
 
 /* your turn: prompt from the stage */
 .prompt{position:absolute;left:50%;bottom:64px;transform:translateX(-50%);display:flex;gap:8px;align-items:center;width:min(640px,calc(100% - 28px));padding:8px;border-radius:16px;background:rgba(14,18,28,.78);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.14);box-shadow:0 10px 30px rgba(0,0,0,.4);z-index:4}
+.prompt{flex-direction:column;align-items:stretch}.prompt .row{display:flex;gap:8px;align-items:center}.prompt .note{font:600 13px/1.4 var(--body);color:#ffd66b;padding:4px 6px 6px;max-height:4.3em;overflow:auto}
 .prompt input{flex:1;min-width:0;border:0;outline:0;background:rgba(255,255,255,.08);color:#fff;border-radius:10px;padding:10px 12px;font:600 14px var(--body)}.prompt input::placeholder{color:#9fb0c8}
 .prompt button{border:0;border-radius:999px;padding:10px 16px;background:#ffd66b;color:#1a1200;font:700 13px var(--display);cursor:pointer}.prompt .st{font:600 11px var(--mono);color:#9fb0c8;white-space:nowrap}
 html.cinema .prompt{display:none}

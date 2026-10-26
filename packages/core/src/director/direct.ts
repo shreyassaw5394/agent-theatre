@@ -147,7 +147,7 @@ export class Director {
           this.emit(e, actor, { kind: "unverified_claim", gremlinId: gid }, 1400, this.mood.onClaimUnverified());
         }
         this.editedSinceTurn = false;
-        this.emit(e, actor, { kind: "your_turn" }, 1000, this.mood.mood);
+        this.emit(e, actor, { kind: "your_turn", ...(e.note ? { note: e.note } : {}) }, 1000, this.mood.mood);
         break;
       }
       case "session_end":

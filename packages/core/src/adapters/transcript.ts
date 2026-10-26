@@ -1,3 +1,4 @@
+import { noteOf } from "./hook.js";
 import type { AdapterResult, AdapterWarning, AgentEvent, AgentEventBody } from "../events/types.js";
 import { claimsSuccess } from "../director/claims.js";
 import { basename, type PathContext } from "./paths.js";
@@ -115,7 +116,7 @@ export function parseTranscriptRows(rows: unknown[], opts: TranscriptOptions = {
       }
       if (typeof content === "string" && !agentId) lastAssistantText = content;
       if (message.stop_reason === "end_turn" && !agentId) {
-        push(ts, `${str(row.uuid) ?? seq}:turn`, { kind: "turn_end", claimedSuccess: claimsSuccess(lastAssistantText) });
+        push(ts, `${str(row.uuid) ?? seq}:turn`, { kind: "turn_end", claimedSuccess: claimsSuccess(lastAssistantText), ...noteOf(lastAssistantText) });
       }
       continue;
     }

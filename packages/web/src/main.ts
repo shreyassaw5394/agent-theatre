@@ -149,6 +149,8 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
     panel.loadTimeline(p.beats, p.events, p.world);
     rebuild();
     const t = Number(q.get("t")); if (t > 0 && player) player.seek(t * 1000);
+    // live: don't replay history on open — start a few seconds before the live edge
+    if (transport.mode === "live" && player && !q.has("t") && player.state.duration > 1500) player.seek(Math.max(0, player.state.duration - 1200));
     // real previews for the picker, rendered from this repo's world in each set
     const buildPreviews = (async () => { if (q.has("nopreview")) return; for (const s of SETS) { try { panel.previews.set(s.id, await previewSet(app, worldFor(p.world, s), s)); } catch (err) { console.warn("set preview failed", s.id, err); } } if (panel.pickerOpen) panel.showPicker(true, theme.id); wake(); })();
     if (!chosen && !q.has("t")) void buildPreviews.then(() => panel.showPicker(true, theme.id));
@@ -161,6 +163,9 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
     payload.beats.push(...beats); payload.events.push(...events);
     if (player.world === payload.world) player.append(beats);
     else { const all = direct(payload.events, player.world); player.append(all.slice(player.beatCount)); }
+    // real time: a live stage shows what just happened now, not after replaying the backlog — jump to the newest beat
+    const newest = Math.max(...beats.map((b) => b.atMs), 0);
+    if (player.state.duration - player.state.t > 1200 && newest > player.state.t) player.seek(newest);
     panel.loadTimeline(player.world === payload.world ? payload.beats : direct(payload.events, player.world), payload.events, player.world);
     if (!player.playing) player.play();
     wake();
@@ -175,6 +180,12 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
     scheduled = false;
     const dt = fixedStep || Math.min(50, now - last); last = now;
     if (player && !document.hidden) {
+      // live: stay on the live edge. Open late → jump near the end; fall behind → catch up at up to 4x, then settle at 1x.
+      if (transport.mode === "live" && player.playing) {
+        const behind = player.state.duration - player.state.t;
+        if (behind > 6000) { if (player.state.rate !== 4) player.setRate(4); }
+        else if (behind < 1500 && player.state.rate !== rate) player.setRate(rate);
+      }
       if ((cinema || q.has("loop")) && player.state.t >= player.state.duration - 1 && player.state.duration > 0) { if (!loopTimer) loopTimer = setTimeout(() => { loopTimer = null; player?.seek(0); player?.play(); }, 600); }
       player.update(dt);
       panel.update(player.state, player.world, (id) => player!.worldLayer.lampOf(id));
