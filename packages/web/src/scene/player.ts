@@ -106,13 +106,33 @@ export class ScenePlayer {
     this.particles.clear();
   }
   get leadName(): string { return this.company.lead.name; }
+  /**
+   * Thinking looks like thinking: a slow weight shift, a glance to one side every few seconds, now and
+   * then a look up, a tiny settle-hop when the glance turns. Driven by the wall clock, never by the beat
+   * clock, so the character keeps breathing between events and at the live edge.
+   */
+  private idleBusiness(a: { face: number; look: "fwd" | "up" | "down"; sx: number; sy: number; lean: number; lift: number; moving: boolean }): void {
+    if (this.reducedMotion) return;
+    const w = this.wall / 1000;
+    a.moving = false;
+    a.sy = 1 + 0.025 * Math.sin(w * 1.1); a.sx = 1 / a.sy;                 // breathing / weight shift
+    a.lean = 0.04 * Math.sin(w * 0.37);                                      // slow sway
+    const phase = (w % 7.3);                                                 // a glance cycle every ~7 s
+    a.face = phase > 3.1 && phase < 5.4 ? -1 : 1;
+    a.look = phase > 5.9 && phase < 6.8 ? "up" : "fwd";
+    const hop = Math.abs(phase - 3.1) < 0.18 || Math.abs(phase - 5.4) < 0.18 ? Math.sin(((phase % 0.36) / 0.36) * Math.PI) : 0;
+    a.lift = Math.max(a.lift, hop * 4);
+  }
   get state(): PlayerState {
     const cur = this.currentBeat();
     return { t: this.t, duration: this.duration, playing: this._playing, rate: this.rate, current: cur, mood: this.mood, bubble: this.bubble(cur), labels: this.labels(cur), evidence: this.evidenceCount !== null ? { passed: this.evidenceCount } : null, signal: this.signal };
   }
 
   // ---------- frame ----------
+  /** Wall clock for idle business: runs whether or not the scene clock does, so a thinking agent never freezes. */
+  private wall = 0;
   update(dtMs: number): void {
+    this.wall += dtMs;
     if (this._playing) {
       this.t = Math.min(this.duration, this.t + dtMs * this.rate);
       if (this.t >= this.duration && this.duration > 0) this._playing = false;
@@ -248,7 +268,7 @@ export class ScenePlayer {
       const mine = cur && cur.actor === actor ? cur : null;
       const standing = this.worldLayer.standingSpot(this.actorAt.get(actor) ?? (actor === "pip" ? "forge" : "dock"));
       a.x = standing.x; a.y = standing.y;
-      if (!mine) { if (actor !== "pip") a.sy = 0.96; continue; }
+      if (!mine) { if (actor !== "pip") a.sy = 0.96; else this.idleBusiness(a); continue; }
       const u = seg(this.t, mine.atMs, mine.atMs + mine.durationMs);
       const target = "target" in mine ? this.worldLayer.standingSpot(mine.target) : standing;
       switch (mine.kind) {
@@ -298,11 +318,11 @@ export class ScenePlayer {
           break;
         }
         case "blocked_on_you": a.face = 1; a.look = "fwd"; a.sy = 1 + 0.03 * Math.sin(this.t / 1000 * 6); a.sx = 1 / a.sy; break;
-        case "your_turn": a.sy = 0.86; a.sx = 1.08; break;
+        case "your_turn": this.idleBusiness(a); break; // waiting is thinking too
         case "stumble": { const k = bump(seg(u, 0, 0.7)); a.lean = Math.sin(this.t / 1000 * 40) * 0.12 * k; a.sy = 1 - 0.08 * k; a.sx = 1 + 0.06 * k; break; }
         case "unverified_claim": { a.face = 1; a.hiding = 1; const g = this.claimGremlinId ? this.gremlins.get(this.claimGremlinId) : null; if (g) { g.x = a.x - a.face * 14; g.y = a.y - 2; g.peek = 1; } break; }
         case "curtain_down": a.lean = Math.sin(this.t / 1000 * 6) * 0.15; a.face = 1; break;
-        case "idle": break;
+        case "idle": this.idleBusiness(a); break;
         default: break;
       }
       if (this.claimGremlinId && mine.kind !== "unverified_claim") { const g = this.gremlins.get(this.claimGremlinId); if (g) { g.x = a.x - a.face * 14; g.y = a.y - 2; } }

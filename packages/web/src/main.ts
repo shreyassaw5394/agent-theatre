@@ -201,7 +201,8 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
       if ((cinema || q.has("loop")) && player.state.t >= player.state.duration - 1 && player.state.duration > 0) { if (!loopTimer) loopTimer = setTimeout(() => { loopTimer = null; player?.seek(0); player?.play(); }, 600); }
       player.update(dt);
       panel.update(player.state, player.world, (id) => player!.worldLayer.lampOf(id));
-      if (player.playing) settle = 45; else settle--;
+      // live stages never go to sleep: the character keeps thinking between events
+      if (player.playing || transport.mode === "live") settle = 45; else settle--;
     }
     if ((player?.playing || settle > 0) && !document.hidden) schedule();
   };
