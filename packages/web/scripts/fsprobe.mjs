@@ -1,0 +1,10 @@
+import { chromium } from "playwright";
+const b = await chromium.launch({ channel: "chrome", headless: true, args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
+const p = await (await b.newContext({ viewport: { width: 1300, height: 760 } })).newPage();
+await p.goto("http://127.0.0.1:5173/?demo=episode-1&set=island&t=11&paused=1&nopreview=1", { waitUntil: "load" }); await p.waitForFunction(() => globalThis.__agentTheatre?.player, null, { timeout: 20000 }); await p.waitForTimeout(800);
+await p.getByRole("button", { name: /Full screen/ }).click(); await p.waitForTimeout(1200);
+const r = await p.evaluate(() => { const st = document.querySelector(".stage").getBoundingClientRect(); return { fsClass: document.documentElement.classList.contains("fullscreen"), fsEl: !!document.fullscreenElement, stage: [Math.round(st.width), Math.round(st.height)], view: [innerWidth, innerHeight], aside: getComputedStyle(document.querySelector("aside")).display, btn: document.querySelector(".toolbar")?.textContent?.includes("Exit") }; });
+console.log(JSON.stringify(r)); await p.screenshot({ path: "/private/tmp/claude-501/-Users-shreyassawant-ai-agent-browser/2782f23d-86de-44fc-b381-e1f5af206722/scratchpad/fullscreen.png" });
+await p.keyboard.press("f"); await p.waitForTimeout(800);
+console.log(JSON.stringify(await p.evaluate(() => ({ fsClass: document.documentElement.classList.contains("fullscreen"), fsEl: !!document.fullscreenElement }))));
+await b.close();
