@@ -273,7 +273,7 @@ export class ScenePlayer {
     const dt = dtMs / 1000;
     for (const [actor, ch] of [["pip", this.pip] as const, ...[...this.helpers.entries()]]) {
       const a = ch.pose;
-      a.moving = false; a.lift = 0; a.sx = 1; a.sy = 1; a.lean = 0; a.look = "fwd"; a.mood = this.mood;
+      a.moving = false; a.lift = 0; a.sx = 1; a.sy = 1; a.lean = 0; a.look = "fwd"; a.mood = this.mood; a.tool = "none"; a.toolPhase = 0;
       const mine = cur && cur.actor === actor ? cur : null;
       const standing = this.worldLayer.standingSpot(this.actorAt.get(actor) ?? (actor === "pip" ? "forge" : "dock"));
       a.x = standing.x; a.y = standing.y;
@@ -297,28 +297,29 @@ export class ScenePlayer {
           if (actor === "pip" && this._playing) { this.footT += dt; if (this.footT > 0.19 && Sfx.plays("footstep", this.rate)) { this.footT = 0; this.sfx.play("footstep", { theme: this.theme, pan: Math.max(-0.8, Math.min(0.8, a.x / 600)) }); } }
           break;
         }
-        case "read": { const nod = bump(((this.t / 1000) % 1.4) / 0.25); a.lean = -0.17 + Math.sin(this.t / 1000 * 3) * 0.03 - nod * 0.05; a.sy = 1 - nod * 0.03; a.face = this.facing(a, mine.target); break; }
+        case "read": { const nod = bump(((this.t / 1000) % 1.4) / 0.25); a.tool = "book"; a.toolPhase = ((this.t / 1000) % 1.4) / 1.4; a.lean = -0.17 + Math.sin(this.t / 1000 * 3) * 0.03 - nod * 0.05; a.sy = 1 - nod * 0.03; a.face = this.facing(a, mine.target); break; }
         case "build": case "forge": {
           // hammer rhythm: slow wind-up, fast strike (asymmetric), not a sine
           const period = mine.kind === "build" ? 0.28 - mine.intensity * 0.1 : 0.34;
           const ph = ((this.t / 1000) % period) / period;
           const wind = ph < 0.7 ? ph / 0.7 : 1 - (ph - 0.7) / 0.3;
           a.lift = wind * 4; a.lean = (ph < 0.7 ? -0.06 * wind : 0.12 * (1 - wind)); a.sy = ph < 0.7 ? 1 + 0.04 * wind : 1 - 0.08 * (1 - wind); a.sx = 1 / a.sy;
+          a.tool = mine.kind === "build" ? "hammer" : "wrench"; a.toolPhase = mine.kind === "build" ? 1 - wind : ph;
           if ("target" in mine) a.face = this.facing(a, mine.target);
           if (actor === "pip" && this._playing && !this.reducedMotion) { this.hammerT += dt; const period = mine.kind === "build" ? 0.28 - mine.intensity * 0.1 : 0.34; if (this.hammerT > period) { this.hammerT = 0; if (Sfx.plays("hammer", this.rate)) this.sfx.play(mine.kind === "build" ? "hammer" : "spark", { theme: this.theme, intensity: mine.kind === "build" ? mine.intensity : 0.5 }); const p = "target" in mine ? this.worldLayer.positionOf(mine.target) : this.worldLayer.positionOf("forge"); if (p && Math.random() < 0.7) this.particles.burst(p.top.x + (Math.random() * 24 - 12), p.top.y + 10, 2, [0xffd66b, 0xfff3c4], 50, 60); } }
           break;
         }
-        case "raise": a.look = "up"; a.sy = 1 + 0.05 * bump(u); break;
-        case "search": a.look = "up"; a.lean = Math.sin(this.t / 1000 * 1.5) * 0.12; break;
-        case "run_tests": a.look = "up"; a.lean = Math.sin(this.t / 1000 * 2) * 0.04; break;
+        case "raise": a.look = "up"; a.sy = 1 + 0.05 * bump(u); a.tool = "trowel"; a.toolPhase = ((this.t / 1000) % 0.9) / 0.9; break;
+        case "search": a.look = "up"; a.lean = Math.sin(this.t / 1000 * 1.5) * 0.12; a.tool = "lens"; a.toolPhase = ((this.t / 1000) % 2.4) / 2.4; break;
+        case "run_tests": a.look = "up"; a.lean = Math.sin(this.t / 1000 * 2) * 0.04; a.tool = "clipboard"; a.toolPhase = ((this.t / 1000) % 1.6) / 1.6; break;
         case "test_outcome": if (mine.outcome === "fail") { const k = bump(seg(u, 0, 0.5)); a.lean = -0.25 * k; a.sy = 1 - 0.1 * k; a.sx = 1 + 0.08 * k; } else { a.lift = bump(u) * 14; } break;
         case "spawn_gremlin": { const k = bump(seg(u, 0, 0.5)); a.lift = Math.sin(Math.PI * seg(u, 0.05, 0.45)) * 12; a.lean = -0.22 * k; a.sx = 1 + 0.1 * k; a.sy = 1 - 0.1 * k; a.look = "down"; a.x = standing.x - a.face * 10 * k; break; }
-        case "chase": { const g = this.gremlins.get(mine.gremlinId); const base = target; const ang = u * Math.PI * 2 * 1.5; const r = 26;
+        case "chase": { a.tool = "net"; a.toolPhase = ((this.t / 1000) % 0.5) / 0.5; const g = this.gremlins.get(mine.gremlinId); const base = target; const ang = u * Math.PI * 2 * 1.5; const r = 26;
           const gx = base.x + Math.cos(ang) * r, gy = base.y + Math.sin(ang) * r * 0.5;
           if (g) { g.x = gx; g.y = gy; g.panic = 1; }
           const lag = ang - 1.1; a.x = base.x + Math.cos(lag) * r; a.y = base.y + Math.sin(lag) * r * 0.5; a.moving = true; a.face = Math.cos(ang) > Math.cos(lag) ? 1 : -1;
           const ph = this.t / 1000 * 16; a.lift = Math.abs(Math.sin(ph)) * 4; a.lean = a.face * 0.12; break; }
-        case "banish": { a.sy = 1 - 0.2 * bump(seg(u, 0, 0.4)); a.sx = 1 / a.sy; break; }
+        case "banish": { a.sy = 1 - 0.2 * bump(seg(u, 0, 0.4)); a.sx = 1 / a.sy; a.tool = "net"; a.toolPhase = 0.25 + bump(seg(u, 0, 0.4)) * 0.5; break; }
         case "celebrate": {
           const cyc = ((this.t - mine.atMs) % 1300) / 1300;
           if (cyc < 0.22) { const k = Math.sin(Math.PI * cyc / 0.22); a.sy = 1 - 0.24 * k; a.sx = 1 + 0.2 * k; }

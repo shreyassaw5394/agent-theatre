@@ -8,6 +8,7 @@ import { CAST, type CharacterSpec } from "./cast.js";
  * Pip, drawn procedurally every frame. Kept behind this small interface so a
  * Rive or sprite character can replace it without touching the player.
  */
+export type Tool = "none" | "hammer" | "wrench" | "book" | "lens" | "trowel" | "clipboard" | "net" | "flag" | "broom";
 export interface CharacterPose {
   /** World position (feet). */
   x: number; y: number;
@@ -22,6 +23,8 @@ export interface CharacterPose {
   moving: boolean;
   look: "fwd" | "up" | "down";
   mood: Mood;
+  /** What is in the hand, and where in its motion it is (0..1). Every kind of work has a tool. */
+  tool: Tool; toolPhase: number;
   /** 0..1 how much Pip is hiding something (claim gremlin behind). */
   hiding: number;
 }
@@ -32,7 +35,7 @@ export class Pip {
   private readonly body = new Graphics();
   private t = 0;
   /** Target pose, set by the player every frame. */
-  pose: CharacterPose = { x: 0, y: 0, lift: 0, sx: 1, sy: 1, lean: 0, face: 1, moving: false, look: "fwd", mood: "curious", hiding: 0 };
+  pose: CharacterPose = { x: 0, y: 0, lift: 0, sx: 1, sy: 1, lean: 0, face: 1, moving: false, look: "fwd", mood: "curious", hiding: 0, tool: "none", toolPhase: 0 };
   /** What is actually drawn: eases toward `pose` so beats transition instead of cut. */
   private shown = { x: 0, y: 0, lift: 0, sx: 1, sy: 1, lean: 0, face: 1 as 1 | -1, faceK: 1 };
   private snapNext = true;
@@ -144,10 +147,64 @@ export class Pip {
       g.circle(0, crown - 2, 7).fill({ color: bc, alpha: 0.22 }); g.circle(0, crown - 2, 2.2).fill({ color: bc, alpha: 0.9 });
     }
 
+    // the tool in hand: drawn in front of the body at hand height, posed by toolPhase
+    if (a.tool !== "none") this.drawTool(g, a, T);
+
     // hiding something: a nervous sideways glance, slightly hunched
     if (a.hiding > 0) {
       const k = bump((t * 0.5) % 1) * a.hiding;
       g.rotation = a.lean + k * 0.06;
+    }
+  }
+
+  /** Props are drawn, never loaded: a handle and a head, posed by the beat's phase. */
+  private drawTool(g: Graphics, a: CharacterPose, T: CharacterSpec): void {
+    const f = a.face, hx = f * 9, hy = -10, p = a.toolPhase;
+    const wood = 0x8a5a2b, steel = 0xd6dde8, dark = T.ink;
+    // props are drawn 1.6x the hand scale so they read from the camera's distance
+    g.scale.set(1, 1);
+    const K = 1.6;
+    const rot = (len: number, ang: number) => ({ x: hx + Math.cos(ang) * len * K * f, y: hy + Math.sin(ang) * len * K });
+    switch (a.tool) {
+      case "hammer": { // wind-up lifts it behind, strike brings it down in front
+        const ang = -1.9 + p * 2.3; const tip = rot(15, ang);
+        g.moveTo(hx, hy).lineTo(tip.x, tip.y).stroke({ width: 3.4, color: wood, cap: "round" });
+        g.roundRect(tip.x - 6, tip.y - 4.5, 12, 9, 2).fill(steel); g.roundRect(tip.x - 6, tip.y - 4.5, 12, 3, 1.5).fill({ color: 0xffffff, alpha: 0.45 });
+        break; }
+      case "wrench": { const ang = -0.6 + Math.sin(p * Math.PI * 2) * 0.5; const tip = rot(13, ang), base = rot(3, ang);
+        g.moveTo(base.x, base.y).lineTo(tip.x, tip.y).stroke({ width: 3.6, color: steel, cap: "round" });
+        g.circle(tip.x, tip.y, 5).fill(steel); g.circle(tip.x + f * 3, tip.y - 2, 2.4).fill(0x1b2433);
+        break; }
+      case "book": { const y = hy - 2 - Math.sin(p * Math.PI) * 1.5;
+        g.poly([hx - 11, y, hx, y + 3, hx, y - 11, hx - 11, y - 14]).fill(0xfff6d8); g.poly([hx, y + 3, hx + 11, y, hx + 11, y - 14, hx, y - 11]).fill(0xfff6d8);
+        g.moveTo(hx - 11, y - 14).lineTo(hx, y - 11).lineTo(hx + 11, y - 14).stroke({ width: 1.6, color: 0xc8a96a });
+        for (const k of [-8, -5, -2]) { g.moveTo(hx - 8, y + k).lineTo(hx - 2, y + k + 1).stroke({ width: 1, color: 0x9a8a6a }); g.moveTo(hx + 2, y + k + 1).lineTo(hx + 8, y + k).stroke({ width: 1, color: 0x9a8a6a }); }
+        break; }
+      case "lens": { const sx = hx + f * (4 + Math.sin(p * Math.PI * 2) * 4), sy = hy - 6 + Math.cos(p * Math.PI * 2) * 2;
+        g.moveTo(sx - f * 5, sy + 5).lineTo(sx - f * 13, sy + 13).stroke({ width: 3, color: wood, cap: "round" });
+        g.circle(sx, sy, 8).fill({ color: 0xbfe6ff, alpha: 0.5 }); g.circle(sx, sy, 8).stroke({ width: 2.2, color: steel }); g.circle(sx - 2.5, sy - 2.5, 2).fill({ color: 0xffffff, alpha: 0.75 });
+        break; }
+      case "trowel": { const lift = Math.sin(p * Math.PI) * 6; const ang = -0.4 - Math.sin(p * Math.PI) * 0.5; const tip = rot(9, ang);
+        g.moveTo(hx, hy - lift).lineTo(tip.x, tip.y - lift).stroke({ width: 3, color: wood, cap: "round" });
+        g.poly([tip.x, tip.y - lift - 6, tip.x + f * 14, tip.y - lift, tip.x, tip.y - lift + 6]).fill(steel);
+        g.roundRect(hx + f * 3 - 6, hy - lift - 22, 12, 8, 1.5).fill(0xc9684a); // the block being set
+        break; }
+      case "clipboard": { g.roundRect(hx - 8, hy - 16, 16, 20, 2).fill(0xe8d9b5); g.rect(hx - 4, hy - 18, 8, 4).fill(dark);
+        for (const k of [-10, -5, 0]) g.moveTo(hx - 5, hy + k).lineTo(hx + 5, hy + k).stroke({ width: 1.2, color: 0x9a8a6a });
+        if (p > 0.5) g.moveTo(hx - 5.5, hy - 11).lineTo(hx - 3, hy - 8.5).lineTo(hx + 2, hy - 14).stroke({ width: 2, color: 0x2fa36b, cap: "round" });
+        break; }
+      case "net": { const ang = -1.2 + Math.sin(p * Math.PI * 2) * 0.9; const tip = rot(16, ang);
+        g.moveTo(hx, hy).lineTo(tip.x, tip.y).stroke({ width: 3, color: wood, cap: "round" });
+        g.ellipse(tip.x + f * 4, tip.y, 9, 6).stroke({ width: 2, color: steel }); g.ellipse(tip.x + f * 4, tip.y + 3, 8, 8).fill({ color: 0xffffff, alpha: 0.12 });
+        break; }
+      case "flag": { const top = { x: hx, y: hy - 28 }; const wave = Math.sin(p * Math.PI * 2) * 3;
+        g.moveTo(hx, hy + 2).lineTo(top.x, top.y).stroke({ width: 2.2, color: wood });
+        g.poly([top.x, top.y, top.x + f * 17, top.y + 5 + wave, top.x, top.y + 11]).fill(T.ear);
+        break; }
+      case "broom": { const ang = 0.9 + Math.sin(p * Math.PI * 2) * 0.25; const tip = rot(14, ang);
+        g.moveTo(hx, hy - 4).lineTo(tip.x, tip.y).stroke({ width: 2, color: wood, cap: "round" });
+        for (let k = -3; k <= 3; k += 1.5) g.moveTo(tip.x, tip.y).lineTo(tip.x + k * f, tip.y + 6).stroke({ width: 1.1, color: 0xd8b86a });
+        break; }
     }
   }
 }
