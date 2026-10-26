@@ -639,3 +639,8 @@ agent is done, not for mid-turn chat. Permission prompts cannot be answered this
 no permission dialog), which is why the waiting banner redirects instead. Also: **Whole repo** toggle
 (follow camera off, fit the stage) and wheel zoom; **Export clip** records the canvas plus the synthesized
 sound with MediaRecorder to a .webm, entirely in the browser.
+
+**Removed (1.3.8): the stage prompt.** Resuming headlessly from the stage reached the model but not the
+person's terminal, and its SessionEnd (same session id) dropped the live curtain. The stage now never
+prompts: the waiting banner redirects to Claude Code, and a *live* stage never shows the replay ending —
+"Every agent run has a story" is for replays only.

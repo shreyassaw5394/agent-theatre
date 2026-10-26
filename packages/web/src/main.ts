@@ -76,14 +76,6 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
     onOverview: (on) => { player?.setOverview(on); wake(); },
     onZoom: (f) => { player?.zoomBy(f); wake(); },
     onExport: () => { void exportClip(); },
-    onPrompt: async (text) => {
-      if (VS) { VS.postMessage({ type: "prompt", text }); return "sent — watch the stage"; }
-      try {
-        const r = await fetch(`${BASE}/api/prompt`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text }) });
-        const j = await r.json() as { ok?: boolean; error?: string };
-        return j.ok ? "sent — watch the stage" : `couldn't send: ${j.error ?? r.status}`;
-      } catch (e) { return `couldn't send: ${String(e)}`; }
-    },
     onShuffle: () => { const pool = suggestSets(payload?.world.profile).filter((s) => s.id !== theme.id); const pick = pool.slice(0, Math.max(3, Math.min(5, pool.length))); theme = pick[Math.floor(Math.random() * pick.length)] ?? SETS[0]!; if (player) { store.set(`at:set:${player.world.repoId}`, theme.id); rebuild(); } panel.showPicker(false); },
   });
   panel.setMuted(muted); panel.setAmbience(ambience); panel.setRate(rate);
@@ -153,8 +145,6 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
     // default: the stage that fits what this repo is, chosen deterministically per repo
     if (chosen) theme = setById(chosen); else theme = suggestSets(p.world.profile, p.world.seed)[0] ?? SETS[0]!;
     panel.setTitle(p.repoId, q.get("episode") ?? undefined);
-    if (VS) panel.promptEnabled = true;
-    else if (transport.mode === "live") { void fetch(`${BASE}/api/prompt`).then((r) => r.json()).then((j: { available?: boolean }) => { panel.promptEnabled = !!j.available; }).catch(() => {}); }
     panel.loadTimeline(p.beats, p.events, p.world);
     rebuild();
     const t = Number(q.get("t")); if (t > 0 && player) player.seek(t * 1000);

@@ -11,7 +11,7 @@ const PLAY = '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 2.8v10.
 const PAUSE = '<svg viewBox="0 0 16 16" fill="currentColor"><rect x="3.5" y="3" width="3" height="10" rx="1"/><rect x="9.5" y="3" width="3" height="10" rx="1"/></svg>';
 const CHECK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3L13 4.5"/></svg>';
 
-export interface PanelHandlers { onGoLive(): void; onPlayPause(): void; onSeek(ms: number): void; onRate(): void; onMute(): void; onAmbience(): void; onPickSet(id: SetTheme["id"]): void; onShuffle(): void; onOverview(on: boolean): void; onZoom(factor: number): void; onExport(): void; onPrompt(text: string): Promise<string> }
+export interface PanelHandlers { onGoLive(): void; onPlayPause(): void; onSeek(ms: number): void; onRate(): void; onMute(): void; onAmbience(): void; onPickSet(id: SetTheme["id"]): void; onShuffle(): void; onOverview(on: boolean): void; onZoom(factor: number): void; onExport(): void; }
 
 /** All DOM. Reads PlayerState every frame; never touches Pixi. */
 export class Panel {
@@ -37,7 +37,6 @@ export class Panel {
   }
   nudgeSeen(): void { this.nudge.hidden = true; try { localStorage.setItem("at:nudged", "1"); } catch { /* fine */ } }
   private readonly overviewBtn: HTMLButtonElement; private overviewOn = false; readonly exportBtn: HTMLButtonElement;
-  private readonly prompt: HTMLElement;
   private readonly liveBtn: HTMLButtonElement;
   private readonly tip: HTMLElement;
   /** Set by the host: screen point → what is there. */
@@ -95,11 +94,8 @@ export class Panel {
     this.waiting = el("div", "waiting", `<div class="wt"><b></b><span></span></div><button type="button" class="go"></button>`); this.waiting.hidden = true;
     this.vscode = (globalThis as { __vsapi?: { postMessage: (m: unknown) => void } | null }).__vsapi ?? null;
     (this.waiting.querySelector(".go") as HTMLButtonElement).onclick = () => { if (this.vscode) this.vscode.postMessage({ type: "focus-agent" }); else void this.notify(); };
-    // your turn: say what's next from here (resumes the session headlessly through the local server)
-    this.prompt = el("form", "prompt", `<div class="note" hidden></div><div class="row"><input type="text" placeholder="" autocomplete="off" spellcheck="false"><button type="submit">Send</button><span class="st"></span></div>`); this.prompt.hidden = true;
-    this.prompt.addEventListener("submit", (ev) => { ev.preventDefault(); const inp = this.prompt.querySelector("input") as HTMLInputElement, st = this.prompt.querySelector(".st") as HTMLElement; const text = inp.value.trim(); if (!text) return; st.textContent = "sending…"; void h.onPrompt(text).then((r) => { st.textContent = r; inp.value = ""; }); });
     this.tip = el("div", "tip"); this.tip.hidden = true;
-    this.stageEl.append(el("div", "vignette"), this.overlay, this.signal, this.chip, this.caption, this.title, this.end, this.picker, this.waiting, this.prompt, this.tip);
+    this.stageEl.append(el("div", "vignette"), this.overlay, this.signal, this.chip, this.caption, this.title, this.end, this.picker, this.waiting, this.tip);
     // hover help: what is this building, and what happened to it this session
     this.stageEl.addEventListener("pointermove", (ev) => {
       const r = this.stageEl.getBoundingClientRect(); const hit = this.hitTester?.(ev.clientX - r.left, ev.clientY - r.top) ?? null;
@@ -133,8 +129,6 @@ export class Panel {
   repoId = "";
   /** Live: the folder this stage watches, and (if any) another folder where Claude Code is actually running. */
   cwd = ""; elsewhere = "";
-  /** Set by the host when the local server can resume the session (`claude -p --resume`). */
-  promptEnabled = false;
 
   setTitle(repoId: string, episode?: string): void {
     // "github.com/org/repo" → "repo", "/Users/me/projects/x" → "x"; the full id stays in the tooltip
@@ -221,7 +215,8 @@ export class Panel {
     const cur = s.current;
     // cards
     this.title.style.opacity = String(cur && cur.kind === "curtain_up" ? 1 - Math.min(1, Math.max(0, (s.t - cur.atMs - 600) / 700)) : s.t < 600 ? 1 : 0);
-    const endBeat = cur && cur.kind === "curtain_down" ? cur : null;
+    // a live stage has no ending: the end card belongs to a replay
+    const endBeat = cur && cur.kind === "curtain_down" && !this.liveMode ? cur : null;
     this.end.style.opacity = String(endBeat ? Math.min(1, Math.max(0, (s.t - endBeat.atMs - 400) / 600)) : 0);
     // caption
     const text = cur ? captionFor(cur, world, helperLabel).replace(/\bPip\b/g, this.leadName) : "";
@@ -231,13 +226,6 @@ export class Panel {
     if (s.evidence) { this.chip.hidden = false; this.chip.className = "chip ok"; this.chip.innerHTML = `${CHECK}Evidence · ${s.evidence.passed} tests passed`; }
     else if (cur?.kind === "unverified_claim" || (cur?.kind === "curtain_down" && !cur.verified)) { this.chip.hidden = false; this.chip.className = "chip warn"; this.chip.textContent = "No test evidence"; }
     else this.chip.hidden = true;
-    // your turn (live only): a prompt box on the stage
-    const yourTurn = this.liveMode && cur?.kind === "your_turn" && this.promptEnabled;
-    this.prompt.hidden = !yourTurn;
-    if (yourTurn && cur?.kind === "your_turn") {
-      (this.prompt.querySelector("input") as HTMLInputElement).placeholder = `${this.leadName || "The agent"} is done. What's next? (continues in the background; the reply plays here, not in your terminal)`;
-      const n = this.prompt.querySelector(".note") as HTMLElement; n.hidden = !cur.note; n.textContent = cur.note ? `${this.leadName || "The agent"}: ${cur.note}` : "";
-    }
     // waiting banner (live only): permission or question → the person is the next actor
     const waitingNow = this.liveMode && cur?.kind === "blocked_on_you";
     this.waiting.hidden = !waitingNow;
