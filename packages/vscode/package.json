@@ -1,8 +1,8 @@
 {
   "name": "agent-theatre-vscode",
   "displayName": "Agent Theatre",
-  "description": "Watch your coding agent work — as a film, not a log. Turns a Claude Code session into an animated scene inside VS Code.",
-  "version": "1.5.5",
+  "description": "Watch your coding agent work \u2014 as a film, not a log. Turns a Claude Code session into an animated scene inside VS Code.",
+  "version": "1.5.6",
   "publisher": "agenttheatre",
   "license": "MIT",
   "private": true,
@@ -48,7 +48,7 @@
       },
       {
         "command": "agentTheatre.replay",
-        "title": "Replay a session…",
+        "title": "Replay a session\u2026",
         "category": "Agent Theatre",
         "icon": "$(history)"
       },
@@ -102,7 +102,7 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
-    "build": "pnpm --filter @agent-theatre/web exec vite build --base=./ --outDir dist-vscode && tsup && node scripts/copy-web.mjs",
+    "build": "pnpm --filter @agent-theatre/web exec vite build --base=./ --outDir dist-vscode && tsup && node scripts/copy-web.mjs && node ../../scripts/third-party-licenses.mjs THIRD_PARTY_LICENSES.txt ../web/dist-vscode dist",
     "package": "pnpm build && vsce package --no-dependencies --out agent-theatre.vsix",
     "test:vscode": "node tests-electron/run.mjs"
   },

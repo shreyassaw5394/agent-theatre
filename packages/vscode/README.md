@@ -14,3 +14,7 @@ Site: https://agenttheatre.dev · Source: https://github.com/shreyassaw5394/agen
 Community: https://discord.gg/PPGeQWd7r
 
 Integration test in a real VS Code (opens a window): `pnpm test:vscode` — run with `ELECTRON_RUN_AS_NODE` unset if you are inside an extension host.
+
+---
+
+Agent Theatre is a free, non-commercial passion project. MIT licensed; bundled third-party code is listed in `THIRD_PARTY_LICENSES.txt`. It runs locally and sends no telemetry ([privacy](https://agenttheatre.dev/privacy)).

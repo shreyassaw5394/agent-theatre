@@ -160,3 +160,4 @@ footer{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;paddin
 @keyframes hot{0%,100%{transform:scale(1.03,.97)}50%{transform:scale(.97,1.03)}}
 @keyframes march{0%,100%{transform:rotate(-5deg) translateY(0)}50%{transform:rotate(5deg) translateY(-5px)}}
 @media(prefers-reduced-motion:reduce){.who img{animation:none!important}}
+footer .note{color:var(--dim)}

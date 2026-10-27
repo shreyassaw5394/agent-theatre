@@ -12,3 +12,4 @@ site/img/stage-*.png
 .env*
 packages/web/dist-vscode/
 .vscode-test/
+packages/*/THIRD_PARTY_LICENSES.txt
