@@ -1,6 +1,6 @@
 {
   "name": "agent-theatre",
-  "version": "1.5.5",
+  "version": "1.5.6",
   "description": "Watch your coding agent work \u2014 as a film, not a log. Local, honest visualiser for Claude Code sessions.",
   "license": "MIT",
   "type": "module",
@@ -27,12 +27,14 @@
     "dist",
     "web",
     "hooks",
-    "README.md"
+    "README.md",
+    "LICENSE",
+    "THIRD_PARTY_LICENSES.txt"
   ],
   "scripts": {
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json",
     "test": "vitest run",
-    "build": "tsup && node scripts/copy-web.mjs",
+    "build": "tsup && node scripts/copy-web.mjs && node ../../scripts/third-party-licenses.mjs THIRD_PARTY_LICENSES.txt ../web/dist",
     "dev": "tsx src/cli.ts"
   },
   "dependencies": {

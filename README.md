@@ -158,3 +158,7 @@ repo, deployed on Vercel from `main`; the playable demo is the real web bundle a
 ## License
 
 MIT © 2026 Shreyas Sawant and Agent Theatre contributors.
+
+---
+
+Agent Theatre is a free, non-commercial passion project. MIT licensed; bundled third-party code is listed in `THIRD_PARTY_LICENSES.txt`. It runs locally and sends no telemetry ([privacy](https://agenttheatre.dev/privacy)).

@@ -56,3 +56,7 @@ Community: https://discord.gg/PPGeQWd7r
 
 - **Claude Code plugin:** `/plugin install agent-theatre --marketplace shreyassaw5394/agent-theatre` — hooks, a `/theatre` command and a skill.
 - **Homebrew:** `brew install shreyassaw5394/tap/agent-theatre`
+
+---
+
+Agent Theatre is a free, non-commercial passion project. MIT licensed; bundled third-party code is listed in `THIRD_PARTY_LICENSES.txt`. It runs locally and sends no telemetry ([privacy](https://agenttheatre.dev/privacy)).
