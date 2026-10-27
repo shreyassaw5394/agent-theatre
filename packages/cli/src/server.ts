@@ -6,6 +6,7 @@ import { spawnSync } from "node:child_process";
 import { Hono } from "hono";
 import { getRequestListener } from "@hono/node-server";
 import { WebSocketServer, type WebSocket } from "ws";
+import { fromLocalProcess, isLocalHost, isLocalOrigin } from "./localOnly.js";
 import { Director, direct, filesFromEvents, generateWorld, hookPayloadToEvents, parseTranscript, type AgentEvent, type Beat, type FileNode, type World } from "@agent-theatre/core";
 import { listSessions } from "./sessions.js";
 
@@ -50,7 +51,14 @@ export class Theatre {
 
   private routes(): void {
     const a = this.app;
+    // Only answer requests addressed to localhost: a page that rebinds its own domain to 127.0.0.1 is refused.
+    a.use("*", async (c, next) => {
+      if (!isLocalHost(new URL(c.req.url).host)) return c.text("forbidden", 403); // node-server builds the URL from Host
+      await next();
+    });
     a.post("/hook", async (c) => {
+      // Hooks come from the local hook script (Node), which sends no Origin. Browsers always do on cross-site posts.
+      if (!fromLocalProcess(c.req.header("origin"), c.req.header("sec-fetch-site"))) return c.body(null, 403);
       let payload: unknown;
       try { payload = await c.req.json(); } catch { return c.body(null, 204); }
       // hooks are global to Claude Code: only this repo's sessions belong on this stage
@@ -134,6 +142,8 @@ export class Theatre {
     this.server = createServer(listener);
     this.wss = new WebSocketServer({ noServer: true });
     this.server.on("upgrade", (req, socket, head) => {
+      // WebSockets skip CORS: only this stage's own page (or a local non-browser client) may listen
+      if (!isLocalHost(req.headers.host) || !isLocalOrigin(req.headers.origin)) { socket.destroy(); return; }
       if (req.url?.startsWith("/live")) this.wss!.handleUpgrade(req, socket, head, (ws: WebSocket) => { this.wss!.emit("connection", ws, req); ws.send(JSON.stringify({ type: "hello", signal: this.signal })); });
       else socket.destroy();
     });
