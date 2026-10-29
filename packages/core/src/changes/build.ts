@@ -124,7 +124,7 @@ export function changesFromEvents(events: readonly AgentEvent[], opts: ChangeOpt
       case "read_file": f = touch(e, e.path, "read"); if (f) f.reads++; break;
       case "edit_file": f = touch(e, e.path, "edited"); if (f) { f.edits++; f.added += e.added; f.removed += e.removed; } break;
       case "write_file": f = touch(e, e.path, e.created ? "created" : "edited"); if (f) { f.edits++; f.added += e.added; } break;
-      case "delete_file": f = touch(e, e.path, "deleted"); if (f) f.edits++; break;
+      case "delete_file": { const before = files.get(e.path.replace(/\\/g, "/").replace(/^\.\//, ""))?.action; f = touch(e, e.path, "deleted"); if (f) { f.edits++; if (before === "created") { f.added = 0; f.removed = 0; } } break; }
       default: continue;
     }
     if (!f) continue;
@@ -137,7 +137,7 @@ export function changesFromEvents(events: readonly AgentEvent[], opts: ChangeOpt
   for (const [p, f] of files) if (f.action === "read" && !toolReads.has(p) && (!plausiblePath(p) || (opts.exists && !opts.exists(p)))) files.delete(p);
   // with a time or agent filter, git (which only knows "now") may correct the files in view but must not add others as "not by the agent"
   const filtered = opts.until !== undefined || opts.since !== undefined || !!opts.agent || !!opts.sessionId;
-  if (opts.git) reconcileWithGit(files, opts.git, !filtered);
+  if (opts.git) reconcileWithGit(files, opts.git, !filtered, opts.exists);
   const list = [...files.values()].sort(byImpact);
   return { files: list, totals: totalsOf(list, external.size), from: from === Infinity ? 0 : from, to, agents: [...agentsSeen], sessions: [...sessionsSeen] };
 }
@@ -166,7 +166,7 @@ function confirmInferred(files: Map<string, FileChange>, opts: ChangeOptions): v
 }
 
 /** Git is the ground truth for the end state: a file the agent "wrote" that git reports deleted is deleted; untracked is created. */
-function reconcileWithGit(files: Map<string, FileChange>, git: GitView, addOutside: boolean): void {
+function reconcileWithGit(files: Map<string, FileChange>, git: GitView, addOutside: boolean, exists?: (path: string) => boolean): void {
   const since = git.changedSinceBaseline ? new Set(git.changedSinceBaseline) : null;
   for (const f of files.values()) {
     const st = git.status[f.path] ?? git.committed?.[f.path];
@@ -174,8 +174,11 @@ function reconcileWithGit(files: Map<string, FileChange>, git: GitView, addOutsi
     if (f.action === "read") continue;
     if (st === "D") f.action = "deleted";
     else if ((st === "?" || st === "A") && f.action !== "deleted") f.action = "created";
-    else if (st === undefined && f.action === "deleted") { /* git says it exists and is clean: the delete was undone or never happened */ f.action = "edited"; }
+    // git has no record: either the delete was undone (the file is back, clean) or the file never reached git (made and removed this session)
+    else if (st === undefined && f.action === "deleted" && exists?.(f.path)) f.action = "edited";
     const n = git.numstat?.[f.path];
+    // a new file's line count from git is exact (the agent's own counts add up every write and edit to it)
+    if (n && f.action === "created") { f.added = n.added; f.removed = 0; f.countsFromGit = true; continue; }
     // shell writes (heredocs, sed -i) report no reliable line counts; git's are better for those
     if (n && (f.added + f.removed === 0 || f.edits > 0 && f.added <= 1 && f.removed === 0)) { f.added = n.added; f.removed = n.removed; f.countsFromGit = true; }
   }
