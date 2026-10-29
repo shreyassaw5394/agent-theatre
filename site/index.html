@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Agent Theatre</title>
-<meta name="description" content="Watch your coding agent work — as a film, not a log. Agent Theatre turns a Claude Code session into an animated scene. Twenty stages. A cast of twelve. Every claim checked. Open source, and nothing leaves your machine.">
+<meta name="description" content="Watch your coding agent work — as a film, not a log. Agent Theatre turns a Claude Code session into an animated scene. Twenty stages. A cast of twelve. Claims checked against the tests. Open source, and nothing leaves your machine.">
 <meta property="og:title" content="Agent Theatre">
 <meta property="og:description" content="Watch your coding agent work — as a film, not a log.">
 <meta property="og:image" content="https://agenttheatre.dev/img/stage-island.jpg">
@@ -28,7 +28,7 @@
     <div class="veil"></div>
   </div>
   <div class="copy">
-    <h1><span class="w" style="--i:0">Watch</span> <span class="w" style="--i:1">your</span> <span class="w" style="--i:2">coding</span> <span class="w" style="--i:3">agent</span> <span class="w" style="--i:4">work.</span><br><em><span class="w" style="--i:6">As</span> <span class="w" style="--i:7">a</span> <span class="w" style="--i:8">film,</span> <span class="w" style="--i:9">not</span> <span class="w" style="--i:10">a</span> <span class="w" style="--i:11">log.</span></em></h1>
+    <h1><span class="w" style="--i:0">Watch</span> <span class="w" style="--i:1">your</span> <span class="w" style="--i:3">agent</span> <span class="w" style="--i:4">work.</span><br><em><span class="w" style="--i:6">As</span> <span class="w" style="--i:7">a</span> <span class="w" style="--i:8">film,</span> <span class="w" style="--i:9">not</span> <span class="w" style="--i:10">a</span> <span class="w" style="--i:11">log.</span></em></h1>
     <p>Agent Theatre turns a Claude Code session into an animated scene. Your repo becomes a stage. The agent becomes a character. Every read, edit and test becomes a beat.</p>
     <div class="actions">
       <a class="button" href="#episodes">Watch an episode</a>
@@ -81,9 +81,8 @@
 <section id="honest" class="honest">
   <div class="inner reveal">
     <img class="gremlin" src="/img/cast-gremlin.png" alt="A gremlin" width="200" height="200">
-    <p class="eyebrow">The honest detail</p>
-    <h2>If the agent says it's done, and no test has passed since the last edit —<br><em>a gremlin hides behind it.</em></h2>
-    <p class="sub">No other visualiser checks the claim against the evidence. Agent Theatre shows the passing test count as a chip when it exists, and the gremlin when it doesn't. Nothing is invented; every beat traces back to an event.</p>
+    <h2>Claims it's done, with no passing test?<br><em>A gremlin hides behind it.</em></h2>
+    <p class="sub">Agent Theatre checks the claim against the evidence: it shows the passing test count as a chip when it exists, and the gremlin when it doesn't. Nothing is invented; every beat traces back to an event.</p>
   </div>
 </section>
 
@@ -177,13 +176,15 @@
 <footer>
   <span class="wordmark">Agent Theatre</span>
   <span class="note">A free, non-commercial passion project. Open source, MIT.</span>
-  <span><a href="/privacy">Privacy</a> · <a href="/theatre/THIRD_PARTY_LICENSES.txt">Licences</a></span>
+  <span><a href="/privacy">Privacy</a> · <a href="/theatre/THIRD_PARTY_LICENSES.txt">Licences</a> · <a href="/theatre/fonts/LICENSE.txt">Font licences</a></span>
+  <p class="legal">Provided “as is”, without warranty. Agent Theatre is an independent project and is not affiliated with, endorsed by, or sponsored by Anthropic or Microsoft. Claude and Claude Code are trademarks of Anthropic; VS Code is a trademark of Microsoft; other names belong to their owners.</p>
 </footer>
+<p class="sr" id="live" role="status" aria-live="polite"></p>
 
 <script>
 (() => {
   const btn = document.getElementById("copy");
-  btn?.addEventListener("click", () => { navigator.clipboard?.writeText("npx agent-theatre").then(() => { const s = btn.querySelector("span"); s.textContent = "copied"; btn.classList.add("ok"); setTimeout(() => { btn.classList.remove("ok"); s.textContent = "copy"; }, 1400); }); });
+  btn?.addEventListener("click", () => { navigator.clipboard?.writeText("npx agent-theatre").then(() => { const s = btn.querySelector("span"); s.textContent = "copied"; btn.classList.add("ok"); const l = document.getElementById("live"); if (l) l.textContent = "Copied: npx agent-theatre"; setTimeout(() => { btn.classList.remove("ok"); s.textContent = "copy"; }, 1400); }); });
   // reveal on scroll; without IntersectionObserver (or if it never fires) everything simply shows
   document.documentElement.classList.add("js");
   const show = (el) => el.classList.add("in");
