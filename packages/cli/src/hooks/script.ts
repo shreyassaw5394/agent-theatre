@@ -1,8 +1,9 @@
 /**
  * The hook script Claude Code runs on every event. Dependency-free, starts in
  * ~40 ms, and can NEVER slow or block the agent: a dead server, a missing
- * port file, bad JSON — all exit 0 silently within 300 ms. It never writes to
- * stdout, so it can never inject context or block a tool.
+ * port file, bad JSON — all exit 0 silently within 300 ms. It writes to stdout
+ * only on Stop, and only a {"systemMessage"} the stage sent back (the files the
+ * turn changed): shown to the person, never a decision, never context for the agent.
  *
  * hooks/agent-theatre-hook.mjs must be byte-identical (tests/script.test.ts).
  */
@@ -22,7 +23,15 @@ process.stdin.setEncoding("utf8");
 process.stdin.on("data", (c) => { body += c; if (body.length > 2_000_000) body = body.slice(0, 2_000_000); });
 process.stdin.on("end", async () => {
   try {
-    await Promise.allSettled([...ports].map((port) => fetch(\`http://127.0.0.1:\${port}/hook\`, { method: "POST", headers: { "content-type": "application/json" }, body, signal: AbortSignal.timeout(300) })));
+    const stop = body.includes('"hook_event_name":"Stop"') || /"hook_event_name"\\s*:\\s*"Stop"/.test(body);
+    const replies = await Promise.allSettled([...ports].map((port) => fetch(\`http://127.0.0.1:\${port}/hook\`, { method: "POST", headers: { "content-type": "application/json" }, body, signal: AbortSignal.timeout(300) })));
+    if (stop) {
+      for (const r of replies) {
+        if (r.status !== "fulfilled" || r.value.status !== 200) continue;
+        const j = await r.value.json().catch(() => null);
+        if (j && typeof j.systemMessage === "string" && j.systemMessage) { process.stdout.write(JSON.stringify({ systemMessage: j.systemMessage.slice(0, 2000) })); break; }
+      }
+    }
   } catch { /* a theatre not running or slow: that is fine */ }
   process.exit(0);
 });

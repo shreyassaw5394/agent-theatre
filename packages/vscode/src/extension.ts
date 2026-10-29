@@ -2,6 +2,8 @@ import * as vscode from "vscode";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Theatre, hooksStatus, installHooks, listSessions, repoIdFor, scanRepo, uninstallHooks } from "agent-theatre";
+import { toMarkdown } from "@agent-theatre/core";
+import { ChangesTree, openChange, postToPr } from "./changes.js";
 
 /**
  * The extension runs the same local server the CLI runs (same hooks, same
@@ -11,8 +13,14 @@ import { Theatre, hooksStatus, installHooks, listSessions, repoIdFor, scanRepo, 
 let theatre: Theatre | null = null;
 let panel: vscode.WebviewPanel | null = null;
 let status: vscode.StatusBarItem;
+let changesTree: ChangesTree | null = null;
+/** The folder the change map is for: the stage's folder when it runs, else the single (or first) workspace folder. */
+const mapRoot = (): string | null => (theatreCwd ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? null);
+let theatreCwd: string | null = null;
+/** The session the stage panel is replaying, if any (its change map comes from that session's transcript). */
+let replaySession: string | null = null;
 /** What the webview last asked for; lets an integration test prove the bundle booted inside the webview. */
-const probe = { lastWebviewMessage: "", scenesSent: 0, beatsRelayed: 0, ready: false };
+const probe = { lastWebviewMessage: "", scenesSent: 0, beatsRelayed: 0, ready: false, changesAnswered: 0 };
 
 export async function activate(ctx: vscode.ExtensionContext): Promise<{ __state: () => Record<string, unknown> }> {
   status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 50);
@@ -34,8 +42,23 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<{ __state:
       void vscode.window.showInformationMessage(r.changed ? "Agent Theatre hooks removed." : "No Agent Theatre hooks were installed.");
     }),
   );
+  // ---- Agent changes: the tree in the Explorer, badges on files, diffs in the editor ----
+  changesTree = new ChangesTree(mapRoot);
+  changesTree.theatre = () => theatre;
+  changesTree.onSummary = (text) => { status.text = text ? `$(play) Theatre · ${text.split(" (")[0]}` : "$(play) Theatre"; };
+  const view = vscode.window.createTreeView("agentTheatre.changes", { treeDataProvider: changesTree, showCollapseAll: true });
+  ctx.subscriptions.push(view, changesTree, vscode.window.registerFileDecorationProvider(changesTree),
+    vscode.commands.registerCommand("agentTheatre.refreshChanges", () => changesTree?.refresh()),
+    vscode.commands.registerCommand("agentTheatre.toggleReads", () => changesTree?.toggleReads()),
+    vscode.commands.registerCommand("agentTheatre.openChange", (path: string) => { const r = mapRoot(); if (r && typeof path === "string") void openChange(r, path, changesTree?.changes ?? null); }),
+    vscode.commands.registerCommand("agentTheatre.copyChanges", async () => { const cs = changesTree?.changes; if (!cs) return; await vscode.env.clipboard.writeText(toMarkdown(cs, { marker: false })); void vscode.window.showInformationMessage("Agent Theatre: copied the change map as Markdown."); }),
+    vscode.commands.registerCommand("agentTheatre.postChanges", () => { const r = mapRoot(); if (r) void postToPr(r, changesTree?.changes ?? null); }),
+    vscode.commands.registerCommand("agentTheatre.openChangesMap", () => open(ctx, "live", "changes")),
+    view.onDidChangeVisibility((e) => { if (e.visible) void changesTree?.refresh(); }),
+  );
+  if (view.visible) void changesTree.refresh();
   if (vscode.workspace.getConfiguration("agentTheatre").get<boolean>("openOnStartup")) void open(ctx, "live");
-  return { __state: () => ({ ...probe, server: theatre?.url ?? null, panel: !!panel }) };
+  return { __state: () => ({ ...probe, server: theatre?.url ?? null, panel: !!panel, changes: changesTree?.changes ? { files: changesTree.changes.files.map((f) => `${f.path}:${f.action}:${f.by}`), changed: changesTree.changes.totals.changed } : null, deco: (p: string) => { const d = changesTree?.provideFileDecoration(vscode.Uri.file(p)); return d ? { badge: d.badge, tooltip: d.tooltip } : null; } }) };
 }
 
 export async function deactivate(): Promise<void> { await theatre?.close(); theatre = null; }
@@ -60,6 +83,10 @@ async function ensureServer(ctx: vscode.ExtensionContext): Promise<Theatre | nul
   const files = scanRepo(cwd);
   theatre = new Theatre({ cwd, repoId: repoIdFor(cwd), files, ...(webDir ? { webDir } : {}) });
   await theatre.listen(0);
+  theatreCwd = cwd;
+  // live: the tree follows the agent as its events arrive
+  theatre.listeners.add((m) => { if ((m as { type?: string }).type === "beats") changesTree?.poke(); });
+  void changesTree?.refresh();
   ctx.subscriptions.push({ dispose: () => { void theatre?.close(); theatre = null; } });
   if (!hooksStatus().installed) {
     void vscode.window.showInformationMessage("Agent Theatre: Claude Code hooks are not installed, so the live stage will stay empty.", "Install hooks").then((pick) => { if (pick) void vscode.commands.executeCommand("agentTheatre.installHooks"); });
@@ -67,11 +94,11 @@ async function ensureServer(ctx: vscode.ExtensionContext): Promise<Theatre | nul
   return theatre;
 }
 
-async function open(ctx: vscode.ExtensionContext, mode: "live" | { session: string }): Promise<void> {
+async function open(ctx: vscode.ExtensionContext, mode: "live" | { session: string }, view?: "changes"): Promise<void> {
   const t = await ensureServer(ctx);
   if (!t) return;
   const set = vscode.workspace.getConfiguration("agentTheatre").get<string>("set") || "";
-  const query = (mode === "live" ? "live=1" : `session=${encodeURIComponent(mode.session)}`) + (set ? `&set=${encodeURIComponent(set)}` : "");
+  const query = (mode === "live" ? "live=1" : `session=${encodeURIComponent(mode.session)}`) + (set ? `&set=${encodeURIComponent(set)}` : "") + (view ? `&view=${view}` : "");
   if (!panel) {
     panel = vscode.window.createWebviewPanel("agentTheatre", `Agent Theatre — ${t.name}`, vscode.ViewColumn.Beside, { enableScripts: true, retainContextWhenHidden: true });
     panel.iconPath = vscode.Uri.joinPath(ctx.extensionUri, "media", "icon.png");
@@ -81,8 +108,21 @@ async function open(ctx: vscode.ExtensionContext, mode: "live" | { session: stri
     t.listeners.add(relay);
     panel.onDidDispose(() => t.listeners.delete(relay));
     // the webview never talks to the network itself: everything goes through here
-    panel.webview.onDidReceiveMessage(async (m: { type?: string; id?: string; text?: string }) => {
+    panel.webview.onDidReceiveMessage(async (m: { type?: string; id?: string; text?: string; reqId?: number; until?: number; agent?: string; path?: string }) => {
       probe.lastWebviewMessage = m?.type ?? "";
+      // the Changes view asks through here (the webview never talks to the network itself), and diffs open in the editor
+      if (m?.type === "changes" && typeof m.reqId === "number") {
+        const filter = { ...(typeof m.until === "number" ? { until: m.until } : {}), ...(typeof m.agent === "string" && m.agent ? { agent: m.agent } : {}) };
+        let payload: unknown = null;
+        try {
+          if (replaySession) { const p = new URLSearchParams({ session: replaySession, ...(filter.until !== undefined ? { until: String(Math.round(filter.until)) } : {}), ...(filter.agent ? { agent: filter.agent } : {}) }); payload = await (await fetch(`${t.url}api/changes?${p}`)).json(); }
+          else payload = t.changes(filter);
+        } catch { payload = null; }
+        probe.changesAnswered++;
+        void panel?.webview.postMessage({ type: "changes", reqId: m.reqId, payload });
+        return;
+      }
+      if (m?.type === "open-diff" && typeof m.path === "string") { const root = mapRoot(); if (root) await openChange(root, m.path, replaySession ? null : t.changes()); return; }
       if (m?.type === "ready") { probe.ready = true; return; }
       if (m?.type === "scene") { probe.scenesSent++; void panel?.webview.postMessage({ type: "scene", payload: t.scene() }); return; }
       if (m?.type === "replay" && m.id) {
@@ -96,6 +136,7 @@ async function open(ctx: vscode.ExtensionContext, mode: "live" | { session: stri
       }
     });
   }
+  replaySession = mode === "live" ? null : mode.session;
   panel.webview.html = html(ctx, panel.webview, `?${query}`);
   panel.reveal(vscode.ViewColumn.Beside, true);
 }

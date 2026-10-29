@@ -75,9 +75,61 @@ program
   });
 
 program
+  .command("changes [session]")
+  .description("what the agent touched: a running stage's live map, else the newest session (or the one you name), reconciled with git")
+  .option("--md", "print Markdown (for a pull request or a paste)")
+  .option("--json", "print the change map as JSON")
+  .option("--reads", "also list files the agent only read")
+  .option("--pr", "post (or update) the map as a comment on this branch's pull request, using your gh login")
+  .option("--yes", "with --pr: don't ask before posting")
+  .action(async (session: string | undefined, o: { md?: boolean; json?: boolean; reads?: boolean; pr?: boolean; yes?: boolean }) => {
+    const { changesForRepo, currentPr, postPrComment } = await import("./changes.js");
+    const { headline, toMarkdown, toTree } = await import("@agent-theatre/core");
+    const cwd = process.cwd();
+    const r = await changesForRepo(cwd, session ? { sessionId: session } : {});
+    if (r.source === "none") { console.log(pc.yellow(`No Claude Code sessions found for ${cwd}.`)); process.exit(1); }
+    if (o.json) { console.log(JSON.stringify(r.cs, null, 2)); return; }
+    if (o.md && !o.pr) { console.log(toMarkdown(r.cs, { marker: false })); return; }
+    if (o.pr) {
+      const pr = currentPr(cwd);
+      if ("error" in pr) { console.log(pc.red(pr.error)); process.exit(1); }
+      console.log(pc.dim(`Pull request #${pr.number}: ${pr.url}\n`));
+      console.log(toMarkdown(r.cs, { marker: false }));
+      if (!o.yes) {
+        if (!process.stdin.isTTY) { console.log(pc.yellow("\nNot posting without a terminal to confirm in. Re-run with --yes to post.")); process.exit(1); }
+        const { createInterface } = await import("node:readline/promises");
+        const rl = createInterface({ input: process.stdin, output: process.stdout });
+        const ans = (await rl.question(`\nPost this on PR #${pr.number}? It lists file paths and line counts only. [y/N] `)).trim().toLowerCase();
+        rl.close();
+        if (ans !== "y" && ans !== "yes") { console.log(pc.dim("Not posted.")); return; }
+      }
+      const res = postPrComment(cwd, pr.number, r.cs);
+      if ("error" in res) { console.log(pc.red(res.error)); process.exit(1); }
+      console.log(`${pc.green("✓")} ${res.updated ? "Updated" : "Posted"} ${res.url}`);
+      return;
+    }
+    const where = r.source === "live" ? "live stage" : `session ${r.sessionId?.slice(0, 8)}`;
+    console.log(`${pc.bold("What the agent touched")} ${pc.dim(`· ${where}`)}`);
+    console.log(headline(r.cs) ? pc.bold(headline(r.cs)) : pc.dim("No files changed."));
+    if (r.cs.totals.read && !o.reads) console.log(pc.dim(`${r.cs.totals.read} more only read (--reads to list them)`));
+    if (r.cs.totals.external) console.log(pc.dim(`${r.cs.totals.external} more changed outside this folder (not shown)`));
+    if (r.cs.totals.outside) console.log(pc.blue(`${r.cs.totals.outside} changed during the session, not by the agent`));
+    console.log("");
+    for (const l of toTree(r.cs, { includeReads: !!o.reads })) {
+      const pad = "  ".repeat(l.depth);
+      if (!l.file) { console.log(pc.dim(pad + l.text)); continue; }
+      const f = l.file;
+      const paint = f.by === "outside" ? pc.blue : f.action === "created" ? pc.green : f.action === "deleted" ? pc.red : f.action === "read" ? pc.dim : pc.yellow;
+      console.log(pad + paint(l.text));
+    }
+    if (r.mapUrl) console.log(`\n${pc.green("▶")} map: ${r.mapUrl}`);
+    else console.log(pc.dim("\nRun `agent-theatre` and open the Changes view for the map."));
+  });
+
+program
   .command("serve")
   .alias("mcp")
-  .description("run the MCP server over stdio (tools: open_stage, list_sessions, replay_session, stage_status, install_hooks)")
+  .description("run the MCP server over stdio (tools: open_stage, list_sessions, replay_session, stage_status, what_changed, install_hooks)")
   .action(async () => { const { serveMcp } = await import("./mcp.js"); await serveMcp(); });
 
 program
@@ -91,7 +143,7 @@ program
     const { init } = await import("./setup.js");
     const rows = init({ scope: o.repo ? "repo" : "user", dir: process.cwd(), ...(o.only ? { only: o.only.split(",") } : {}), ...(o.all ? { all: true } : {}), ...(o.dryRun ? { dryRun: true } : {}) });
     for (const r of rows) console.log(`${(r.result.startsWith("written") || r.result === "would write" ? pc.green("✓") : r.result === "unchanged" ? pc.dim("=") : pc.dim("·"))} ${r.agent.padEnd(20)} ${pc.dim(r.file)}  ${r.result}`);
-    console.log(pc.dim("Restart the agent to pick up the new MCP server. Tools: open_stage, list_sessions, replay_session, stage_status, install_hooks."));
+    console.log(pc.dim("Restart the agent to pick up the new MCP server. Tools: open_stage, list_sessions, replay_session, stage_status, what_changed, install_hooks."));
   });
 
 const hooks = program.command("hooks").description("install, remove or inspect the Claude Code hooks");

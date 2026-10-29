@@ -18,6 +18,24 @@ has passed since the last edit, a gremlin hides behind it.**
 
 ![Lanterns, Juno at login.ts](docs/img/lanterns-juno.png)
 
+### What did the agent change?
+
+The **Changes** view turns the same session into a map of every file the agent touched: folders as blocks, files sized by
+lines changed and coloured by what happened (new, edited, deleted, read), plus anything changed during the session that
+the agent did *not* do (you, a formatter, another tool). Drag the time slider to see the map at any moment, filter to one
+helper, click a file for its diff, or copy the whole thing as Markdown for a pull request.
+
+![The Changes view: files the agent touched, by folder](docs/img/changes-map.png)
+
+- **At the end of every turn**, Claude Code shows a one-line summary under the reply, e.g. `this turn: 3 files changed (+50 −2) · 1 new · 1 deleted` with a link to the map. Turn it off with `AGENT_THEATRE_SUMMARY=0`.
+- **In the terminal:** `npx agent-theatre changes` (`--md` for Markdown, `--json`, `--reads`).
+- **On the pull request:** `npx agent-theatre changes --pr` posts (or updates) one comment with the map, using your own `gh` login, after asking you.
+- **In VS Code:** an **Agent changes** list in the Explorer, a dot on every file the agent touched, and the editor's own diff on click.
+
+Built from the agent's own events and checked against git, so shell edits (`sed -i`, heredocs, `rm`) are confirmed on disk
+before they appear, and changes committed mid-session still count. Paths and line counts only; a diff is read from your
+disk only when you open it.
+
 | | | |
 |---|---|---|
 | ![Island, Nimbus](docs/img/first-light-island.png) | ![Orbit, Rook](docs/img/orbit-rook.png) | ![Volcano, Ember](docs/img/volcano-ember.png) |
@@ -40,7 +58,7 @@ Watch them at [agenttheatre.dev](https://agenttheatre.dev) or locally with `?dem
 
 ## Status
 
-**v1.0.0** — on npm as [`agent-theatre`](https://www.npmjs.com/package/agent-theatre), VS Code extension on every
+**v1.6.0** — the **Changes** map; on npm as [`agent-theatre`](https://www.npmjs.com/package/agent-theatre), VS Code extension on every
 [release](https://github.com/shreyassaw5394/agent-theatre/releases), six playable episodes at
 [agenttheatre.dev](https://agenttheatre.dev). Live via hooks and replay of real sessions both verified
 end-to-end on real repos. Design notes in [docs/design.md](docs/design.md).
@@ -66,6 +84,7 @@ cd your-repo
 npx agent-theatre hooks install   # once — skip if you installed the Claude Code plugin, it brings the hooks
 npx agent-theatre                 # opens the stage for this repo; run Claude Code in another terminal
 npx agent-theatre replay          # pick any past Claude Code session of this repo and watch it
+npx agent-theatre changes         # what the agent touched: files, lines, new, deleted (--md, --pr)
 npx agent-theatre hooks uninstall # reverses the install byte-for-byte
 ```
 
@@ -83,6 +102,7 @@ Flags: `--port <n>`, `--no-open`, `--set <stage-id>`; `replay --latest` skips th
 | `list_sessions` | past Claude Code sessions of a folder: ids, titles, times |
 | `replay_session` | open a replay of one session (newest by default) → URL |
 | `stage_status` | event/beat counts and the last few event kinds; never contents |
+| `what_changed` | the change map: files read, edited, created, deleted, with line counts; Markdown for a PR on request |
 | `install_hooks` | install the Claude Code hooks (not needed with the plugin) |
 
 Listed on the [MCP Registry](https://registry.modelcontextprotocol.io) as `io.github.shreyassaw5394/agent-theatre`.
@@ -130,10 +150,12 @@ fixture session and asserts none reach the stream).
 | | Read | Rendered | Leaves the machine |
 |---|---|---|---|
 | File paths | yes | repo-relative | never |
-| File contents | counted only (±lines) | no | never |
+| File contents | counted only (±lines) | only a file's diff, when you open it in the Changes view (read from your disk) | never |
 | Your prompts | tail never read; never stored | no | never |
 | The agent's closing message | last paragraph, truncated to 240 chars (`turn_end.note`) | yes — shown with "your turn" so you know what it asked | never |
-| Command text | first word + classified intent + redirect targets | no | never |
+| Command text | first word + classified intent + redirect / delete targets | no | never |
+| End-of-turn summary | file paths and line counts of the turn | shown by Claude Code under the reply | never |
+| PR comment (`changes --pr`) | paths and line counts | posted only when you confirm, with your own `gh` login | to GitHub, by you |
 | Test output | summary counts only | pass/fail | never |
 | Telemetry | — | — | none, ever |
 | Audio | — | synthesized, no files | never |

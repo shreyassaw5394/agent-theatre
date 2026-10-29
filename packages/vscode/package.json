@@ -1,8 +1,8 @@
 {
   "name": "agent-theatre-vscode",
   "displayName": "Agent Theatre",
-  "description": "Watch your coding agent work \u2014 as a film, not a log. Turns a Claude Code session into an animated scene inside VS Code.",
-  "version": "1.5.7",
+  "description": "Watch your coding agent work — as a film, not a log. Turns a Claude Code session into an animated scene inside VS Code.",
+  "version": "1.6.0",
   "publisher": "agenttheatre",
   "license": "MIT",
   "private": true,
@@ -48,7 +48,7 @@
       },
       {
         "command": "agentTheatre.replay",
-        "title": "Replay a session\u2026",
+        "title": "Replay a session…",
         "category": "Agent Theatre",
         "icon": "$(history)"
       },
@@ -70,6 +70,41 @@
       {
         "command": "agentTheatre.switchFolder",
         "title": "Switch folder (restart the stage)",
+        "category": "Agent Theatre"
+      },
+      {
+        "command": "agentTheatre.refreshChanges",
+        "title": "Refresh",
+        "category": "Agent Theatre",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "agentTheatre.openChangesMap",
+        "title": "Open the change map",
+        "category": "Agent Theatre",
+        "icon": "$(graph)"
+      },
+      {
+        "command": "agentTheatre.copyChanges",
+        "title": "Copy changes as Markdown",
+        "category": "Agent Theatre",
+        "icon": "$(copy)"
+      },
+      {
+        "command": "agentTheatre.postChanges",
+        "title": "Post changes to the pull request…",
+        "category": "Agent Theatre",
+        "icon": "$(git-pull-request)"
+      },
+      {
+        "command": "agentTheatre.toggleReads",
+        "title": "Show or hide files only read",
+        "category": "Agent Theatre",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "agentTheatre.openChange",
+        "title": "Open diff",
         "category": "Agent Theatre"
       }
     ],
@@ -95,9 +130,98 @@
         },
         {
           "command": "agentTheatre.replay"
+        },
+        {
+          "command": "agentTheatre.openChange",
+          "when": "false"
+        },
+        {
+          "command": "agentTheatre.toggleReads",
+          "when": "false"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "agentTheatre.openChangesMap",
+          "when": "view == agentTheatre.changes",
+          "group": "navigation@1"
+        },
+        {
+          "command": "agentTheatre.postChanges",
+          "when": "view == agentTheatre.changes",
+          "group": "navigation@2"
+        },
+        {
+          "command": "agentTheatre.copyChanges",
+          "when": "view == agentTheatre.changes",
+          "group": "navigation@3"
+        },
+        {
+          "command": "agentTheatre.refreshChanges",
+          "when": "view == agentTheatre.changes",
+          "group": "navigation@4"
+        },
+        {
+          "command": "agentTheatre.toggleReads",
+          "when": "view == agentTheatre.changes",
+          "group": "1_view"
         }
       ]
-    }
+    },
+    "views": {
+      "explorer": [
+        {
+          "id": "agentTheatre.changes",
+          "name": "Agent changes",
+          "icon": "media/icon.png",
+          "contextualTitle": "Agent Theatre"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "agentTheatre.changes",
+        "contents": "The files your coding agent reads, edits, creates and deletes show up here, from the newest Claude Code session in this folder.\n[Open the stage](command:agentTheatre.open)"
+      }
+    ],
+    "colors": [
+      {
+        "id": "agentTheatre.created",
+        "description": "Agent changes: a file the agent created",
+        "defaults": {
+          "dark": "#5ff0a6",
+          "light": "#1a7f4b",
+          "highContrast": "#5ff0a6"
+        }
+      },
+      {
+        "id": "agentTheatre.edited",
+        "description": "Agent changes: a file the agent edited",
+        "defaults": {
+          "dark": "#ffb547",
+          "light": "#9a5b00",
+          "highContrast": "#ffb547"
+        }
+      },
+      {
+        "id": "agentTheatre.deleted",
+        "description": "Agent changes: a file the agent deleted",
+        "defaults": {
+          "dark": "#ff7b69",
+          "light": "#b42318",
+          "highContrast": "#ff7b69"
+        }
+      },
+      {
+        "id": "agentTheatre.outside",
+        "description": "Agent changes: changed during the session, not by the agent",
+        "defaults": {
+          "dark": "#7cc8ff",
+          "light": "#1f5f99",
+          "highContrast": "#7cc8ff"
+        }
+      }
+    ]
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",

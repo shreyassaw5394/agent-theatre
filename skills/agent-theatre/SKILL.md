@@ -1,6 +1,6 @@
 ---
 name: agent-theatre
-description: Use when the user wants to watch, replay, record or share what a coding agent did in this repo — "open the stage", "show me the theatre", "replay the last session", "export a clip of this run", "why can't I see the agent working". Also use when the stage looks empty or stuck.
+description: Use when the user wants to watch, replay, record or share what a coding agent did in this repo — "open the stage", "show me the theatre", "replay the last session", "export a clip of this run", "why can't I see the agent working" — or to see which files the agent changed ("what did you touch", "which files changed", "summarise your changes for the PR"). Also use when the stage looks empty or stuck.
 ---
 
 # Agent Theatre
@@ -19,6 +19,8 @@ command bodies. The stage listens only on 127.0.0.1.
 |---|---|
 | Open the live stage for this repo | `npx -y agent-theatre@latest --no-open` (background) → open the printed URL. `/theatre` does this. |
 | Replay a past session of this repo | `npx -y agent-theatre@latest replay --latest`, or without `--latest` to pick |
+| Which files did the agent touch | `npx -y agent-theatre@latest changes` (tree with line counts; `--md` Markdown, `--json`, `--reads`). In the stage: the **Changes** button, or open `<stage url>?live=1&view=changes` |
+| Put the change map on the pull request | `npx -y agent-theatre@latest changes --pr` — shows the comment and asks before posting with the person's `gh` login. Only run with `--yes` if the person explicitly asked to post |
 | Check the hooks | `npx -y agent-theatre@latest hooks status` (this plugin installs them; the CLI's `hooks install` is only for people without the plugin) |
 | VS Code | the extension's *Agent Theatre: Open the stage (live)* command; `.vsix` on every GitHub release, Marketplace listing pending |
 
@@ -38,6 +40,14 @@ person turns it on (Effects / Ambience).
 
 When the agent needs the person (permission, a question) the stage says so and points back to Claude
 Code; the stage itself never prompts.
+
+## The change map
+
+The **Changes** view (and `changes` command, `what_changed` MCP tool) lists every file the agent read, edited,
+created or deleted, with line counts, built from its events and checked against git: shell edits are confirmed on
+disk, commits made mid-session still count, and files changed during the session by someone else are shown apart
+("not by the agent"). At the end of each turn the hook shows a one-line summary under the reply
+(`AGENT_THEATRE_SUMMARY=0` turns it off). When reporting what you changed, prefer this over recalling it.
 
 ## Links
 

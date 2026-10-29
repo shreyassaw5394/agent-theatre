@@ -7,7 +7,8 @@ import { Hono } from "hono";
 import { getRequestListener } from "@hono/node-server";
 import { WebSocketServer, type WebSocket } from "ws";
 import { fromLocalProcess, isLocalHost, isLocalOrigin } from "./localOnly.js";
-import { Director, direct, filesFromEvents, generateWorld, hookPayloadToEvents, parseTranscript, type AgentEvent, type Beat, type FileNode, type World } from "@agent-theatre/core";
+import { Director, changesFromEvents, currentTurn, direct, filesFromEvents, generateWorld, hookPayloadToEvents, parseTranscript, turnSummary, type AgentEvent, type Beat, type ChangeSet, type FileNode, type World } from "@agent-theatre/core";
+import { diffFor, gitView, takeBaseline, type Baseline } from "./git.js";
 import { listSessions } from "./sessions.js";
 
 export interface TheatreOptions {
@@ -20,6 +21,10 @@ export interface TheatreOptions {
   home?: string;
   /** No hook events for this long while a session is open → "lost" signal. */
   lostAfterMs?: number;
+  /** Reply to Claude Code's Stop hook with a one-line summary of the files the turn changed. Default on; AGENT_THEATRE_SUMMARY=0 turns it off. */
+  turnSummary?: boolean;
+  /** Read git to reconcile the change map (default true). */
+  git?: boolean;
 }
 
 interface Live { world: World; director: Director; events: AgentEvent[]; beats: Beat[]; lastEventAt: number; sessionOpen: boolean }
@@ -41,12 +46,32 @@ export class Theatre {
   private readonly openSessions = new Set<string>();
   private readonly seen = new Set<string>();
   private timer: NodeJS.Timeout | null = null;
+  /** The working tree when this stage started watching: lets the change map tell this session's changes from older ones. */
+  private readonly baseline: Baseline | null;
   port = 0;
 
   constructor(private readonly opts: TheatreOptions) {
     const world = generateWorld({ repoId: opts.repoId, files: opts.files });
     this.live = { world, director: new Director(world), events: [], beats: [], lastEventAt: 0, sessionOpen: false };
+    this.baseline = opts.git === false ? null : takeBaseline(opts.cwd);
     this.routes();
+  }
+
+  /** What the agent touched since this stage started (or in one session / up to a time), reconciled with git. */
+  changes(opts: { sessionId?: string; until?: number; agent?: string; since?: number } = {}): ChangeSet & { git: boolean } {
+    const git = this.opts.git === false ? null : gitView(this.opts.cwd, this.baseline);
+    const exists = (p: string) => existsSync(join(this.opts.cwd, p));
+    return { ...changesFromEvents(this.live.events, { ...opts, exists, ...(git ? { git } : {}) }), git: !!git };
+  }
+
+  /** The end-of-turn summary for one session, or "" when the turn changed no files. Shell-written files get git's line counts. */
+  turnSummaryFor(sessionId: string): string {
+    if (this.opts.turnSummary === false || process.env.AGENT_THEATRE_SUMMARY === "0") return "";
+    const turn = currentTurn(this.live.events, sessionId);
+    const git = this.opts.git === false ? null : gitView(this.opts.cwd, null, 250);
+    const exists = (p: string) => existsSync(join(this.opts.cwd, p));
+    const cs = changesFromEvents(turn, { exists, ...(git ? { git: { status: git.status, ...(git.numstat ? { numstat: git.numstat } : {}), changedSinceBaseline: [] } } : {}) });
+    return turnSummary(cs, { mapUrl: `${this.url}?live=1&view=changes` });
   }
 
   private routes(): void {
@@ -78,6 +103,11 @@ export class Theatre {
       // several Claude Code sessions can share a repo (a terminal, VS Code, a headless resume): the curtain falls only when the last one ends
       if (this.openSessions.size > 0) events = events.filter((e) => e.kind !== "session_end");
       if (events.length) this.ingest(events);
+      // the end of a turn: answer the hook with what the turn changed, which Claude Code shows under the reply
+      if (hookName === "Stop" && typeof sid === "string" && sid) {
+        const msg = this.turnSummaryFor(sid);
+        if (msg) return c.json({ systemMessage: msg });
+      }
       return c.body(null, 204);
     });
     // No CORS on purpose: the only clients are same-origin pages and the VS Code extension host (Node). A wildcard
@@ -96,6 +126,27 @@ export class Theatre {
       const world = generateWorld({ repoId: this.opts.repoId, files, touched: inferred.touched });
       const beats = direct(events, world);
       return c.json({ mode: "replay", repoId: this.opts.repoId, title: s.title, world, events, beats, warnings: warnings.length });
+    });
+    // the change map. Live: since this stage started, reconciled with git. A past session: its own events only (git shows today, not then).
+    a.get("/api/changes", (c) => {
+      const q = c.req.query();
+      const num = (v: string | undefined) => (v && /^\d+$/.test(v) ? Number(v) : undefined);
+      const filter = { ...(num(q.until) !== undefined ? { until: num(q.until)! } : {}), ...(q.agent ? { agent: q.agent } : {}) };
+      if (q.session) {
+        const s = listSessions(this.opts.cwd).find((x) => x.id === q.session);
+        if (!s) return c.json({ error: "no such session" }, 404);
+        const { events } = parseTranscript(readFileSync(s.path, "utf8"), { home: homedir() });
+        return c.json({ ...changesFromEvents(events, { ...filter, exists: (p: string) => existsSync(join(this.opts.cwd, p)) }), git: false });
+      }
+      return c.json(this.changes(filter));
+    });
+    // one file's diff, for the Changes view. Only paths on the change map, only from this machine, never cached.
+    a.get("/api/diff", (c) => {
+      const path = c.req.query("path") ?? "";
+      if (!this.changes().files.some((f) => f.path === path)) return c.json({ error: "not on the change map" }, 404);
+      const d = diffFor(this.opts.cwd, path);
+      if (!d) return c.json({ error: "no diff" }, 404);
+      return c.json({ path, ...d }, 200, { "cache-control": "no-store" });
     });
     a.get("/healthz", (c) => c.json({ ok: true, port: this.port, events: this.live.events.length }));
     if (this.opts.webDir) {

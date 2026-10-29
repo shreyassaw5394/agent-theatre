@@ -14,6 +14,10 @@ export interface BashIntent {
   writes: string[];
   /** Files the command reads (cat/head/tail/less/sed -n first arg). */
   reads: string[];
+  /** Files the command removes (rm, git rm, unlink, and the source of mv / git mv). */
+  deletes: string[];
+  /** The directory of a leading `cd X &&`: relative targets above are relative to it, not to the session. */
+  cd?: string;
 }
 
 const TEST_RUNNERS = /\b(vitest|jest|mocha|pytest|py\.test|go\s+test|cargo\s+test|npm\s+test|pnpm\s+test|yarn\s+test|bun\s+test|npx\s+(vitest|jest|playwright)|rspec|phpunit|dotnet\s+test|mvn\s+test|gradle\s+test|make\s+test)\b/;
@@ -92,6 +96,30 @@ export function extractWrites(commandRaw: string): string[] {
   return [...out];
 }
 
+/** Files a command removes. Conservative: globs, variables and flags-only forms are skipped. */
+export function extractDeletes(commandRaw: string): string[] {
+  const command = withoutHeredocBodies(commandRaw);
+  const out = new Set<string>();
+  for (const seg of command.split(/\s*(?:&&|\|\||;|\|)\s*/)) {
+    const toks = seg.trim().split(/\s+/).filter(Boolean);
+    let i = 0;
+    while (i < toks.length && /^[A-Za-z_][A-Za-z0-9_]*=/.test(toks[i]!)) i++;
+    if (toks[i] === "sudo") i++;
+    let cmd = toks[i] ?? "";
+    let args = toks.slice(i + 1);
+    if (cmd === "git" && (args[0] === "rm" || args[0] === "mv")) { cmd = `git-${args[0]}`; args = args.slice(1); }
+    if (!["rm", "unlink", "git-rm", "mv", "git-mv"].includes(cmd)) continue;
+    const operands = args.filter((a) => !a.startsWith("-"));
+    const victims = cmd === "mv" || cmd === "git-mv" ? operands.slice(0, -1) : operands;
+    for (const v of victims) {
+      if (/[*?[\]{}]/.test(v)) continue; // a glob: the exact files are unknown from the text
+      const t = cleanTarget(v);
+      if (t && plausibleFile(t)) out.add(t.replace(/\/+$/, ""));
+    }
+  }
+  return [...out];
+}
+
 export function extractReads(command: string): string[] {
   const out = new Set<string>();
   for (const seg of command.split(/\s*(?:&&|\|\||;|\|)\s*/)) {
@@ -109,13 +137,16 @@ export function classifyBash(command: string): BashIntent {
   const argv0 = argv0Of(command);
   const writes = extractWrites(command);
   const reads = extractReads(command);
+  const deletes = extractDeletes(command);
   let intent: CommandIntent = "other";
   if (TEST_RUNNERS.test(command)) intent = "test";
   else if (BUILD.test(command)) intent = "build";
   else if (INSTALL.test(command)) intent = "install";
   else if (/^\s*git\b/.test(command) || argv0 === "git" || argv0 === "gh") intent = "git";
-  else if (writes.length) intent = "write_file";
+  else if (writes.length || deletes.length) intent = "write_file";
   else if (SEARCH.test(command) && argv0 !== "cd") intent = "search";
   else if (READ.test(command) && reads.length) intent = "read_file";
-  return { argv0, intent, writes, reads };
+  const lead = command.match(/^\s*cd\s+("[^"]+"|'[^']+'|[^\s;&|]+)\s*(?:&&|;)/);
+  const cd = lead ? lead[1]!.replace(/^["']|["']$/g, "") : undefined;
+  return { argv0, intent, writes, reads, deletes, ...(cd && !cd.includes("$") ? { cd } : {}) };
 }

@@ -7,6 +7,7 @@ import { SETS, setById, suggestSets, type SetTheme } from "./sets/index.js";
 import "pixi.js/unsafe-eval";
 import { HostTransport, StaticTransport, WsTransport, replayTransport, type Transport } from "./transport.js";
 import { ENDED_REST_MS, Panel } from "./ui/panel.js";
+import { ChangesView, eventsSource, hostSource, httpSource } from "./ui/changes.js";
 import { previewSet } from "./render/preview.js";
 
 // a host (the VS Code extension) injects the query; its webview has its own location.search, so the injected one wins
@@ -78,6 +79,10 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
     onExport: () => { void exportClip(); },
     onShuffle: () => { const pool = suggestSets(payload?.world.profile).filter((s) => s.id !== theme.id); const pick = pool.slice(0, Math.max(3, Math.min(5, pool.length))); theme = pick[Math.floor(Math.random() * pick.length)] ?? SETS[0]!; if (player) { store.set(`at:set:${player.world.repoId}`, theme.id); rebuild(); } panel.showPicker(false); },
   });
+  // the change map: from the local server (live, or a past session), the VS Code host, or (demos) the page's own events
+  const changesSource = VS && (q.has("live") || q.get("session")) ? hostSource(VS) : q.has("live") ? httpSource(BASE, null) : q.get("session") ? httpSource(BASE, q.get("session")) : eventsSource(() => payload?.events ?? []);
+  const changes = new ChangesView(changesSource);
+  panel.attachChanges(changes);
   panel.setMuted(muted); panel.setAmbience(ambience); panel.setRate(rate);
   if (muted && ambience === false && !store.get("at:nudged")) panel.showNudge();
   panel.liveMode = transport.mode === "live";
@@ -156,6 +161,7 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
     if (q.get("paused") !== "1" && !reducedMotion) { player?.play(); }
     if (cinema && player && !reducedMotion) { player.play(); }
     if (reducedMotion && !q.has("t")) player?.seek(Math.min(player.state.duration, 25_400));
+    if (q.get("view") === "changes") panel.toggleChanges(true);
   });
   transport.onBeats((beats: Beat[], events) => {
     if (!player || !payload) return;
@@ -168,6 +174,7 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
     if (followLive && player.state.duration - player.state.t > 10000 && newest > player.state.t) player.seek(newest);
     panel.loadTimeline(player.world === payload.world ? payload.beats : direct(payload.events, player.world), payload.events, player.world);
     if (!player.playing) player.play();
+    changes.poke();
     wake();
   });
   transport.onSignal?.((s) => player?.setSignal(s));

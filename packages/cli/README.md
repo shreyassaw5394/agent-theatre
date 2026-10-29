@@ -22,6 +22,7 @@ Node 22+. Works with the Claude Code CLI, desktop app and IDE extensions — any
 |---|---|
 | `agent-theatre` | Start the local server for the current repo and open the stage (live). `--port <n>`, `--no-open`, `--set <id>` |
 | `agent-theatre replay [session]` | Replay a past Claude Code session of this repo; no argument lists them, `--latest` picks the newest |
+| `agent-theatre changes [session]` | What the agent touched: files read, edited, created and deleted with line counts, reconciled with git. `--md`, `--json`, `--reads`; `--pr` posts it on this branch's pull request with your `gh` login (asks first, `--yes` to skip) |
 | `agent-theatre hooks install` | Add the hooks to `~/.claude/settings.json` (non-destructive, backup at `settings.json.bak-agent-theatre`) |
 | `agent-theatre hooks uninstall` | Remove them, byte-for-byte |
 | `agent-theatre hooks status` | Show whether they are installed |
@@ -30,11 +31,15 @@ Stage ids: `island orbit metropolis harbour observatory greenhouse workshop arca
 
 ## MCP
 
-`agent-theatre serve` runs an MCP server over stdio (tools: `open_stage`, `list_sessions`, `replay_session`, `stage_status`, `install_hooks`). `agent-theatre init` registers it with Claude Code, Claude Desktop, Cursor, Windsurf, Codex and Gemini CLI; `init --repo` writes the repo-level files instead.
+`agent-theatre serve` runs an MCP server over stdio (tools: `open_stage`, `list_sessions`, `replay_session`, `stage_status`, `what_changed`, `install_hooks`). `agent-theatre init` registers it with Claude Code, Claude Desktop, Cursor, Windsurf, Codex and Gemini CLI; `init --repo` writes the repo-level files instead.
 
 ## Privacy
 
-Runs entirely on your machine and listens only on `127.0.0.1`. Events carry repo-relative paths, line counts, a command's first word and a classified intent — never file contents, prompts, command bodies or search queries. A test in the repo plants marker strings in all of those and asserts zero leaks. Paths outside the repo appear as `//ext/<name>`; your home directory as `~/`. The hook always exits 0 and never blocks a tool call.
+Runs entirely on your machine and listens only on `127.0.0.1`. Events carry repo-relative paths, line counts, a command's first word and a classified intent — never file contents, prompts, command bodies or search queries. A test in the repo plants marker strings in all of those and asserts zero leaks. The Changes view shows a file's diff only when you open it, read from your disk on `127.0.0.1`. At the end of a turn the hook prints a one-line summary of changed paths for Claude Code to show you (`AGENT_THEATRE_SUMMARY=0` turns it off); it is never a decision and never context for the agent. Paths outside the repo appear as `//ext/<name>`; your home directory as `~/`. The hook always exits 0 and never blocks a tool call.
+
+## What did the agent change?
+
+Open the stage and press **Changes**: a map of every file the agent touched, by folder, sized by lines changed, coloured new / edited / deleted / read, plus files changed during the session but not by the agent. Time slider, helper filter, click for the diff, copy as Markdown.
 
 ## VS Code
 

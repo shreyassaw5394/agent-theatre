@@ -13,7 +13,7 @@ import { hooksStatus, installHooks } from "./hooks/install.js";
 /**
  * MCP surface: lets any MCP client (Claude Desktop, Cursor, Claude Code) open the stage for a folder,
  * list and replay sessions, and read the stage's state. The stage itself stays a local web page;
- * these tools start it and hand back URLs. Nothing here returns file contents or prompts.
+ * these tools start it and hand back URLs, or report what the agent changed. Nothing here returns file contents or prompts.
  */
 const here = dirname(fileURLToPath(import.meta.url));
 const webDir = [join(here, "..", "web"), join(here, "..", "..", "web", "dist")].find((d) => existsSync(join(d, "index.html")));
@@ -77,6 +77,20 @@ export async function serveMcp(): Promise<void> {
     const scene = await (await fetch(`${url}api/scene`)).json() as { events: Array<{ kind: string; path?: string; argv0?: string }>; beats: unknown[]; signal?: string };
     const tail = scene.events.slice(-8).map((e) => `${e.kind}${e.path ? " " + e.path : e.argv0 ? " " + e.argv0 : ""}`).join("\n");
     return text(`${url}?live=1\nevents=${scene.events.length} beats=${scene.beats.length} signal=${scene.signal ?? "ok"} hooks=${hooksStatus().installed ? "installed" : "missing"}\n${tail}`);
+  });
+
+  server.registerTool("what_changed", {
+    description: "The change map: which files the agent read, edited, created or deleted (in the live stage for a folder, else the newest session), with line counts, files changed during the session but not by the agent, and a Markdown version for a pull request. Paths and counts only; never file contents.",
+    inputSchema: { cwd: z.string().optional(), session_id: z.string().optional(), markdown: z.boolean().describe("Return Markdown for a pull request instead of a plain list").optional() },
+  }, async ({ cwd, session_id, markdown }) => {
+    const folder = cwd ?? process.cwd();
+    const { changesForRepo } = await import("./changes.js");
+    const { headline, toMarkdown, toTree } = await import("@agent-theatre/core");
+    const r = await changesForRepo(folder, session_id ? { sessionId: session_id } : {});
+    if (r.source === "none") return text(`No Claude Code sessions found for ${folder}.`);
+    if (markdown) return text(toMarkdown(r.cs, { marker: false }));
+    const tree = toTree(r.cs).map((l) => "  ".repeat(l.depth) + l.text).join("\n");
+    return text(`${headline(r.cs) || "No files changed."} (${r.source === "live" ? "live stage" : `session ${r.sessionId}`})${r.cs.totals.read ? ` · ${r.cs.totals.read} only read` : ""}${r.cs.totals.outside ? ` · ${r.cs.totals.outside} changed not by the agent` : ""}\n${tree}${r.mapUrl ? `\nmap: ${r.mapUrl}` : ""}`);
   });
 
   server.registerTool("install_hooks", {

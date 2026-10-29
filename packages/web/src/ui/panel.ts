@@ -38,6 +38,22 @@ export class Panel {
   nudgeSeen(): void { this.nudge.hidden = true; try { localStorage.setItem("at:nudged", "1"); } catch { /* fine */ } }
   private readonly overviewBtn: HTMLButtonElement; private overviewOn = false; readonly exportBtn: HTMLButtonElement;
   private readonly fsBtn: HTMLButtonElement;
+  private readonly changesBtn: HTMLButtonElement; private col!: HTMLElement; private changes: { root: HTMLElement; show(on: boolean): void; readonly shown: boolean } | null = null;
+  /** The Changes view takes the stage's place while it is open; the stage keeps running underneath. */
+  attachChanges(view: { root: HTMLElement; show(on: boolean): void; readonly shown: boolean }): void {
+    this.changes = view;
+    this.col.append(view.root);
+    this.changesBtn.hidden = false;
+    this.changesBtn.onclick = () => this.toggleChanges(!view.shown);
+  }
+  toggleChanges(on: boolean): void {
+    if (!this.changes) return;
+    this.changes.show(on);
+    this.col.classList.toggle("show-changes", on);
+    this.changesBtn.setAttribute("aria-pressed", String(on));
+    this.changesBtn.textContent = on ? "Back to the stage" : "Changes";
+    if (!on) dispatchEvent(new Event("resize"));
+  }
   /** Full screen keeps the stage, the caption and the live controls; the side panels and header go. */
   toggleFullscreen(): void {
     const root = this.root;
@@ -86,7 +102,8 @@ export class Panel {
     this.exportBtn = el("button", "btn ghost", "Export clip"); this.exportBtn.type = "button"; this.exportBtn.title = "Record the stage (with sound) to a .webm you can share"; this.exportBtn.onclick = () => h.onExport();
     this.fsBtn = el("button", "btn ghost", "⤢ Full screen"); this.fsBtn.type = "button"; this.fsBtn.title = "Stage only, full screen (F or Esc to leave)";
     this.fsBtn.onclick = () => this.toggleFullscreen();
-    tb.append(this.setBtn, this.overviewBtn, this.muteBtn, this.ambBtn, this.exportBtn, this.fsBtn);
+    this.changesBtn = el("button", "btn ghost", "Changes"); this.changesBtn.type = "button"; this.changesBtn.title = "Map of the files the agent touched"; this.changesBtn.setAttribute("aria-pressed", "false"); this.changesBtn.hidden = true;
+    tb.append(this.changesBtn, this.setBtn, this.overviewBtn, this.muteBtn, this.ambBtn, this.exportBtn, this.fsBtn);
     document.addEventListener("fullscreenchange", () => { const on = !!document.fullscreenElement; document.documentElement.classList.toggle("fullscreen", on); this.fsBtn.textContent = on ? "⤡ Exit full screen" : "⤢ Full screen"; dispatchEvent(new Event("resize")); });
     addEventListener("keydown", (ev) => { if (ev.key === "f" && !(ev.target instanceof HTMLInputElement) && !ev.metaKey && !ev.ctrlKey) this.toggleFullscreen(); });
     this.nudge = el("div", "nudge", "Sound is off — turn on effects and ambience to hear the stage"); this.nudge.hidden = true; tb.append(this.nudge);
@@ -128,13 +145,14 @@ export class Panel {
     this.rateBtn = el("button", "btn ghost", "1×"); this.rateBtn.type = "button"; this.rateBtn.onclick = () => h.onRate();
     controls.append(this.playBtn, track, this.time, this.liveBtn, this.rateBtn);
     col.append(this.stageEl, controls);
+    this.col = col;
     const aside = el("aside");
     const logPanel = el("section", "panel", `<h2>Event log</h2><p class="sub">Every scene is driven by one of these agent events. Tap one to jump there.</p>`);
     this.logEl = el("ul", "log"); logPanel.append(this.logEl);
     const legend = el("section", "panel", `<h2>How to read the stage</h2><p class="sub">Buildings are files, districts are folders, beacons are test suites. Gremlins are failing tests. The lead character is the agent; its light shows its mood. Helpers are subagents. If the agent says it's done without a passing test, something hides behind it.</p>`);
     aside.append(logPanel, legend);
     grid.append(col, aside);
-    this.root.append(header, grid, el("p", "note", "Everything you see is generated locally from agent events. No code, prompts or file contents are shown or sent anywhere."));
+    this.root.append(header, grid, el("p", "note", "Everything you see is generated locally from agent events. Nothing is sent anywhere. The stage shows paths and counts only; a file's diff appears only when you open it in the Changes view, read from your own disk."));
     host.append(this.root);
   }
   private durationMs = 0;
@@ -300,6 +318,7 @@ function describe(e: AgentEvent, world: World): [string, string] {
     case "read_file": return ["Read", e.path];
     case "edit_file": return ["Edit", `${e.path} · +${e.added} −${e.removed}`];
     case "write_file": return [e.created ? "Create" : "Write", e.path];
+    case "delete_file": return ["Delete", e.path];
     case "run_command": return [e.intent === "test" ? "Run tests" : e.intent === "git" ? "Git" : e.intent === "build" ? "Build" : e.intent === "install" ? "Install" : "Run", `${e.argv0}${e.touched.length ? " · " + e.touched.map(name).join(", ") : ""}`];
     case "test_result": return [e.ok ? `${e.passed} passed` : `${e.failed} failed`, e.framework ? `${e.framework}` : ""];
     case "search": return ["Search", e.scope];
