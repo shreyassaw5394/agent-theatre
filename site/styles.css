@@ -9,7 +9,7 @@ html{overflow-x:hidden}body{margin:0;background:var(--black);color:var(--ink);fo
 a{color:inherit;text-decoration:none}
 h1,h2,h3,.wordmark,.button,.n{font-family:var(--display);letter-spacing:-.02em}
 h2{font-size:clamp(34px,5.4vw,64px);line-height:1.04;margin:0 0 .35em;font-weight:700}
-h2 em,h1 em{font-style:normal;background:linear-gradient(90deg,#ffd27e,#ff9a3c 45%,#ff5a9e);-webkit-background-clip:text;background-clip:text;color:transparent}
+h2 em,h1 em{font-style:normal;color:#ffad45}
 h3{font-size:24px;margin:0 0 .3em;font-weight:600}
 .sub{font-size:clamp(18px,1.6vw,22px);line-height:1.5;color:var(--grey);max-width:60ch;margin:0 auto}
 code{font:500 .9em var(--mono)}
@@ -119,7 +119,7 @@ footer{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;paddin
 /* hero motion */
 .hero h1 .w{display:inline-block;opacity:0;transform:translateY(26px) rotate(1.5deg);animation:rise .9s var(--ease) forwards;animation-delay:calc(var(--i) * 70ms)}
 @keyframes rise{to{opacity:1;transform:none}}
-.hero h1 em{background-size:200% 100%;animation:shimmer 6s ease-in-out infinite;display:inline-block}.hero h1 em .w{background:inherit;-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero h1 em{display:inline-block}
 @keyframes shimmer{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
 .hero p,.hero .actions,.hero .parade{opacity:0;animation:rise 1s var(--ease) forwards}.hero p{animation-delay:.6s}.hero .actions{animation-delay:.8s}.hero .parade{animation-delay:1s}
 .screen iframe{animation:drift 40s ease-in-out infinite alternate;transform-origin:50% 60%}
@@ -127,7 +127,7 @@ footer{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;paddin
 .parade a{animation:wave 4.8s ease-in-out infinite;animation-delay:calc(var(--i) * -.2s)}
 @keyframes wave{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px) rotate(-2deg)}}
 .parade a:hover{animation-play-state:paused;transform:translateY(-10px) scale(1.1)}
-.button.primary{position:relative;overflow:hidden}.button.primary::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.55) 50%,transparent 70%);transform:translateX(-120%);animation:sheen 5s ease-in-out infinite 2s}
+
 @keyframes sheen{0%,70%{transform:translateX(-120%)}85%,100%{transform:translateX(120%)}}
 .down{animation:fadein 1s ease 1.6s both}@keyframes fadein{from{opacity:0}to{opacity:1}}
 @media(prefers-reduced-motion:reduce){.hero h1 .w,.hero p,.hero .actions,.hero .parade{animation:none;opacity:1;transform:none}.screen iframe,.parade a,.hero h1 em,.button.primary::after{animation:none}}
@@ -161,3 +161,6 @@ footer{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;paddin
 @keyframes march{0%,100%{transform:rotate(-5deg) translateY(0)}50%{transform:rotate(5deg) translateY(-5px)}}
 @media(prefers-reduced-motion:reduce){.who img{animation:none!important}}
 footer .note{color:var(--dim)}
+footer .legal{flex-basis:100%;max-width:820px;color:var(--dim);line-height:1.6}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+a:focus-visible,button:focus-visible{outline:2px solid #ffad45;outline-offset:3px}
