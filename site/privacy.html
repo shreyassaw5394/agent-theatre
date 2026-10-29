@@ -7,19 +7,15 @@
 <meta name="description" content="Agent Theatre runs on your machine and sends nothing anywhere. This site sets no cookies and runs no analytics.">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="canonical" href="https://agenttheatre.dev/privacy">
+<meta name="color-scheme" content="dark">
 <link rel="stylesheet" href="/styles.css">
-<style>
-.legal{max-width:760px;margin:0 auto;padding:calc(110px + env(safe-area-inset-top,0px)) 24px 100px;text-align:left}
-.legal h1{font:700 clamp(40px,6vw,64px)/1.05 var(--display);margin:0 0 10px}.legal h2{font-size:24px;margin:44px 0 10px}
-.legal p,.legal li{color:var(--grey);font-size:17px}.legal strong{color:var(--ink)}.legal a{color:var(--ink);border-bottom:1px solid var(--dim)}
-.legal code{background:rgba(255,255,255,.08);padding:.05em .35em;border-radius:5px}
-</style>
 </head>
-<body>
-<nav class="nav" aria-label="Primary">
-  <a class="wordmark" href="/">Agent Theatre</a>
-  <a class="pill" href="https://github.com/shreyassaw5394/agent-theatre" rel="noopener">GitHub</a>
-</nav>
+<body class="legal-page">
+<header class="top">
+  <a class="brand" href="/" aria-label="Agent Theatre home"><img src="/favicon.svg" alt="" width="24" height="24"><span>Agent Theatre</span></a>
+  <nav class="nav" aria-label="Sections"><a href="/#showing">Now showing</a><a href="/#sets">Sets</a><a href="/#credits">Credits</a></nav>
+  <a class="btn btn-small" href="https://github.com/shreyassaw5394/agent-theatre" rel="noopener">GitHub</a>
+</header>
 <main class="legal">
   <h1>Privacy</h1>
   <p>Last updated 27 October 2026</p>
@@ -56,6 +52,14 @@
   <h2>Changes</h2>
   <p>We will update the date above when this page changes.</p>
 </main>
-<footer><span class="wordmark">Agent Theatre</span><span><a href="/">Home</a></span></footer>
+<footer class="foot">
+  <div class="foot-cols">
+    <div><p>Project</p><a href="https://github.com/shreyassaw5394/agent-theatre" rel="noopener">GitHub</a><a href="https://www.npmjs.com/package/agent-theatre" rel="noopener">npm</a></div>
+    <div><p>Site</p><a href="/">Home</a><a href="/privacy">Privacy</a></div>
+    <div><p>Licences</p><a href="/theatre/THIRD_PARTY_LICENSES.txt">Third-party</a></div>
+    <div></div>
+  </div>
+  <p class="foot-legal">A free, non-commercial passion project by an independent developer. Open source under MIT, provided as is without warranty. Not affiliated with or endorsed by Anthropic, Microsoft or any company whose tools it works with; Claude and Claude Code are trademarks of Anthropic.</p>
+</footer>
 </body>
 </html>
