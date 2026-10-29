@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { readFileSync, statSync } from "node:fs";
+import { readFileSync, realpathSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import type { GitView } from "@agent-theatre/core";
 
@@ -114,8 +114,15 @@ function fingerprint(cwd: string, p: string): string {
   } catch { return "gone"; }
 }
 
+/** The real, long form of a path: Windows temp folders come as 8.3 short names (RUNNER~1) while git reports long ones. */
+const realCache = new Map<string, string>();
+function real(p: string): string {
+  let r = realCache.get(p);
+  if (r === undefined) { try { r = realpathSync.native(p); } catch { r = p; } realCache.set(p, r); }
+  return r;
+}
 function toCwd(root: string, cwd: string, repoPath: string): string | null {
-  const rel = relative(cwd, join(root, repoPath)).split(sep).join("/");
+  const rel = relative(real(cwd), join(real(root), repoPath)).split(sep).join("/");
   return !rel || rel.startsWith("..") ? null : rel;
 }
 

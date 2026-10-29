@@ -3,6 +3,7 @@ import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { HOOK_SCRIPT } from "../src/hooks/script.js";
 
@@ -43,7 +44,7 @@ describe("hook script, run for real", () => {
   afterAll(() => new Promise<void>((r) => server.close(() => r())));
   const run = (payload: object, env: Record<string, string> = {}) => new Promise<{ out: string; code: number | null; ms: number }>((resolve) => {
     const t0 = Date.now();
-    const p = spawn(process.execPath, [scriptPath.pathname], { env: { ...process.env, AGENT_THEATRE_HOME: home, ...env } });
+    const p = spawn(process.execPath, [fileURLToPath(scriptPath)], { env: { ...process.env, AGENT_THEATRE_HOME: home, ...env } });
     let out = ""; p.stdout.on("data", (c) => { out += c; });
     p.on("close", (code) => resolve({ out, code, ms: Date.now() - t0 }));
     p.stdin.end(JSON.stringify(payload));
