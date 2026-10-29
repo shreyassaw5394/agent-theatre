@@ -18,7 +18,7 @@
 <body>
 <nav class="nav" aria-label="Primary">
   <a class="wordmark" href="/">Agent Theatre</a>
-  <div class="links"><a href="#episodes">Episodes</a><a href="#stages">Stages</a><a href="#cast">Cast</a><a href="#honest">Honesty</a><a href="#privacy">Privacy</a><a href="#install">Install</a></div>
+  <div class="links"><a href="#changes">What changed</a><a href="#episodes">Episodes</a><a href="#stages">Stages</a><a href="#cast">Cast</a><a href="#honest">Honesty</a><a href="#privacy">Privacy</a><a href="#install">Install</a></div>
   <a class="pill ghost" href="https://discord.gg/PPGeQWd7r" rel="noopener">Discord</a><a class="pill" href="https://github.com/shreyassaw5394/agent-theatre" rel="noopener">GitHub</a>
 </nav>
 
@@ -28,6 +28,7 @@
     <div class="veil"></div>
   </div>
   <div class="copy">
+    <a class="newpill" href="#changes"><b>New in 1.6</b><span class="l">See every file your agent changed →</span><span class="s">See what changed →</span></a>
     <h1><span class="w" style="--i:0">Watch</span> <span class="w" style="--i:1">your</span> <span class="w" style="--i:3">agent</span> <span class="w" style="--i:4">work.</span><br><em><span class="w" style="--i:6">As</span> <span class="w" style="--i:7">a</span> <span class="w" style="--i:8">film,</span> <span class="w" style="--i:9">not</span> <span class="w" style="--i:10">a</span> <span class="w" style="--i:11">log.</span></em></h1>
     <p>Agent Theatre turns a Claude Code session into an animated scene. Your repo becomes a stage. The agent becomes a character. Every read, edit and test becomes a beat.</p>
     <div class="actions">
@@ -62,6 +63,37 @@
     <article class="cell reveal"><div class="n">0</div><h3>Linear tweens.</h3><p>Every motion is eased. A test in the repo makes sure none sneak in.</p></article>
     <article class="cell reveal"><img class="mascot" src="/img/cast-sol.png" alt="" width="150" height="150" aria-hidden="true"><div class="n">0 KB</div><h3>Audio files.</h3><p>Every sound is synthesized at runtime. Every stage has its own voice and ambience.</p></article>
     <article class="cell wide reveal"><img src="/img/stage-lanterns.jpg" alt="Lanterns stage" loading="lazy" width="880" height="520"><div><h3>One key light.</h3><p>Long soft shadows, ambient occlusion, rim light, aerial haze, cloud shadows drifting over the ground. Bloom only where something glows.</p></div></article>
+  </div>
+</section>
+
+<section id="changes" class="changes">
+  <div class="head reveal">
+    <p class="eyebrow">New in 1.6</p>
+    <h2>What did the agent change?<br><em>Now it's one look.</em></h2>
+    <p class="sub">A long agent session touches dozens of files. Some it reads, some it edits, some it creates or deletes with a shell command. Agent Theatre now maps all of it.</p>
+  </div>
+  <div class="story reveal">
+    <article><h3>The problem</h3><p>Reviewing an agent's work meant scrolling a transcript or reading <code>git diff</code> file by file, and you still couldn't tell the agent's edits from yours, a formatter's, or a teammate's.</p></article>
+    <article><h3>The ask</h3><p>“Show me which files the agent touched, so I know what changed at a glance, before I review or commit.”</p></article>
+    <article><h3>What we built</h3><p>A map of every file the agent touched: by folder, sized by lines changed, coloured new, edited, deleted or read. Checked against git, so shell edits are confirmed on disk and mid-session commits still count.</p></article>
+  </div>
+  <figure class="shot reveal"><img src="/img/changes-map.jpg" alt="The Changes view: a map of the files an agent touched, grouped by folder, with new files in green, edited in amber, deleted in red, and one file changed during the session but not by the agent, hatched in blue" loading="lazy" width="1600" height="1245"><figcaption>One real session: 8 files changed, 2 new, 1 deleted, 3 only read, and 1 file changed by the person, not the agent.</figcaption></figure>
+  <div class="where">
+    <article class="reveal"><h3>After every turn</h3><p>Claude Code shows a one-line summary under the reply: <code>this turn: 3 files changed (+50 −2) · 1 new · 1 deleted</code>, with a link to the map.</p></article>
+    <article class="reveal"><h3>On the stage</h3><p>Press <b>Changes</b>. Drag the time slider to any moment, filter to one helper, click a file for its diff, copy it all as Markdown.</p></article>
+    <article class="reveal"><h3>In VS Code</h3><p>An <b>Agent changes</b> list in the Explorer, a dot on every file the agent touched, and the editor's own diff on click.</p></article>
+    <article class="reveal"><h3>On the pull request</h3><p><code>npx agent-theatre changes --pr</code> posts the map as one comment, with your own <code>gh</code> login, after asking you.</p></article>
+  </div>
+  <div class="helps reveal">
+    <h3>How it helps</h3>
+    <ul>
+      <li><b>Review faster.</b> Start from the files that changed most, not from the top of a transcript.</li>
+      <li><b>Catch surprises.</b> The file it deleted, the config it touched outside the task, the test it never ran.</li>
+      <li><b>Know what's yours.</b> Changes made during the session by anyone else are marked “not by the agent”.</li>
+      <li><b>Hand reviewers the map.</b> One comment on the PR says what the agent did, in paths and line counts.</li>
+    </ul>
+    <div class="actions"><a class="button" href="/theatre/?demo=refactor&amp;set=metropolis&amp;view=changes" target="_blank" rel="noopener">Try it on an episode</a><a class="button ghost" href="#install"><code>npx agent-theatre changes</code></a></div>
+    <p class="note">Local, like everything else: paths and line counts only. A file's diff is read from your disk only when you open it.</p>
   </div>
 </section>
 

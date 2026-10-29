@@ -81,6 +81,15 @@ export class Director {
         this.verifiedSinceEdit = false;
         break;
       }
+      case "delete_file": {
+        // a file taken away: the agent goes there and works briefly; the change map shows it as deleted
+        const p = this.placeFor(e.path, e, actor);
+        this.walk(e, actor, p);
+        this.emit(e, actor, { kind: "build", target: p.id, intensity: 0.2 }, 700, this.mood.onBuild());
+        this.editedSinceTurn = true;
+        this.verifiedSinceEdit = false;
+        break;
+      }
       case "run_command": {
         if (e.intent === "test") {
           const beacon = this.beaconFor(e.touched);

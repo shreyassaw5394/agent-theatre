@@ -5,6 +5,7 @@ Watch your coding agent work — as a film, not a log. The same stage as `npx ag
 **Commands** (Command Palette → "Agent Theatre"):
 - **Open the stage (live)** — starts a local server for the open folder and shows the stage beside your editor. Run Claude Code; the character walks.
 - **Replay a session…** — pick any past Claude Code session of this folder.
+- **Agent changes** (Explorer) — every file the agent read, edited, created or deleted, with line counts; a dot on those files in the Explorer; click for the editor's own diff against the last commit. Toolbar: open the map, post to the pull request (asks first), copy as Markdown. Works from the newest session even when the stage is closed.
 - **Install / Uninstall Claude Code hooks** — non-destructive edit of `~/.claude/settings.json` with a backup; reversed byte-for-byte.
 
 Everything runs on your machine and talks only to `127.0.0.1`. Events carry paths and counts, never file contents or prompts.

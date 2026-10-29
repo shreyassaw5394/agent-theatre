@@ -5,6 +5,7 @@ const KINDS: ReadonlySet<string> = new Set<AgentEventKind>([
   "read_file",
   "edit_file",
   "write_file",
+  "delete_file",
   "run_command",
   "test_result",
   "search",

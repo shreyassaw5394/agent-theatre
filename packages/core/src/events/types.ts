@@ -41,9 +41,13 @@ export type SessionEndReason = "stop" | "error" | "user";
 
 export type AgentEventBody =
   | { kind: "session_start"; repoId: string; branch?: string }
-  | { kind: "read_file"; path: string; bytes?: number }
+  /** `via: "shell"`: inferred from a shell command (cat, head…); confirmed on disk by the change map. */
+  | { kind: "read_file"; path: string; bytes?: number; via?: "shell" }
   | { kind: "edit_file"; path: string; added: number; removed: number; hunks: number }
-  | { kind: "write_file"; path: string; added: number; created: boolean }
+  /** `via: "shell"`: inferred from a shell command's text (a redirect, sed -i, cp/mv), so it may be wrong; the change map confirms it on disk. */
+  | { kind: "write_file"; path: string; added: number; created: boolean; via?: "shell" }
+  /** A file the agent removed (rm, git rm, the source of a mv). Path only. Always inferred from a shell command. */
+  | { kind: "delete_file"; path: string; via?: "shell" }
   | {
       kind: "run_command";
       argv0: string;

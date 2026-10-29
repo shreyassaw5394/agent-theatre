@@ -101,11 +101,19 @@ export function toolCallToOutcome(call: ToolCall, ctx: PathContext): ToolCallOut
     case "Bash": {
       const command = str(input.command) ?? "";
       const c = classifyBash(command);
-      const touched = [...new Set([...c.writes, ...c.reads].map(rel))];
+      // after a leading `cd X &&`, relative targets live under X, not the session's folder
+      const under = (p: string): string => {
+        if (!c.cd || p.startsWith("/") || p.startsWith("~")) return p.startsWith("~/") && ctx.home ? ctx.home.replace(/\/+$/, "") + p.slice(1) : p;
+        const base = c.cd.startsWith("~") && ctx.home ? ctx.home.replace(/\/+$/, "") + c.cd.slice(1) : c.cd.startsWith("/") ? c.cd : `${ctx.cwd.replace(/\/+$/, "")}/${c.cd}`;
+        return `${base.replace(/\/+$/, "")}/${p}`.replace(/\/\.\//g, "/");
+      };
+      const rel = (p: string) => relativizePath(under(p), ctx);
+      const touched = [...new Set([...c.writes, ...c.reads, ...c.deletes].map(rel))];
       const bodies: AgentEventBody[] = [{ kind: "run_command", argv0: c.argv0, intent: c.intent, touched, ok, ...dur }];
       const heredoc = heredocLines(command);
-      c.writes.forEach((w, i) => bodies.push({ kind: "write_file", path: rel(w), added: i === 0 ? heredoc : 0, created: false }));
-      for (const r of c.reads) bodies.push({ kind: "read_file", path: rel(r) });
+      c.writes.forEach((w, i) => bodies.push({ kind: "write_file", path: rel(w), added: i === 0 ? heredoc : 0, created: false, via: "shell" }));
+      for (const r of c.reads) bodies.push({ kind: "read_file", path: rel(r), via: "shell" });
+      for (const d of c.deletes) bodies.push({ kind: "delete_file", path: rel(d), via: "shell" });
       if (c.intent === "test") {
         const sum = parseTestSummary(responseText(resp));
         if (sum) bodies.push({ kind: "test_result", ok: sum.failed === 0 && ok, passed: sum.passed, failed: sum.failed, ...(sum.skipped !== undefined ? { skipped: sum.skipped } : {}), framework: sum.framework, ...dur });
