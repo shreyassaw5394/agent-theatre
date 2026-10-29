@@ -118,7 +118,7 @@ describe("changesFromEvents", () => {
       ev({ kind: "write_file", path: "fresh.ts", added: 3, created: false }),
       ev({ kind: "edit_file", path: "gone.ts", added: 1, removed: 0, hunks: 1 }),
     ];
-    const cs = changesFromEvents(events, { git: {
+    const cs = changesFromEvents(events, { exists: (p) => p !== "gone.ts", git: {
       status: { "gen.ts": "M", "fresh.ts": "?", "gone.ts": "D", "human.ts": "M", "old-work.ts": "M" },
       numstat: { "gen.ts": { added: 120, removed: 4 }, "human.ts": { added: 2, removed: 2 } },
       changedSinceBaseline: ["gen.ts", "fresh.ts", "gone.ts", "human.ts"],
@@ -215,5 +215,24 @@ describe("filters and git", () => {
     expect(changesFromEvents(events, { git, agent: "h1" }).files.map((f) => f.path)).toEqual(["b.ts"]);
     expect(changesFromEvents(events, { git, until: events[0]!.ts }).files.map((f) => f.path)).toEqual(["a.ts"]);
     expect(changesFromEvents(events, { git }).files.map((f) => `${f.path}:${f.by}`)).toEqual(["a.ts:agent", "b.ts:agent", "c.ts:outside"]);
+  });
+});
+
+describe("live test findings (1.6.1)", () => {
+  it("a file created and deleted in the same session stays deleted, with nothing left to count", () => {
+    const events = [ev({ kind: "write_file", path: "t/plan.md", added: 3, created: true }), ev({ kind: "delete_file", path: "t/plan.md", via: "shell" })];
+    const plain = changesFromEvents(events);
+    expect(plain.files[0]).toMatchObject({ action: "deleted", added: 0, removed: 0 });
+    const withGit = changesFromEvents(events, { exists: () => false, git: { status: {} } });
+    expect(withGit.files[0]).toMatchObject({ action: "deleted", added: 0, removed: 0 });
+  });
+  it("a delete that was undone (file back, clean in git) reads as edited", () => {
+    const cs = changesFromEvents([ev({ kind: "delete_file", path: "kept.ts", via: "shell" }), ev({ kind: "write_file", path: "kept.ts", added: 2, created: false })], { exists: () => true, git: { status: {} } });
+    expect(cs.files[0]!.action).not.toBe("deleted");
+  });
+  it("a new file takes git's exact line count, not the sum of its writes and edits", () => {
+    const events = [ev({ kind: "write_file", path: "t/notes.md", added: 6, created: true }), ev({ kind: "edit_file", path: "t/notes.md", added: 3, removed: 1, hunks: 1 })];
+    const cs = changesFromEvents(events, { exists: () => true, git: { status: { "t/notes.md": "?" }, numstat: { "t/notes.md": { added: 8, removed: 0 } } } });
+    expect(cs.files[0]).toMatchObject({ action: "created", added: 8, removed: 0, countsFromGit: true });
   });
 });
