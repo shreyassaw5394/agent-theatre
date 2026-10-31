@@ -24,11 +24,11 @@
 
 <header class="hero">
   <div class="screen">
-    <iframe src="/theatre/?demo=any&amp;cinema=1&amp;nopreview=1" title="Agent Theatre, playing" loading="eager" tabindex="-1" aria-hidden="true"></iframe>
+    <iframe src="/theatre/?demo=any&amp;cinema=1&amp;nopreview=1&amp;set=halloween" title="Agent Theatre, playing on the Halloween stage" loading="eager" tabindex="-1" aria-hidden="true"></iframe>
     <div class="veil"></div>
   </div>
   <div class="copy">
-    <a class="newpill" href="#changes"><b>New in 1.6</b><span class="l">See every file your agent changed →</span><span class="s">See what changed →</span></a>
+    <a class="newpill" href="#halloween"><b>New in 1.7</b><span class="l">A Halloween stage, and smoother animation →</span><span class="s">Halloween stage →</span></a>
     <h1><span class="w" style="--i:0">Watch</span> <span class="w" style="--i:1">your</span> <span class="w" style="--i:3">agent</span> <span class="w" style="--i:4">work.</span><br><em><span class="w" style="--i:6">As</span> <span class="w" style="--i:7">a</span> <span class="w" style="--i:8">film,</span> <span class="w" style="--i:9">not</span> <span class="w" style="--i:10">a</span> <span class="w" style="--i:11">log.</span></em></h1>
     <p>Agent Theatre turns a Claude Code session into an animated scene. Your repo becomes a stage. The agent becomes a character. Every read, edit and test becomes a beat.</p>
     <div class="actions">
@@ -63,6 +63,21 @@
     <article class="cell reveal"><div class="n">0</div><h3>Linear tweens.</h3><p>Every motion is eased. A test in the repo makes sure none sneak in.</p></article>
     <article class="cell reveal"><img class="mascot" src="/img/cast-sol.png" alt="" width="150" height="150" aria-hidden="true"><div class="n">0 KB</div><h3>Audio files.</h3><p>Every sound is synthesized at runtime. Every stage has its own voice and ambience.</p></article>
     <article class="cell wide reveal"><img src="/img/stage-lanterns.jpg" alt="Lanterns stage" loading="lazy" width="880" height="520"><div><h3>One key light.</h3><p>Long soft shadows, ambient occlusion, rim light, aerial haze, cloud shadows drifting over the ground. Bloom only where something glows.</p></div></article>
+  </div>
+</section>
+
+<section id="halloween" class="changes">
+  <div class="head reveal">
+    <p class="eyebrow">New in 1.7</p>
+    <h2>Halloween, on the stage.<br><em>Jack-o'-lanterns, bats and a ghost.</em></h2>
+    <p class="sub">A seasonal stage: dark houses with lit windows, jack-o'-lanterns flickering along the paths, bats circling overhead, and a ghost-white gremlin when a test fails. Until 2 November it's the first stage Agent Theatre suggests.</p>
+  </div>
+  <figure class="shot reveal"><a href="/theatre/?demo=episode-1&amp;set=halloween" target="_blank" rel="noopener"><img src="/img/halloween-feature.jpg" alt="The Halloween stage: purple houses with orange roofs and lit windows, glowing jack-o'-lanterns, bats in the air, and a ghost-white gremlin popping out of a building" loading="lazy" width="1760" height="1040"></a><figcaption>Episode 1 on the Halloween stage. Click to play it.</figcaption></figure>
+  <div class="where">
+    <article class="reveal"><h3>Smoother animation</h3><p>Buildings rise smoothly, the lead leans into its walk, squashes when it lands and its ears trail behind. Lamps and lanterns flicker like candles.</p></article>
+    <article class="reveal"><h3>Sets that scroll</h3><p>The set picker now scrolls in small panels like the VS Code view, and keeps your place while the previews load.</p></article>
+    <article class="reveal"><h3>Cleaner scrubbing</h3><p>Jump around the timeline and the character no longer flashes sideways, and the clock never reads <code>-1:-1</code>.</p></article>
+    <article class="reveal"><h3>Try it</h3><p>Update the extension, or run <code>npx agent-theatre@latest</code> and pick <b>Halloween</b> under <b>Set</b>.</p></article>
   </div>
 </section>
 
