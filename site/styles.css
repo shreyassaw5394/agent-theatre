@@ -191,20 +191,8 @@ a:focus-visible,button:focus-visible{outline:2px solid #ffad45;outline-offset:3p
 .newpill b{white-space:nowrap}.newpill .s{display:none}
 @media(max-width:560px){.newpill{font-size:13px;gap:8px}.newpill .l{display:none}.newpill .s{display:inline}}
 
-/* install: always one tap away */
-.navcta{display:flex;align-items:center;gap:8px}.navcta .pill.ghost{margin-right:0}
-.install-pill{background:var(--amber);color:#1d1203;box-shadow:0 0 0 0 rgba(255,181,71,.55);animation:installpulse 2.8s ease-out 2s 3}
-.install-pill:hover{filter:brightness(1.08)}
-@keyframes installpulse{0%{box-shadow:0 0 0 0 rgba(255,181,71,.55)}70%{box-shadow:0 0 0 12px rgba(255,181,71,0)}100%{box-shadow:0 0 0 0 rgba(255,181,71,0)}}
-.hero .actions .button:first-child{background:var(--amber);color:#1d1203}
-.hero .getit{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:8px;margin:16px auto 0;font-size:14px;opacity:0;animation:rise 1s var(--ease) .9s forwards}
-.getit span{color:rgba(255,255,255,.7)}
-.getit a{padding:5px 12px;border-radius:999px;background:rgba(0,0,0,.42);border:1px solid rgba(255,255,255,.22);color:#f2f4f8;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
-.getit a:hover{border-color:rgba(255,255,255,.5)}
-.getit a.watch{background:none;border:0;backdrop-filter:none;-webkit-backdrop-filter:none;text-decoration:underline;text-underline-offset:3px}
-/* arriving at #install: the commands light up for a moment */
-#install{scroll-margin-top:72px}
-#install:target .term pre{animation:installglow 2.4s ease-out .7s 1}
-@keyframes installglow{0%,30%{box-shadow:0 0 0 3px var(--amber),0 0 40px rgba(255,181,71,.35)}100%{box-shadow:0 0 0 0 rgba(255,181,71,0)}}
-@media(max-width:560px){.navcta .hide-s{display:none}.navcta .pill{padding:7px 12px}}
-@media(prefers-reduced-motion:reduce){.install-pill,#install:target .term pre{animation:none}.hero .getit{animation:none;opacity:1}}
+/* the install command glows so it's the first thing you find */
+.hero #copy{border-color:rgba(255,181,61,.75);box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 0 0 1px rgba(255,181,61,.35),0 0 24px rgba(255,181,61,.35);animation:installglow 2.8s ease-in-out 1.8s infinite}
+@keyframes installglow{0%,100%{box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 0 0 1px rgba(255,181,61,.35),0 0 18px rgba(255,181,61,.25)}50%{box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 0 0 2px rgba(255,181,61,.6),0 0 36px rgba(255,181,61,.55)}}
+.nav .links a.install-link{color:var(--amber);text-shadow:0 0 12px rgba(255,181,61,.6)}
+@media(prefers-reduced-motion:reduce){.hero #copy{animation:none}}
