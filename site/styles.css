@@ -191,8 +191,16 @@ a:focus-visible,button:focus-visible{outline:2px solid #ffad45;outline-offset:3p
 .newpill b{white-space:nowrap}.newpill .s{display:none}
 @media(max-width:560px){.newpill{font-size:13px;gap:8px}.newpill .l{display:none}.newpill .s{display:inline}}
 
-/* the install command glows so it's the first thing you find */
-.hero #copy{border-color:rgba(255,181,61,.75);box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 0 0 1px rgba(255,181,61,.35),0 0 24px rgba(255,181,61,.35);animation:installglow 2.8s ease-in-out 1.8s infinite}
-@keyframes installglow{0%,100%{box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 0 0 1px rgba(255,181,61,.35),0 0 18px rgba(255,181,61,.25)}50%{box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 0 0 2px rgba(255,181,61,.6),0 0 36px rgba(255,181,61,.55)}}
+/* the install command: a light runs round its edge, it breathes, and a tag points at it */
+@property --ang{syntax:"<angle>";inherits:false;initial-value:0deg}
+.hero #copy{position:relative;isolation:isolate;border-color:rgba(255,181,61,.5);animation:installglow 2.2s ease-in-out 1.6s infinite}
+.hero #copy::before{content:"";position:absolute;inset:-2px;border-radius:inherit;padding:2.5px;background:conic-gradient(from var(--ang),rgba(255,181,61,0) 0deg,rgba(255,181,61,.9) 50deg,#fff6dc 85deg,rgba(255,181,61,.9) 120deg,rgba(255,181,61,0) 170deg,rgba(255,181,61,0) 360deg);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:runlight 2.4s linear infinite;pointer-events:none}
+.hero #copy::after{content:"← start here";position:absolute;left:calc(100% + 14px);top:50%;transform:translateY(-50%);white-space:nowrap;font:800 12px var(--text);letter-spacing:.14em;text-transform:uppercase;color:#1d1203;background:var(--amber);padding:5px 11px;border-radius:999px;box-shadow:0 6px 20px rgba(255,181,61,.45);animation:tagbob 1.4s ease-in-out infinite;pointer-events:none}
+.hero #copy.ok::after{content:"copied ✓"}
+@keyframes runlight{to{--ang:360deg}}
+@keyframes installglow{0%,100%{box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 0 0 1px rgba(255,181,61,.35),0 0 22px rgba(255,181,61,.3)}50%{box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 0 0 3px rgba(255,181,61,.55),0 0 56px rgba(255,181,61,.7)}}
+@keyframes tagbob{0%,100%{transform:translate(0,-50%)}50%{transform:translate(-6px,-50%)}}
+@keyframes tagbobv{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,4px)}}
+@media(max-width:900px){.hero #copy::after{content:"↑ start here";left:50%;top:calc(100% + 8px);transform:translateX(-50%);animation-name:tagbobv}.hero .parade{margin-top:48px}}
 .nav .links a.install-link{color:var(--amber);text-shadow:0 0 12px rgba(255,181,61,.6)}
-@media(prefers-reduced-motion:reduce){.hero #copy{animation:none}}
+@media(prefers-reduced-motion:reduce){.hero #copy,.hero #copy::before,.hero #copy::after{animation:none}}
