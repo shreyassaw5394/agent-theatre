@@ -4,7 +4,8 @@ import type { PlayerState } from "../scene/player.js";
 import { SETS, suggestSets, type SetTheme } from "../sets/index.js";
 import type { RepoProfile } from "@agent-theatre/core";
 
-const fmt = (ms: number) => { const s = Math.floor(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
+// the opening can sit a hair before 0: never show "-1:-1"
+const fmt = (ms: number) => { const s = Math.floor(Math.max(0, ms) / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 const hex = (n: number) => `#${n.toString(16).padStart(6, "0")}`;
 const el = <K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, html?: string): HTMLElementTagNameMap[K] => { const e = document.createElement(tag); if (cls) e.className = cls; if (html !== undefined) e.innerHTML = html; return e; };
 const PLAY = '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 2.8v10.4a.6.6 0 0 0 .9.5l8.3-5.2a.6.6 0 0 0 0-1L5.4 2.3a.6.6 0 0 0-.9.5z"/></svg>';
@@ -135,7 +136,8 @@ export class Panel {
     });
     this.stageEl.addEventListener("pointerleave", () => { this.tip.hidden = true; });
     // wheel = zoom
-    this.stageEl.addEventListener("wheel", (ev) => { if (!ev.ctrlKey && Math.abs(ev.deltaY) < 1) return; ev.preventDefault(); h.onZoom(Math.exp(-ev.deltaY * 0.0015)); }, { passive: false });
+    // the set picker sits on the stage: its own scroll wins, so the cards move instead of the camera
+    this.stageEl.addEventListener("wheel", (ev) => { if (ev.target instanceof Element && ev.target.closest(".picker")) return; if (!ev.ctrlKey && Math.abs(ev.deltaY) < 1) return; ev.preventDefault(); h.onZoom(Math.exp(-ev.deltaY * 0.0015)); }, { passive: false });
     const controls = el("div", "controls");
     this.playBtn = el("button", "btn", `${PAUSE}<span>Pause</span>`); this.playBtn.type = "button"; this.playBtn.onclick = () => h.onPlayPause();
     const track = el("div", "track"); this.actsEl = el("div", "acts"); this.labelsEl = el("div", "actlabels"); this.head = el("div", "head"); track.append(this.actsEl, this.labelsEl, this.head);
@@ -213,8 +215,11 @@ export class Panel {
   leadName = "Pip";
   showAll = false;
   showPicker(show: boolean, themeId?: string): void {
+    const wasOpen = !this.picker.hidden;
     this.picker.hidden = !show;
     if (!show) return;
+    // previews arrive while the picker may be open: redrawing it must not throw the reader back to the top
+    const keep = wasOpen ? { cards: this.picker.querySelector(".setcards")?.scrollTop ?? 0, picker: this.picker.scrollTop, all: this.showAll } : null;
     this.picker.innerHTML = "";
     const kind = this.profile?.kinds?.[0];
     const kindLabel = kind && kind !== "unknown" ? ({ "web-frontend": "a web app", "backend-api": "a backend", "cli-tool": "a CLI", library: "a library", "data-ml": "data & ML work", mobile: "a mobile app", game: "a game", "infra-devops": "infrastructure", "docs-content": "documentation", monorepo: "a monorepo", systems: "systems code" } as Record<string, string>)[kind] : null;
@@ -234,6 +239,7 @@ export class Panel {
     const all = el("button", "btn ghost", this.showAll ? "Suggested" : `All ${SETS.length} sets`); all.type = "button"; all.onclick = () => { this.showAll = !this.showAll; this.showPicker(true, themeId); };
     row.append(sh, all);
     this.picker.append(cards, row);
+    if (keep && keep.all === this.showAll) { cards.scrollTop = keep.cards; this.picker.scrollTop = keep.picker; }
   }
 
   update(s: PlayerState, world: World, lampOf: (id: string) => string, helperLabel?: string): void {

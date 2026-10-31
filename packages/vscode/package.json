@@ -2,7 +2,7 @@
   "name": "agent-theatre-vscode",
   "displayName": "Agent Theatre",
   "description": "Watch your coding agent work — as a film, not a log. Turns a Claude Code session into an animated scene inside VS Code.",
-  "version": "1.6.1",
+  "version": "1.7.0",
   "publisher": "agenttheatre",
   "license": "MIT",
   "private": true,

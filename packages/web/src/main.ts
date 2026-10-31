@@ -121,7 +121,7 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
   panel.stageEl.prepend(app.canvas);
 
   let payload: Parameters<Parameters<Transport["onReady"]>[0]>[0] | null = null;
-  /** Every set shows the repo in its own arrangement, so twenty stages never read as one island recoloured. */
+  /** Every set shows the repo in its own arrangement, so the stages never read as one island recoloured. */
   const worldFor = (base: World, set: SetTheme): World => relayoutWorld(base, LAYOUTS[(base.seed + SETS.findIndex((s) => s.id === set.id) * 7) % LAYOUTS.length]!);
   let wasT = 0, wasPlaying = false, lastThemeId = "", followLive = true;
   function rebuild(): void {

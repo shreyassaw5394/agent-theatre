@@ -39,6 +39,8 @@ export class Pip {
   /** What is actually drawn: eases toward `pose` so beats transition instead of cut. */
   private shown = { x: 0, y: 0, lift: 0, sx: 1, sy: 1, lean: 0, face: 1 as 1 | -1, faceK: 1 };
   private snapNext = true;
+  /** Secondary motion: lean into travel, squash on landing, ears that trail behind. Never in reduced motion. */
+  private motion = { px: 0, lean: 0, land: 0, prevLift: 0, ear: 0 };
   /** Call after a seek so the character doesn't glide from the old spot. */
   snap(): void { this.snapNext = true; }
   /** Where the character is drawn this frame (eased), not where it is headed. */
@@ -51,17 +53,33 @@ export class Pip {
   setTheme(t: SetTheme): void { this.theme = t; }
 
   update(dtMs: number): void {
-    this.t += dtMs / 1000;
+    // a seek hands over a negative (or NaN) delta: time never runs backwards for the character, or the turn and
+    // the eases overshoot (Pip showed as a sliver for a second after every scrub)
+    const dt = Number.isFinite(dtMs) ? Math.max(0, Math.min(0.05, dtMs / 1000)) : 0;
+    this.t += Number.isFinite(dtMs) ? Math.max(0, dtMs) / 1000 : 0;
     const target = this.pose, T = this.spec, t = this.t;
-    const sh = this.shown, dt = Math.min(0.05, dtMs / 1000);
-    if (this.snapNext) { Object.assign(sh, { x: target.x, y: target.y, lift: target.lift, sx: target.sx, sy: target.sy, lean: target.lean, face: target.face, faceK: 1 }); this.snapNext = false; }
+    const sh = this.shown;
+    if (this.snapNext) { Object.assign(sh, { x: target.x, y: target.y, lift: target.lift, sx: target.sx, sy: target.sy, lean: target.lean, face: target.face, faceK: 1 }); Object.assign(this.motion, { px: target.x, lean: 0, land: 0, prevLift: target.lift, ear: 0 }); this.snapNext = false; }
     // exponential ease toward target; squash/lean are quick, position a touch slower (follow-through)
     const kq = 1 - Math.pow(0.0005, dt), kp = 1 - Math.pow(0.002, dt);
     sh.x += (target.x - sh.x) * kp; sh.y += (target.y - sh.y) * kp;
     sh.lift += (target.lift - sh.lift) * kq; sh.sx += (target.sx - sh.sx) * kq; sh.sy += (target.sy - sh.sy) * kq; sh.lean += (target.lean - sh.lean) * kq;
     // turning: scale x through zero rather than flipping
-    if (sh.face !== target.face) { sh.faceK -= dt * 9; if (sh.faceK <= 0) { sh.face = target.face; sh.faceK = 0.01; } } else sh.faceK = Math.min(1, sh.faceK + dt * 9);
-    const a = { ...target, x: sh.x, y: sh.y, lift: sh.lift, sx: sh.sx * Math.max(0.15, sh.faceK), sy: sh.sy, lean: sh.lean, face: sh.face };
+    if (sh.face !== target.face) { sh.faceK -= dt * 9; if (sh.faceK <= 0) { sh.face = target.face; sh.faceK = 0.01; } } else sh.faceK = Math.max(0.01, Math.min(1, sh.faceK + dt * 9));
+    const m = this.motion;
+    if (!this.reducedMotion && dt > 0) {
+      const vx = (sh.x - m.px) / dt, vLift = (sh.lift - m.prevLift) / dt;
+      // lean a little into horizontal travel, eased so starts and stops read as weight
+      m.lean += (Math.max(-0.11, Math.min(0.11, vx * 0.0016)) - m.lean) * (1 - Math.pow(0.002, dt));
+      // touching down from a hop or jump: a quick squash that springs back
+      if (m.prevLift > 5 && sh.lift <= 1.5) m.land = Math.min(1, m.prevLift / 22 + 0.35);
+      m.land = Math.max(0, m.land - dt * 5.5);
+      // ears lag behind vertical motion (follow-through), then settle
+      m.ear += (Math.max(-1, Math.min(1, -vLift * 0.012)) - m.ear) * (1 - Math.pow(0.0008, dt));
+    }
+    m.px = sh.x; m.prevLift = sh.lift;
+    const landK = Math.sin(Math.PI * Math.min(1, m.land)) * m.land;
+    const a = { ...target, x: sh.x, y: sh.y, lift: sh.lift, sx: sh.sx * Math.max(0.15, sh.faceK) * (1 + 0.1 * landK), sy: sh.sy * (1 - 0.13 * landK), lean: sh.lean + m.lean, face: sh.face };
     this.container.position.set(a.x, a.y);
     this.container.zIndex = 1e6; // player sets a proper depth; this is a fallback
 
@@ -100,15 +118,15 @@ export class Pip {
     g.ellipse(-8 + a.face * 1.5, -11, 2.4, 1.5).fill({ color: T.cheek, alpha: 0.45 });
     g.ellipse(8 + a.face * 1.5, -11, 2.4, 1.5).fill({ color: T.cheek, alpha: 0.45 });
     // topper
-    const flap = a.moving ? Math.sin(t * 14) * 0.25 : 0;
+    const flap = a.moving ? Math.sin(t * 14) * 0.25 : 0, lag = m.ear * 3;
     const crown = T.shape === "tall" ? -33 : T.shape === "teardrop" ? -30 : -27;
     switch (T.topper) {
-      case "ears": g.ellipse(-9, crown + 4 + flap * 6, 3.2, 5).fill(T.ear); g.ellipse(9, crown + 4 - flap * 6, 3.2, 5).fill(T.ear); break;
+      case "ears": g.ellipse(-9, crown + 4 + flap * 6 + lag, 3.2, 5 - lag * 0.3).fill(T.ear); g.ellipse(9, crown + 4 - flap * 6 + lag, 3.2, 5 - lag * 0.3).fill(T.ear); break;
       case "tuft": g.moveTo(-3, crown + 1).quadraticCurveTo(-6, crown - 9, 1, crown - 12).moveTo(0, crown).quadraticCurveTo(4, crown - 10, 8, crown - 8).stroke({ width: 2.2, color: T.ear, cap: "round" }); break;
       case "leaf": g.moveTo(0, crown).quadraticCurveTo(2 + flap * 10, crown - 8, 8, crown - 12).quadraticCurveTo(4, crown - 4, 0, crown).fill(T.ear); g.moveTo(0, crown).lineTo(5, crown - 7).stroke({ width: 1, color: T.belly, alpha: 0.7 }); break;
       case "crest": for (const k of [-6, -2, 2, 6]) g.moveTo(k, crown + 1).lineTo(k * 1.4, crown - 7 - Math.abs(k) * 0.3).stroke({ width: 2.4, color: T.ear, cap: "round" }); break;
       case "halo": g.ellipse(0, crown - 7, 9, 2.6).stroke({ width: 1.8, color: this.theme.mood[a.mood], alpha: 0.9 }); break;
-      case "antenna": g.ellipse(-9, crown + 4 + flap * 6, 3.2, 5).fill(T.ear); g.ellipse(9, crown + 4 - flap * 6, 3.2, 5).fill(T.ear); break;
+      case "antenna": g.ellipse(-9, crown + 4 + flap * 6 + lag, 3.2, 5 - lag * 0.3).fill(T.ear); g.ellipse(9, crown + 4 - flap * 6 + lag, 3.2, 5 - lag * 0.3).fill(T.ear); break;
     }
 
     // eyes
@@ -138,7 +156,7 @@ export class Pip {
     else g.arc(ex, -11.2, 1.9, Math.PI * 0.15, Math.PI * 0.85).stroke({ width: 1.6, color: T.ink, cap: "round" });
 
     // mood light: an antenna bulb for antenna characters, a small glow at the crown for the rest
-    const sway = (this.reducedMotion ? 0 : Math.sin(t * 5) * 2) - a.lean * 10;
+    const sway = (this.reducedMotion ? 0 : Math.sin(t * 5) * 2) - a.lean * 10 + lag * 0.6;
     const bc = this.theme.mood[a.mood];
     if (T.topper === "antenna") {
       g.moveTo(0, crown + 0.5).quadraticCurveTo(sway * 0.5, crown - 5, sway + 1.5, crown - 9).stroke({ width: 1.4, color: T.ear });

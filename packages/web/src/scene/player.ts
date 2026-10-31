@@ -56,7 +56,7 @@ export class ScenePlayer {
   readonly company: { lead: CharacterSpec; helpers: CharacterSpec[] };
   private helperIndex = 0;
   constructor(private readonly app: Application, public world: World, public theme: SetTheme, private readonly audio: AudioEngine, private readonly reducedMotion: boolean, leadId?: string | null) {
-    this.worldLayer = new WorldLayer(world, theme);
+    this.worldLayer = new WorldLayer(world, theme, reducedMotion);
     this.particles = new Particles(reducedMotion);
     this.company = pickCompany(world.seed, leadId, theme.ground.fill);
     this.pip = new Pip(theme, reducedMotion, this.company.lead);
@@ -349,8 +349,8 @@ export class ScenePlayer {
     for (const p of this.world.places) this.worldLayer.setGlow(p.id, 0);
     if (!cur) return;
     if (cur.kind === "read" || cur.kind === "build" || cur.kind === "chase" || cur.kind === "raise") this.worldLayer.setGlow(cur.target, cur.kind === "read" ? 0.5 : 1);
-    if (cur.kind === "build") { const u = seg(this.t, cur.atMs, cur.atMs + cur.durationMs); this.worldLayer.setScaffold(cur.target, 0.85 * Math.min(seg(u, 0, 0.12), 1 - seg(u, 0.85, 1))); this.worldLayer.setGrowth(cur.target, (this.growth.get(cur.target) ?? 0) + Math.round((3 + cur.intensity * 6) * walkEase(u))); }
-    if (cur.kind === "raise") { const u = seg(this.t, cur.atMs, cur.atMs + cur.durationMs); const d = this.worldLayer.positionOf(cur.target); if (d) this.worldLayer.setGrowth(cur.target, Math.round(-30 * (1 - backOut(u)))); }
+    if (cur.kind === "build") { const u = seg(this.t, cur.atMs, cur.atMs + cur.durationMs); this.worldLayer.setScaffold(cur.target, 0.85 * Math.min(seg(u, 0, 0.12), 1 - seg(u, 0.85, 1))); this.worldLayer.setGrowth(cur.target, (this.growth.get(cur.target) ?? 0) + (3 + cur.intensity * 6) * walkEase(u)); }
+    if (cur.kind === "raise") { const u = seg(this.t, cur.atMs, cur.atMs + cur.durationMs); const d = this.worldLayer.positionOf(cur.target); if (d) this.worldLayer.setGrowth(cur.target, -30 * (1 - backOut(u))); }
     if (cur.kind === "spawn_gremlin") { const g = this.gremlins.get(cur.gremlinId); if (g) g.scale = Math.max(0.01, backOut(seg(this.t, cur.atMs, cur.atMs + 400))); }
     // lamps relax from pass to idle long after
     for (const p of this.world.places) if (p.kind === "beacon" && this.worldLayer.lampOf(p.id) === "pass" && this.t - this.lastPass > 12_000) this.worldLayer.setLamp(p.id, "idle");

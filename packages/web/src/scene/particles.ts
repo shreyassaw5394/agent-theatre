@@ -17,7 +17,7 @@ export class Particles {
   clear(): void { this.parts = []; this.g.clear(); }
   get count(): number { return this.parts.length; }
   update(dtMs: number): void {
-    const dt = dtMs / 1000;
+    const dt = Number.isFinite(dtMs) ? Math.max(0, Math.min(0.1, dtMs / 1000)) : 0; // a seek can hand over a negative delta
     this.parts = this.parts.filter((p) => (p.life += dt) < p.max);
     this.g.clear();
     for (const p of this.parts) {
