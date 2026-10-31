@@ -56,6 +56,8 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
   // sound starts off; the person turns it on (a nudge points at the buttons until they do)
   let muted = store.get("at:muted") !== "0";
   let ambience = store.get("at:ambience") === "1";
+  // Halloween jump scares: on unless the viewer switched them off
+  let scares = store.get("at:scares") !== "0";
   audio.setMuted(muted); audio.setAmbienceEnabled(ambience);
 
   const panel = new Panel(host, {
@@ -72,6 +74,7 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
     // The first click on either toggle may be the gesture that unlocks audio: honour the state it already shows instead of flipping it.
     onMute: () => { if (!audio.ready || justUnlocked) { void unlockAudio(); if (muted) { muted = false; audio.setMuted(false); store.set("at:muted", "0"); panel.setMuted(false); } panel.nudgeSeen(); return; } muted = !muted; panel.nudgeSeen(); audio.setMuted(muted); store.set("at:muted", muted ? "1" : "0"); panel.setMuted(muted); },
     onAmbience: () => { if (!audio.ready || justUnlocked) { void unlockAudio(); if (!ambience) { ambience = true; audio.setAmbienceEnabled(true); store.set("at:ambience", "1"); panel.setAmbience(true); } panel.nudgeSeen(); return; } ambience = !ambience; panel.nudgeSeen(); audio.setAmbienceEnabled(ambience); store.set("at:ambience", ambience ? "1" : "0"); panel.setAmbience(ambience); },
+    onScares: () => { scares = !scares; store.set("at:scares", scares ? "1" : "0"); if (player?.scares) player.scares.enabled = scares; panel.setScares(!!theme.scares, scares); },
     onPickSet: (id) => { theme = setById(id); if (player) { store.set(`at:set:${player.world.repoId}`, id); rebuild(); } },
     onGoLive: () => { followLive = true; if (player) { player.seek(Math.max(0, player.state.duration - 1)); player.play(); } wake(); },
     onOverview: (on) => { player?.setOverview(on); wake(); },
@@ -131,6 +134,8 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
     const world = worldFor(payload.world, theme);
     const beats = world === payload.world ? payload.beats : direct(payload.events, world);
     player = new ScenePlayer(app, world, theme, audio, reducedMotion, q.get("cast") ?? store.get(`at:cast:${payload.repoId}`));
+    if (player.scares) player.scares.enabled = scares && !q.has("noscares");
+    panel.setScares(!!theme.scares && !reducedMotion, scares);
     (globalThis as any).__agentTheatre = { app, get player() { return player; }, panel };
     VS?.postMessage({ type: "ready", places: world.places.length });
     panel.leadName = player.leadName;
@@ -214,7 +219,8 @@ export async function mount(host: HTMLElement, transport: Transport): Promise<vo
       player.update(dt);
       panel.update(player.state, player.world, (id) => player!.worldLayer.lampOf(id));
       // live stages never go to sleep: the character keeps thinking between events
-      if (player.playing || transport.mode === "live") settle = 45; else settle--;
+      // a scare already on screen always plays out
+      if (player.playing || transport.mode === "live" || player.scares?.current) settle = 45; else settle--;
     }
     if ((player?.playing || settle > 0) && !document.hidden) schedule();
   };

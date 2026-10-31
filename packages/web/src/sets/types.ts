@@ -35,6 +35,8 @@ export interface SetTheme {
   vignette: number;
   /** Something alive in the air above the stage (drawn by the world layer, still under reduced motion). */
   ambient?: "bats";
+  /** Occasional jump scares over the stage (Halloween). The viewer can switch them off. */
+  scares?: boolean;
   /** A seasonal stage: suggested first between these dates (month, day), inclusive. */
   season?: { from: [number, number]; to: [number, number] };
 }

@@ -150,7 +150,7 @@ const halloween: SetTheme = { ...island, id: "halloween", name: "Halloween", tag
   dock: { deck: 0x4a3a30, post: 0x2e241e, vessel: 0xe9e6ff },
   prop: "pumpkin", propColors: [0xff7a1a, 0xffd66b, 0x4a6a2a],
   gremlin: { body: 0xeee9ff, eye: 0x1b1030 },
-  vignette: 0x07020d, ambient: "bats", season: { from: [10, 17], to: [11, 2] } };
+  vignette: 0x07020d, ambient: "bats", scares: true, season: { from: [10, 17], to: [11, 2] } };
 
 export const SETS: readonly SetTheme[] = [island, orbit, metropolis, harbour, observatory, greenhouse, workshop, arcade, kingdom, outpost, snowfield, canopy, lagoon, volcano, cloudtop, reef, bazaar, monastery, moonbase, lanterns, halloween];
 export const setById = (id: string | null | undefined): SetTheme => SETS.find((s) => s.id === id) ?? island;
