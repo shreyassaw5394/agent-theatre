@@ -135,15 +135,46 @@ const lanterns: SetTheme = { ...metropolis, id: "lanterns", name: "Lanterns", ta
   palettes: [{ top: 0xffe9cf, left: 0xf2c7a0, right: 0xc9986e, roof: 0xd94b3a, roofD: 0xa83a2c, win: 0xffd27e }, { top: 0xf6e3ff, left: 0xd9b7f2, right: 0xaa8cc9, roof: 0xff6fa5, roofD: 0xd9507f, win: 0xffd27e }, { top: 0xfff6d6, left: 0xffe3a0, right: 0xd9b96a, roof: 0xe39b2e, roofD: 0xba7a1f, win: 0xff9a5a }],
   prop: "lamp", propColors: [0xff9a5a, 0xffe3a0, 0x241a2e], vignette: 0x0a0414 };
 
-export const SETS: readonly SetTheme[] = [island, orbit, metropolis, harbour, observatory, greenhouse, workshop, arcade, kingdom, outpost, snowfield, canopy, lagoon, volcano, cloudtop, reef, bazaar, monastery, moonbase, lanterns];
+// Seasonal: dark houses with lit windows, jack-o'-lanterns, bats, and a ghost-white gremlin.
+const halloween: SetTheme = { ...island, id: "halloween", name: "Halloween", tagline: "Jack-o'-lanterns, bats and lit windows at dusk.", fits: ["game", "web-frontend", "unknown"], flagship: false,
+  sky: [0x2a1442, 0x0d0618], terrain: "island", ground: { fill: 0x3d4a33, fillLight: 0x5d6b45, edge: 0x4a3a30, edgeDark: 0x2e241e, sand: 0x8a7a5e }, water: { ripple: 0xff9a3c, rippleAlpha: 0.16 }, pathColor: 0xd9a35a, labelColor: 0xffe1b0,
+  palettes: [
+    { top: 0x6a5a78, left: 0x4f4160, right: 0x3a2f48, roof: 0x2a1f36, roofD: 0x1a1224, win: 0xffb547 },
+    { top: 0x5e6b5a, left: 0x465243, right: 0x333c31, roof: 0x7a2f3a, roofD: 0x5a2029, win: 0xffd66b },
+    { top: 0x7a6a5a, left: 0x5c4f43, right: 0x443a31, roof: 0x3a2a4f, roofD: 0x261b35, win: 0xa6ff8a },
+    { top: 0x6e5f7e, left: 0x544666, right: 0x3c3250, roof: 0xff7a1a, roofD: 0xc75a10, win: 0xffd66b },
+  ],
+  beacon: { top: 0x4f4160, left: 0x3a2f48, right: 0x2a2236, roof: 0xff7a1a, roofD: 0xc75a10, win: 0xffb547, lamp: { idle: 0xff9a3c, scan: 0xffffff, fail: 0xff5a4e, pass: 0xa6ff8a } },
+  archive: { top: 0x5a4a6e, left: 0x463a58, right: 0x342b44, roof: 0x7a2f3a, roofD: 0x5a2029, win: 0xa6ff8a },
+  forge: { top: 0x3a3a40, left: 0x2a2a30, right: 0x1e1e24, roof: 0x4a4a52, roofD: 0x34343a, win: 0xa6ff8a, ember: 0x7dff6a },
+  dock: { deck: 0x4a3a30, post: 0x2e241e, vessel: 0xe9e6ff },
+  prop: "pumpkin", propColors: [0xff7a1a, 0xffd66b, 0x4a6a2a],
+  gremlin: { body: 0xeee9ff, eye: 0x1b1030 },
+  vignette: 0x07020d, ambient: "bats", season: { from: [10, 17], to: [11, 2] } };
+
+export const SETS: readonly SetTheme[] = [island, orbit, metropolis, harbour, observatory, greenhouse, workshop, arcade, kingdom, outpost, snowfield, canopy, lagoon, volcano, cloudtop, reef, bazaar, monastery, moonbase, lanterns, halloween];
 export const setById = (id: string | null | undefined): SetTheme => SETS.find((s) => s.id === id) ?? island;
 
-/** Sets that fit this repo, best first; flagships win ties; falls back to everything. Deterministic order given a seed. */
-export function suggestSets(profile: RepoProfile | undefined, seed = 0): SetTheme[] {
+/** True while a seasonal set is in season (month/day, inclusive; local time). */
+export function inSeason(s: SetTheme, now: Date): boolean {
+  if (!s.season) return false;
+  const md = (now.getMonth() + 1) * 100 + now.getDate(), from = s.season.from[0] * 100 + s.season.from[1], to = s.season.to[0] * 100 + s.season.to[1];
+  return from <= to ? md >= from && md <= to : md >= from || md <= to;
+}
+
+/** Sets that fit this repo, best first; flagships win ties; falls back to everything. Deterministic order given a seed and a date. A set in season leads. */
+export function suggestSets(profile: RepoProfile | undefined, seed = 0, now: Date = new Date()): SetTheme[] {
+  const ranked = rankSets(profile, seed);
+  const seasonal = SETS.filter((s) => inSeason(s, now));
+  return seasonal.length ? [...seasonal, ...ranked.filter((s) => !seasonal.includes(s))] : ranked;
+}
+function rankSets(profile: RepoProfile | undefined, seed: number): SetTheme[] {
   const kinds: ProjectKind[] = profile?.kinds?.length ? profile.kinds : ["unknown"];
   const score = (s: SetTheme) => kinds.reduce((n, k, i) => n + (s.fits.includes(k) ? (kinds.length - i) * 2 : 0), 0) + (s.flagship ? 1 : 0);
-  const fitting = SETS.filter((s) => score(s) > 1);
-  const pool = fitting.length >= 3 ? fitting : SETS;
+  // seasonal sets only lead in season (above); out of season they stay in "All sets" but are never suggested
+  const year = SETS.filter((s) => !s.season);
+  const fitting = year.filter((s) => score(s) > 1);
+  const pool = fitting.length >= 3 ? fitting : year;
   // seeded shuffle among equal scores so first launch feels chosen, not sorted
   let x = (seed >>> 0) || 1;
   const rnd = () => { x ^= x << 13; x ^= x >>> 17; x ^= x << 5; return ((x >>> 0) % 1000) / 1000; };

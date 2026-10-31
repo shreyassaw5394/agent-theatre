@@ -23,8 +23,10 @@ export class WorldLayer {
   private readonly shadows = new Graphics();
   private readonly clouds = new Graphics();
   private readonly objects = new Container();
+  /** Things alive in the air above the stage (bats). */
+  private readonly air = new Graphics();
   private readonly drawn = new Map<string, Drawn>();
-  private readonly props: Array<{ g: Graphics; gx: number; gy: number; phase: number; canopy?: Graphics }> = [];
+  private readonly props: Array<{ g: Graphics; gx: number; gy: number; phase: number; canopy?: Graphics; glow?: Graphics }> = [];
   private time = 0;
   /**
    * Gradients are cached per layer: every FillGradient owns a GPU texture and
@@ -50,8 +52,8 @@ export class WorldLayer {
     this.container.destroy({ children: true });
   }
 
-  constructor(public readonly world: World, public theme: SetTheme) {
-    this.container.addChild(this.ripples, this.terrain, this.paths, this.labels, this.shadows, this.clouds, this.objects);
+  constructor(public readonly world: World, public theme: SetTheme, private readonly reducedMotion = false) {
+    this.container.addChild(this.ripples, this.terrain, this.paths, this.labels, this.shadows, this.clouds, this.objects, this.air);
     this.objects.sortableChildren = true;
     // No full-screen post-process: a bloom filter here went white on some GPUs when the camera pushed in.
     // Glow is drawn directly (soft additive discs on lamps, embers and lit windows).
@@ -109,7 +111,12 @@ export class WorldLayer {
     this.time += dtMs / 1000;
     this.drawRipples();
     this.drawCloudShadows();
-    for (const pr of this.props) if (pr.canopy) pr.canopy.x = Math.sin(this.time * 1.4 + pr.phase) * 1.2;
+    for (const pr of this.props) {
+      if (pr.canopy) pr.canopy.x = Math.sin(this.time * 1.4 + pr.phase) * 1.2;
+      // candle light: two slow waves and a fast one, so no two lamps breathe together
+      if (pr.glow) pr.glow.alpha = this.reducedMotion ? 0.9 : 0.78 + 0.12 * Math.sin(this.time * 2.3 + pr.phase) + 0.07 * Math.sin(this.time * 7.1 + pr.phase * 3) + 0.03 * Math.sin(this.time * 17 + pr.phase);
+    }
+    if (this.theme.ambient === "bats") this.drawBats();
     for (const d of this.drawn.values()) {
       if (d.glow > 0 || d.lamp === "scan" || d.lamp === "fail" || d.lamp === "pass" || d.place.kind === "dock" || d.place.kind === "forge") d.dirty = true;
       if (d.dirty) this.redraw(d);
@@ -473,6 +480,23 @@ export class WorldLayer {
       this.labels.addChild(t);
     }
   }
+  /** A small colony circling high over the stage, each on its own loop. Still (but present) under reduced motion. */
+  private drawBats(): void {
+    const g = this.air, b = this.world.bounds, c = iso(b.x + b.w / 2, b.y + b.h / 2), span = (b.w + b.h) * 16;
+    const rnd = mulberry32(this.world.seed ^ 0xba75);
+    const t = this.reducedMotion ? 0 : this.time;
+    g.clear();
+    for (let i = 0; i < 9; i++) {
+      const speed = 0.08 + rnd() * 0.07, ph = rnd() * 6.28, rx = span * (0.45 + rnd() * 0.5), ry = span * (0.1 + rnd() * 0.14), lift = 40 + rnd() * 110;
+      const a = t * speed * (i % 2 ? 1 : -1) + ph;
+      const x = c.x + Math.cos(a) * rx, y = c.y - lift + Math.sin(a) * ry + Math.sin(t * 1.7 + i) * 6;
+      const k = 1.1 + rnd() * 0.7, flap = this.reducedMotion ? 0.4 : Math.sin(t * (9 + i) + ph);
+      const wy = -4 * flap * k, w = 9 * k;
+      g.moveTo(x, y).quadraticCurveTo(x - w * 0.5, y + wy - 3 * k, x - w, y + wy).quadraticCurveTo(x - w * 0.55, y + wy * 0.3 + 1.5 * k, x - w * 0.3, y + 2 * k).lineTo(x, y + 1.5 * k)
+        .lineTo(x + w * 0.3, y + 2 * k).quadraticCurveTo(x + w * 0.55, y + wy * 0.3 + 1.5 * k, x + w, y + wy).quadraticCurveTo(x + w * 0.5, y + wy - 3 * k, x, y).fill({ color: 0x0b0612, alpha: 0.85 });
+      g.circle(x, y + 0.5 * k, 1.8 * k).fill({ color: 0x0b0612, alpha: 0.9 });
+    }
+  }
   private placeProps(): void {
     const rnd = mulberry32(this.world.seed ^ 0x9e3779b9);
     const occupied = new Set<string>();
@@ -507,10 +531,37 @@ export class WorldLayer {
         g.rect(p.x - 1, p.y - 18 * s, 2, 18 * s).fill(c1);
         g.circle(p.x, p.y - 20 * s, 2.5).fill(c2);
         g.ellipse(p.x, p.y, 5 * s, 2.5 * s).fill(c3);
+      } else if (this.theme.prop === "pumpkin") {
+        // a jack-o'-lantern: ribbed body, a stem, and a carved face lit from inside
+        const r = 7 * s, cy = p.y - r * 0.72;
+        g.ellipse(p.x + 2, p.y + 1, r * 1.15, r * 0.45).fill({ color: 0x000000, alpha: 0.22 });
+        g.ellipse(p.x - r * 0.45, cy, r * 0.62, r * 0.72).fill(mix(c1, this.shadowInk, 0.28));
+        g.ellipse(p.x + r * 0.45, cy, r * 0.62, r * 0.72).fill(mix(c1, this.shadowInk, 0.38));
+        g.ellipse(p.x, cy, r * 0.6, r * 0.76).fill(c1);
+        g.ellipse(p.x - r * 0.25, cy - r * 0.4, r * 0.22, r * 0.14).fill({ color: 0xffffff, alpha: 0.22 });
+        g.roundRect(p.x - 1.2, cy - r * 0.76 - 3.2 * s, 2.4, 3.6 * s, 1).fill(c3);
+        const glow = new Graphics();
+        glow.circle(p.x, cy, r * 2.1).fill({ color: c2, alpha: 0.1 });
+        glow.circle(p.x, cy, r * 1.3).fill({ color: c2, alpha: 0.12 });
+        glow.poly([p.x - r * 0.42, cy - r * 0.18, p.x - r * 0.12, cy - r * 0.18, p.x - r * 0.27, cy - r * 0.46]).fill(c2);
+        glow.poly([p.x + r * 0.12, cy - r * 0.18, p.x + r * 0.42, cy - r * 0.18, p.x + r * 0.27, cy - r * 0.46]).fill(c2);
+        glow.poly([p.x - r * 0.42, cy + r * 0.1, p.x - r * 0.2, cy + r * 0.3, p.x, cy + r * 0.16, p.x + r * 0.2, cy + r * 0.3, p.x + r * 0.42, cy + r * 0.1, p.x + r * 0.2, cy + r * 0.42, p.x - r * 0.2, cy + r * 0.42]).fill(c2);
+        node.addChild(glow);
+        this.objects.addChild(node);
+        this.props.push({ g, gx, gy, phase: rnd() * 6.28, glow });
+        placed++;
+        continue;
       } else {
         g.rect(p.x - 1, p.y - 16 * s, 2, 16 * s).fill(c3);
         g.circle(p.x, p.y - 17 * s, 3).fill(c1);
-        g.circle(p.x, p.y - 17 * s, 7).fill({ color: c2, alpha: 0.18 });
+        const glow = new Graphics();
+        glow.circle(p.x, p.y - 17 * s, 7).fill({ color: c2, alpha: 0.2 });
+        glow.circle(p.x, p.y - 17 * s, 12).fill({ color: c2, alpha: 0.07 });
+        node.addChild(glow);
+        this.objects.addChild(node);
+        this.props.push({ g, gx, gy, phase: rnd() * 6.28, glow });
+        placed++;
+        continue;
       }
       this.objects.addChild(node);
       this.props.push({ g, gx, gy, phase: rnd() * 6.28, ...(canopy ? { canopy } : {}) });

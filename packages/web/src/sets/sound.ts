@@ -70,13 +70,14 @@ export const TUNES: Record<SetId, SetTune> = {
   monastery:   { scale: PENT, root: 196, wave: "sine", gain: 0.05, every: 24, len: [1.2, 2.4] },
   moonbase:    { scale: MINOR, root: 164.8, wave: "sine", gain: 0.035, every: 23, len: [1, 2] },
   lanterns:    { scale: PENT, root: 523.3, wave: "sine", gain: 0.04, every: 14, len: [0.3, 0.7] },
+  halloween:   { scale: HARM, root: 196, wave: "triangle", gain: 0.04, every: 15, len: [0.4, 1] },
 };
 
 const organic: Omit<SetVoice, "instrument"> = { wave: "triangle", pitch: 1, decay: 1, tone: 3200, surface: "grass" };
 const electric: Omit<SetVoice, "instrument"> = { wave: "square", pitch: 1.18, decay: 0.8, tone: 2600, surface: "metal" };
 const urban: Omit<SetVoice, "instrument"> = { wave: "sawtooth", pitch: 0.95, decay: 1.1, tone: 2200, surface: "stone" };
-const INSTRUMENT: Record<SetId, Instrument> = { island: "pluck", orbit: "blip", metropolis: "synth", harbour: "wood", observatory: "glass", greenhouse: "marimba", workshop: "wood", arcade: "blip", kingdom: "bell", outpost: "pluck", snowfield: "glass", canopy: "marimba", lagoon: "drop", volcano: "synth", cloudtop: "glass", reef: "drop", bazaar: "pluck", monastery: "bell", moonbase: "blip", lanterns: "bell" };
-const MOOD: Record<SetId, Mood> = { island: "relax", orbit: "focus", metropolis: "focus", harbour: "relax", observatory: "focus", greenhouse: "relax", workshop: "fun", arcade: "fun", kingdom: "fun", outpost: "focus", snowfield: "relax", canopy: "fun", lagoon: "relax", volcano: "focus", cloudtop: "relax", reef: "relax", bazaar: "fun", monastery: "focus", moonbase: "focus", lanterns: "fun" };
+const INSTRUMENT: Record<SetId, Instrument> = { island: "pluck", orbit: "blip", metropolis: "synth", harbour: "wood", observatory: "glass", greenhouse: "marimba", workshop: "wood", arcade: "blip", kingdom: "bell", outpost: "pluck", snowfield: "glass", canopy: "marimba", lagoon: "drop", volcano: "synth", cloudtop: "glass", reef: "drop", bazaar: "pluck", monastery: "bell", moonbase: "blip", lanterns: "bell", halloween: "glass" };
+const MOOD: Record<SetId, Mood> = { island: "relax", orbit: "focus", metropolis: "focus", harbour: "relax", observatory: "focus", greenhouse: "relax", workshop: "fun", arcade: "fun", kingdom: "fun", outpost: "focus", snowfield: "relax", canopy: "fun", lagoon: "relax", volcano: "focus", cloudtop: "relax", reef: "relax", bazaar: "fun", monastery: "focus", moonbase: "focus", lanterns: "fun", halloween: "fun" };
 
 const BASE: Record<SetId, { voice: Omit<SetVoice, "instrument">; ambience: Omit<SetAmbience, "mood"> }> = {
   island:      { voice: organic, ambience: { washes: [{ hz: 520, q: 0.6, gain: 0.09, lfoHz: 0.11, depth: 0.6 }, { hz: 240, q: 0.9, gain: 0.05, lfoHz: 0.07, depth: 0.8 }], extras: ["gull", "cricket"], every: 9 } },
@@ -99,6 +100,7 @@ const BASE: Record<SetId, { voice: Omit<SetVoice, "instrument">; ambience: Omit<
   monastery:   { voice: { ...organic, wave: "sine", pitch: 0.95, decay: 2, tone: 2600, surface: "stone" }, ambience: { washes: [{ hz: 420, q: 0.5, gain: 0.05, lfoHz: 0.05, depth: 0.8 }], extras: ["bell", "wind", "owl"], every: 12 } },
   moonbase:    { voice: { ...electric, pitch: 1.05, decay: 1.2, tone: 2200 }, ambience: { washes: [{ hz: 240, q: 1.5, gain: 0.03, lfoHz: 0.03, depth: 0.9 }], pad: { chord: [55, 82.4], gain: 0.04, wave: "sine" }, extras: ["hum", "chime"], every: 13 } },
   lanterns:    { voice: { ...urban, wave: "triangle", pitch: 1.1, decay: 1.2, tone: 3000, surface: "stone" }, ambience: { washes: [{ hz: 400, q: 0.5, gain: 0.05, lfoHz: 0.2, depth: 0.5 }], extras: ["market", "chime", "bell"], every: 6 } },
+  halloween:   { voice: { ...organic, wave: "triangle", pitch: 0.88, decay: 1.6, tone: 2400, surface: "grass" }, ambience: { washes: [{ hz: 360, q: 0.6, gain: 0.06, lfoHz: 0.07, depth: 0.8 }], pad: { chord: [55, 65.4], gain: 0.03, wave: "sine" }, extras: ["owl", "wind", "bell"], every: 9 } },
 };
 
 export const SOUND: Record<SetId, SetSound> = Object.fromEntries(Object.entries(BASE).map(([id, v]) => [id, { ...v, voice: { ...v.voice, instrument: INSTRUMENT[id as SetId] }, ambience: { ...v.ambience, mood: MOOD[id as SetId] }, tune: TUNES[id as SetId] }])) as Record<SetId, SetSound>;

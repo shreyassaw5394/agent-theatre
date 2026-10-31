@@ -41,4 +41,5 @@ export const ARCHITECTURE: Record<SetId, Architecture> = {
   monastery: { roof: "onion", eave: 0.08, furniture: "finial", stripes: false },
   moonbase: { roof: "capsule", eave: 0, furniture: "dish", stripes: false },
   lanterns: { roof: "tiered", eave: 0.26, furniture: "lantern", stripes: false },
+  halloween: { roof: "pitched", eave: 0.2, furniture: "chimney", stripes: false },
 };

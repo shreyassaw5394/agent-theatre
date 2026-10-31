@@ -4,7 +4,7 @@
  */
 export interface Palette { top: number; left: number; right: number; roof: number; roofD: number; win: number }
 import type { ProjectKind } from "@agent-theatre/core";
-export type SetId = "island" | "orbit" | "metropolis" | "harbour" | "observatory" | "greenhouse" | "workshop" | "arcade" | "kingdom" | "outpost" | "snowfield" | "canopy" | "lagoon" | "volcano" | "cloudtop" | "reef" | "bazaar" | "monastery" | "moonbase" | "lanterns";
+export type SetId = "island" | "orbit" | "metropolis" | "harbour" | "observatory" | "greenhouse" | "workshop" | "arcade" | "kingdom" | "outpost" | "snowfield" | "canopy" | "lagoon" | "volcano" | "cloudtop" | "reef" | "bazaar" | "monastery" | "moonbase" | "lanterns" | "halloween";
 export interface SetTheme {
   id: SetId;
   name: string;
@@ -27,10 +27,14 @@ export interface SetTheme {
   archive: Palette;
   forge: Palette & { ember: number };
   dock: { deck: number; post: number; vessel: number };
-  prop: "tree" | "antenna" | "lamp";
+  prop: "tree" | "antenna" | "lamp" | "pumpkin";
   propColors: [number, number, number];
   gremlin: { body: number; eye: number };
   pip: { body: number; bodyLight: number; belly: number; ear: number; cheek: number; ink: number };
   mood: { curious: number; focused: number; lost: number; happy: number; uneasy: number };
   vignette: number;
+  /** Something alive in the air above the stage (drawn by the world layer, still under reduced motion). */
+  ambient?: "bats";
+  /** A seasonal stage: suggested first between these dates (month, day), inclusive. */
+  season?: { from: [number, number]; to: [number, number] };
 }

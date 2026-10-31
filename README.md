@@ -8,10 +8,11 @@ one of a cast of twelve — who walks to the files it reads, builds on the files
 tests at the beacons, and chases bug gremlins when they fail. Subagents arrive at the dock as
 other members of the cast. Live, or replayed from any past session.
 
-**Twenty stages.** Agent Theatre reads what your repo is — a web app, a backend, a CLI, data
+**Twenty-one stages.** Agent Theatre reads what your repo is — a web app, a backend, a CLI, data
 work, a game, infrastructure — and suggests the stages that suit it: Island, Orbit, Metropolis,
 Harbour, Observatory, Greenhouse, Workshop, Arcade, Kingdom, Outpost, Snowfield, Canopy,
-Lagoon, Volcano, Cloudtop, Reef, Bazaar, Monastery, Moonbase, Lanterns. Or hit *Surprise me*.
+Lagoon, Volcano, Cloudtop, Reef, Bazaar, Monastery, Moonbase, Lanterns — and, in the weeks
+around Halloween, Halloween: jack-o'-lanterns, bats and a ghost-white gremlin. Or hit *Surprise me*.
 
 And one honest detail no other visualiser has: **if the agent says the job is done but no test
 has passed since the last edit, a gremlin hides behind it.**
@@ -130,7 +131,7 @@ Claude Code ──hooks──▶ agent-theatre (local) ──WebSocket──▶ 
    only to open, celebrate and close, so it never gets cluttered. One key light: long soft
    cast shadows, gradient faces with ambient occlusion and rim light, aerial haze on far rows,
    bloom only on lamps and lit windows, cloud shadows drifting over the ground.
-   `prefers-reduced-motion` respected. Twenty stages, each with its own silhouette — gabled
+   `prefers-reduced-motion` respected. Twenty-one stages, each with its own silhouette — gabled
    harbour houses, pagoda tiers, onion domes, moonbase capsules, bazaar tents — on the same
    geometry; a cast of twelve characters from one procedural routine.
 5. **Sound.** Every beat has a sound, all synthesized at runtime with the Web Audio API — no
@@ -173,7 +174,7 @@ Questions, stages worth showing off, ideas for v2: **[Agent Theatre Discord](htt
 
 ## Site
 
-**[agenttheatre.dev](https://agenttheatre.dev)** — the story, a playable Episode 1, all twenty stages, the cast,
+**[agenttheatre.dev](https://agenttheatre.dev)** — the story, a playable Episode 1, all twenty-one stages, the cast,
 the privacy sheet and install notes. `agenttheatre.com` redirects there. The site is `site/` in this
 repo, deployed on Vercel from `main`; the playable demo is the real web bundle at `/theatre/`.
 

@@ -2,7 +2,7 @@
 
 **Watch your coding agent work — as a film, not a log.**
 
-Agent Theatre turns a Claude Code session into an animated scene. Your repo becomes a stage — folders are districts, files are buildings, test files are beacons — and the agent is a character who walks to the files it reads, builds on the files it edits, runs tests at the beacons and chases gremlins when they fail. Twenty stages, a cast of twelve, every claim checked: **if the agent says it's done but no test has passed since the last edit, a gremlin hides behind it.**
+Agent Theatre turns a Claude Code session into an animated scene. Your repo becomes a stage — folders are districts, files are buildings, test files are beacons — and the agent is a character who walks to the files it reads, builds on the files it edits, runs tests at the beacons and chases gremlins when they fail. Twenty-one stages, a cast of twelve, every claim checked: **if the agent says it's done but no test has passed since the last edit, a gremlin hides behind it.**
 
 Site and playable episodes: **https://agenttheatre.dev**
 
@@ -27,7 +27,7 @@ Node 22+. Works with the Claude Code CLI, desktop app and IDE extensions — any
 | `agent-theatre hooks uninstall` | Remove them, byte-for-byte |
 | `agent-theatre hooks status` | Show whether they are installed |
 
-Stage ids: `island orbit metropolis harbour observatory greenhouse workshop arcade kingdom outpost snowfield canopy lagoon volcano cloudtop reef bazaar monastery moonbase lanterns`. The picker suggests the ones that fit your repo.
+Stage ids: `island orbit metropolis harbour observatory greenhouse workshop arcade kingdom outpost snowfield canopy lagoon volcano cloudtop reef bazaar monastery moonbase lanterns halloween`. The picker suggests the ones that fit your repo.
 
 ## MCP
 
