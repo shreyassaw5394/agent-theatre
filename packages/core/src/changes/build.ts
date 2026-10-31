@@ -47,8 +47,10 @@ export interface ChangeTotals {
   removed: number;
   /** Files changed in the working tree that the agent's events never touched. */
   outside: number;
-  /** Paths outside this folder (home, other repos) the agent touched; listed by count only. */
+  /** Paths outside this folder (home, other repos) the agent changed. */
   external: number;
+  /** Files the agent created and removed again in the window, never reaching git: no net change, so not on the map. */
+  temporary: number;
 }
 
 export interface ChangeSet {
@@ -58,6 +60,8 @@ export interface ChangeSet {
   to: number;
   agents: string[];
   sessions: string[];
+  /** The paths outside this folder that the agent changed (as the events name them, e.g. ~/other-repo/file), sorted, at most 500. */
+  externalPaths: string[];
 }
 
 /** A plain description of the working tree, as the CLI reads it from git. Paths relative to the same folder as the events. */
@@ -94,13 +98,18 @@ export function changesFromEvents(events: readonly AgentEvent[], opts: ChangeOpt
   let from = Infinity, to = 0;
   const agentsSeen = new Set<string>(), sessionsSeen = new Set<string>();
   const shellSeen = new Set<string>(), toolSeen = new Set<string>(), toolReads = new Set<string>();
+  /** Files whose first appearance in the window was their creation: if they end deleted, they never existed outside it. */
+  const born = new Set<string>();
+  /** Files the agent wrote (by any means) in the window. */
+  const written = new Set<string>();
   const touch = (e: AgentEvent, path: string, action: FileAction): FileChange | null => {
     const p = path.replace(/\\/g, "/").replace(/^\.\//, "");
-    if (!p || isExternal(p)) { if (action !== "read" && (!isShell(e) || plausiblePath(p.replace(/^.*\//, "")))) external.add(p); return null; }
+    if (!p || isExternal(p)) { if (action !== "read" && (!isShell(e) || fileLike(p))) external.add(p); return null; }
     let f = files.get(p);
     if (!f) {
       f = { path: p, action, by: "agent", reads: 0, edits: 0, added: 0, removed: 0, firstTs: e.ts, lastTs: e.ts, agents: [], sessions: [], eventIds: [] };
       files.set(p, f);
+      if (action === "created") born.add(p);
     }
     if (action !== "read") (isShell(e) ? shellSeen : toolSeen).add(p);
     else if (!isShell(e)) toolReads.add(p);
@@ -123,7 +132,7 @@ export function changesFromEvents(events: readonly AgentEvent[], opts: ChangeOpt
     switch (e.kind) {
       case "read_file": f = touch(e, e.path, "read"); if (f) f.reads++; break;
       case "edit_file": f = touch(e, e.path, "edited"); if (f) { f.edits++; f.added += e.added; f.removed += e.removed; } break;
-      case "write_file": f = touch(e, e.path, e.created ? "created" : "edited"); if (f) { f.edits++; f.added += e.added; } break;
+      case "write_file": f = touch(e, e.path, e.created ? "created" : "edited"); if (f) { f.edits++; f.added += e.added; written.add(f.path); } break;
       case "delete_file": { const before = files.get(e.path.replace(/\\/g, "/").replace(/^\.\//, ""))?.action; f = touch(e, e.path, "deleted"); if (f) { f.edits++; if (before === "created") { f.added = 0; f.removed = 0; } } break; }
       default: continue;
     }
@@ -132,6 +141,20 @@ export function changesFromEvents(events: readonly AgentEvent[], opts: ChangeOpt
     agentsSeen.add(e.agentId ?? "main"); sessionsSeen.add(e.sessionId);
   }
   for (const [p, f] of files) if (f.action !== "read" && shellSeen.has(p) && !toolSeen.has(p)) f.inferred = true;
+  // made and removed in the window (a scratch file, a temp script): it never existed before or after, so nothing changed.
+  // Git has the last word: a path it still tracks (D) or that a commit touched did exist, and stays a deletion.
+  // With git, "unknown to git" also covers files written by shell (cat > x … rm x), which carry no created flag. A delete
+  // seen only in shell text of something git never knew and that isn't file-like (rm -rf dist) is cleanup, not a change.
+  let temporary = 0;
+  for (const [p, f] of [...files]) {
+    if (f.action !== "deleted" || f.by !== "agent") continue;
+    const gitKnows = !!opts.git && (opts.git.status[p] !== undefined || opts.git.committed?.[p] !== undefined);
+    if (gitKnows) continue;
+    // without git (a past session), "written here and gone from disk now" is the next best sign it was scratch
+    const scratch = written.has(p) && (opts.git ? true : !!opts.exists && !opts.exists(p));
+    if (born.has(p) || scratch) { files.delete(p); temporary++; }
+    else if (opts.git && f.inferred && !fileLike(p)) files.delete(p);
+  }
   confirmInferred(files, opts);
   // a read seen only in shell text (cat x, head y), including a dropped write guess that fell back to a read: it must look like a file and exist
   for (const [p, f] of files) if (f.action === "read" && !toolReads.has(p) && (!plausiblePath(p) || (opts.exists && !opts.exists(p)))) files.delete(p);
@@ -139,10 +162,20 @@ export function changesFromEvents(events: readonly AgentEvent[], opts: ChangeOpt
   const filtered = opts.until !== undefined || opts.since !== undefined || !!opts.agent || !!opts.sessionId;
   if (opts.git) reconcileWithGit(files, opts.git, !filtered, opts.exists);
   const list = [...files.values()].sort(byImpact);
-  return { files: list, totals: totalsOf(list, external.size), from: from === Infinity ? 0 : from, to, agents: [...agentsSeen], sessions: [...sessionsSeen] };
+  const externalPaths = [...external].sort().slice(0, 500);
+  return { files: list, totals: { ...totalsOf(list, external.size), temporary }, from: from === Infinity ? 0 : from, to, agents: [...agentsSeen], sessions: [...sessionsSeen], externalPaths };
 }
 
 const isShell = (e: AgentEvent): boolean => (e.kind === "write_file" || e.kind === "delete_file" || e.kind === "read_file") && e.via === "shell";
+/**
+ * A path whose last part looks like a file: a name with an extension, or a well-known extensionless file. Used for paths
+ * known only from shell text, where words from quoted code ("await", "0,", "[Agent") would otherwise pass as files.
+ */
+const fileLike = (p: string): boolean => {
+  const base = p.replace(/\/+$/, "").split("/").pop() ?? "";
+  if (!plausiblePath(base) || /[[\](){}:,=$]/.test(base)) return false;
+  return /\.[A-Za-z0-9]{1,10}$/.test(base) || /^(Makefile|Dockerfile|LICENSE|NOTICE|README|CHANGELOG|Procfile|Gemfile|Rakefile|Justfile)$/i.test(base);
+};
 /** A path that is plausibly a file name: shell parsing can produce stray punctuation ("—", "]", "?"). */
 const plausiblePath = (p: string) => /[A-Za-z0-9]/.test(p) && !/[\s"'`<>|*?]/.test(p) && !/^[-.,:;]+$/.test(p);
 
@@ -200,7 +233,7 @@ function byImpact(a: FileChange, b: FileChange): number {
 }
 
 function totalsOf(list: FileChange[], external: number): ChangeTotals {
-  const t: ChangeTotals = { changed: 0, edited: 0, created: 0, deleted: 0, read: 0, added: 0, removed: 0, outside: 0, external };
+  const t: ChangeTotals = { changed: 0, edited: 0, created: 0, deleted: 0, read: 0, added: 0, removed: 0, outside: 0, external, temporary: 0 };
   for (const f of list) {
     if (f.by === "outside") { t.outside++; continue; }
     if (f.action === "read") { t.read++; continue; }

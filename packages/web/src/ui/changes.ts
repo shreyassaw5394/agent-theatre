@@ -62,6 +62,8 @@ async function copyText(text: string): Promise<boolean> {
     ta.remove(); return ok;
   }
 }
+/** Paths sit in a right-to-left box so long ones are cut on the left; marks keep their dots and slashes where they belong. */
+const ltr = (p: string) => `\u200e${p}\u200e`;
 const el = <K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: string): HTMLElementTagNameMap[K] => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
 const LABEL: Record<string, string> = { created: "new", edited: "edited", deleted: "deleted", read: "read" };
 const clock = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -69,7 +71,7 @@ const linesOf = (f: FileChange) => (f.action === "deleted" ? "deleted" : f.actio
 
 export class ChangesView {
   readonly root: HTMLElement;
-  private readonly map: HTMLElement; private readonly list: HTMLElement; private readonly head: HTMLElement; private readonly sub: HTMLElement;
+  private readonly map: HTMLElement; private readonly list: HTMLElement; private readonly ext: HTMLDetailsElement; private readonly head: HTMLElement; private readonly sub: HTMLElement;
   private readonly slider: HTMLInputElement; private readonly when: HTMLElement; private readonly agentSel: HTMLSelectElement; private readonly readsBox: HTMLInputElement;
   private readonly drawer: HTMLElement; private readonly copyBtn: HTMLButtonElement; private readonly empty: HTMLElement;
   private cs: (ChangeSet & { git?: boolean }) | null = null;
@@ -113,7 +115,9 @@ export class ChangesView {
     this.map.append(this.empty);
     const side = el("div", "ch-side");
     this.list = el("ul", "ch-list");
-    side.append(this.list);
+    // files the agent changed in other folders (another repo, home): not on the map, but never hidden
+    this.ext = document.createElement("details"); this.ext.className = "ch-ext"; this.ext.hidden = true;
+    side.append(this.list, this.ext);
     this.drawer = el("div", "ch-drawer"); this.drawer.hidden = true;
     body.append(this.map, side, this.drawer);
     this.root.append(top, time, legend, body);
@@ -172,6 +176,7 @@ export class ChangesView {
     if (t.read) bits.push(`${t.read} only read`);
     if (t.outside) bits.push(`${t.outside} changed not by the agent`);
     if (t.external) bits.push(`${t.external} outside this folder`);
+    if (t.temporary) bits.push(`${t.temporary} temporary (made and removed)`);
     this.sub.textContent = bits.join(" · ");
     if (this.full?.to && this.until === undefined) this.when.textContent = "now";
     this.slider.disabled = !this.full || this.full.to <= this.full.from;
@@ -179,13 +184,42 @@ export class ChangesView {
     this.list.innerHTML = "";
     for (const f of files.slice(0, 400)) {
       const li = el("li"); const b = el("button", `ch-row a-${f.by === "outside" ? "outside" : f.action}${f.path === this.selected ? " on" : ""}`); b.type = "button";
-      b.append(el("i"), el("span", "ch-path", f.path), el("span", "ch-n", linesOf(f)));
+      b.append(el("i"), el("span", "ch-path", ltr(f.path)), el("span", "ch-n", linesOf(f)));
       b.title = `${f.path} · ${f.by === "outside" ? "changed, not by the agent" : LABEL[f.action]}${f.inferred ? " · seen in a shell command" : ""}`;
       b.onclick = () => void this.openDiff(f);
       li.append(b); this.list.append(li);
     }
     if (files.length > 400) this.list.append(el("li", "ch-more", `…and ${files.length - 400} more`));
+    this.renderExternal(cs.externalPaths ?? [], t.external);
     this.drawMap();
+  }
+
+  /** The outside-this-folder paths, grouped by their top folder (e.g. ~/other-repo), as plain text. */
+  private renderExternal(paths: readonly string[], total: number): void {
+    const wasOpen = this.ext.open;
+    this.ext.replaceChildren();
+    this.ext.hidden = !paths.length;
+    if (!paths.length) return;
+    const groups = new Map<string, string[]>();
+    for (const p of paths) {
+      // events name home paths ~/…, paths above the repo ../…, and anything else (temp folders) //ext/<name>
+      const ext = p.startsWith("//ext/");
+      const parts = (ext ? p.slice(6) : p).split("/");
+      const key = ext ? "elsewhere" : parts[0] === "~" || parts[0] === ".." ? parts.slice(0, 2).join("/") : parts[0]!;
+      const rest = (ext ? p.slice(6) : p.slice(key.length).replace(/^\//, "")) || p;
+      (groups.get(key) ?? groups.set(key, []).get(key)!).push(rest);
+    }
+    this.ext.append(el("summary", "", `Outside this folder (${total})`));
+    for (const [dir, list] of [...groups].sort((a, b) => b[1].length - a[1].length)) {
+      const g = el("div", "ch-ext-g");
+      g.append(el("b", "ch-ext-h", `${dir} · ${list.length}`));
+      const ul = el("ul");
+      for (const f of list.slice(0, 60)) ul.append(el("li", "ch-path", ltr(f)));
+      if (list.length > 60) ul.append(el("li", "ch-more", `…and ${list.length - 60} more`));
+      g.append(ul); this.ext.append(g);
+    }
+    if (total > paths.length) this.ext.append(el("p", "ch-more", `…and ${total - paths.length} more`));
+    this.ext.open = wasOpen;
   }
 
   private drawMap(): void {

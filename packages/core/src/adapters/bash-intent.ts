@@ -45,7 +45,8 @@ export function argv0Of(command: string): string {
 
 function cleanTarget(t: string): string | null {
   const s = t.replace(/^["']|["']$/g, "").trim();
-  if (!s || s.startsWith("-") || s === "/dev/null" || s.includes("$(") || s.startsWith("$")) return null;
+  // a path built from shell variables or substitutions ($f, ${x}, `cmd`) names no file we can know from the text
+  if (!s || s.startsWith("-") || s === "/dev/null" || s.includes("$") || s.includes("`")) return null;
   if (/^\/dev\//.test(s) || /^&\d/.test(s)) return null;
   return s;
 }
