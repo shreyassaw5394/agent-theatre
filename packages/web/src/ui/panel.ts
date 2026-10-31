@@ -12,7 +12,7 @@ const PLAY = '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 2.8v10.
 const PAUSE = '<svg viewBox="0 0 16 16" fill="currentColor"><rect x="3.5" y="3" width="3" height="10" rx="1"/><rect x="9.5" y="3" width="3" height="10" rx="1"/></svg>';
 const CHECK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3L13 4.5"/></svg>';
 
-export interface PanelHandlers { onGoLive(): void; onPlayPause(): void; onSeek(ms: number): void; onRate(): void; onMute(): void; onAmbience(): void; onPickSet(id: SetTheme["id"]): void; onShuffle(): void; onOverview(on: boolean): void; onZoom(factor: number): void; onExport(): void; }
+export interface PanelHandlers { onGoLive(): void; onPlayPause(): void; onSeek(ms: number): void; onRate(): void; onMute(): void; onAmbience(): void; onScares(): void; onPickSet(id: SetTheme["id"]): void; onShuffle(): void; onOverview(on: boolean): void; onZoom(factor: number): void; onExport(): void; }
 
 /** All DOM. Reads PlayerState every frame; never touches Pixi. */
 export class Panel {
@@ -84,7 +84,7 @@ export class Panel {
   private readonly waiting: HTMLElement; private readonly vscode: { postMessage: (m: unknown) => void } | null; private notifiedFor = "";
   private readonly overlay: HTMLElement; private readonly caption: HTMLElement; private readonly chip: HTMLElement; private readonly signal: HTMLElement;
   private readonly title: HTMLElement; private readonly end: HTMLElement; private readonly picker: HTMLElement;
-  private readonly playBtn: HTMLButtonElement; private readonly rateBtn: HTMLButtonElement; private readonly muteBtn: HTMLButtonElement; private readonly ambBtn: HTMLButtonElement; private readonly setBtn: HTMLButtonElement;
+  private readonly playBtn: HTMLButtonElement; private readonly rateBtn: HTMLButtonElement; private readonly muteBtn: HTMLButtonElement; private readonly ambBtn: HTMLButtonElement; private readonly scaresBtn: HTMLButtonElement; private readonly setBtn: HTMLButtonElement;
   private readonly actsEl: HTMLElement; private readonly labelsEl: HTMLElement; private readonly head: HTMLElement; private readonly time: HTMLElement; private readonly logEl: HTMLElement;
   private acts: Act[] = []; private actBtns: HTMLButtonElement[] = []; private actLabels: HTMLElement[] = [];
   private logBtns: Array<{ btn: HTMLButtonElement; ms: number }> = [];
@@ -104,7 +104,9 @@ export class Panel {
     this.fsBtn = el("button", "btn ghost", "⤢ Full screen"); this.fsBtn.type = "button"; this.fsBtn.title = "Stage only, full screen (F or Esc to leave)";
     this.fsBtn.onclick = () => this.toggleFullscreen();
     this.changesBtn = el("button", "btn ghost", "Changes"); this.changesBtn.type = "button"; this.changesBtn.title = "Map of the files the agent touched"; this.changesBtn.setAttribute("aria-pressed", "false"); this.changesBtn.hidden = true;
-    tb.append(this.changesBtn, this.setBtn, this.overviewBtn, this.muteBtn, this.ambBtn, this.exportBtn, this.fsBtn);
+    // only on stages that have scares (Halloween)
+    this.scaresBtn = el("button", "btn ghost", "Scares on"); this.scaresBtn.type = "button"; this.scaresBtn.title = "Occasional Halloween jump scares"; this.scaresBtn.hidden = true; this.scaresBtn.onclick = () => h.onScares();
+    tb.append(this.changesBtn, this.setBtn, this.overviewBtn, this.muteBtn, this.ambBtn, this.scaresBtn, this.exportBtn, this.fsBtn);
     document.addEventListener("fullscreenchange", () => { const on = !!document.fullscreenElement; document.documentElement.classList.toggle("fullscreen", on); this.fsBtn.textContent = on ? "⤡ Exit full screen" : "⤢ Full screen"; dispatchEvent(new Event("resize")); });
     addEventListener("keydown", (ev) => { if (ev.key === "f" && !(ev.target instanceof HTMLInputElement) && !ev.metaKey && !ev.ctrlKey) this.toggleFullscreen(); });
     this.nudge = el("div", "nudge", "Sound is off — turn on effects and ambience to hear the stage"); this.nudge.hidden = true; tb.append(this.nudge);
@@ -171,6 +173,8 @@ export class Panel {
     (this.root.querySelector("#titleBig") as HTMLElement).textContent = episode ?? short;
   }
   setMuted(m: boolean): void { this.muteBtn.textContent = m ? "Effects off" : "Effects on"; this.muteBtn.setAttribute("aria-pressed", String(!m)); }
+  /** Show the scares toggle (only for stages that have scares) and its state. */
+  setScares(available: boolean, on: boolean): void { this.scaresBtn.hidden = !available; this.scaresBtn.textContent = on ? "Scares on" : "Scares off"; this.scaresBtn.setAttribute("aria-pressed", String(on)); }
   setAmbience(on: boolean): void { this.ambBtn.textContent = on ? "Ambience on" : "Ambience off"; this.ambBtn.setAttribute("aria-pressed", String(on)); }
   setRate(r: number): void { this.rateBtn.textContent = `${r}×`; }
 

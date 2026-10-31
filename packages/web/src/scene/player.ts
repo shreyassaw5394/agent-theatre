@@ -2,6 +2,7 @@ import { Application, Container } from "pixi.js";
 import type { Beat, Mood, World } from "@agent-theatre/core";
 import { Camera } from "../render/camera.js";
 import { backOut, bump, walkEase } from "../render/ease.js";
+import { Scares } from "./scares.js";
 import { iso, lerp, seg, TH, type Pt } from "../render/iso.js";
 import { WorldLayer, type LampState } from "../render/world-layer.js";
 import type { SetTheme } from "../sets/types.js";
@@ -54,6 +55,8 @@ export class ScenePlayer {
   evidenceCount: number | null = null;
 
   readonly company: { lead: CharacterSpec; helpers: CharacterSpec[] };
+  /** Present only on stages with scares (Halloween). */
+  scares: Scares | null = null;
   private helperIndex = 0;
   constructor(private readonly app: Application, public world: World, public theme: SetTheme, private readonly audio: AudioEngine, private readonly reducedMotion: boolean, leadId?: string | null) {
     this.worldLayer = new WorldLayer(world, theme, reducedMotion);
@@ -68,6 +71,8 @@ export class ScenePlayer {
     this.worldLayer.container.addChild(this.pip.container, this.particles.g);
     this.particles.g.zIndex = 1e7;
     app.stage.addChild(this.stage);
+    // Halloween: jump scares in screen space, above the stage and its camera
+    if (theme.scares) { this.scares = new Scares(audio, reducedMotion, (k) => { this.camera.shake(k === "lightning" ? 160 : 280); if (k !== "lightning") this.camera.pushIn(0.05); }); app.stage.addChild(this.scares.container); }
     this.actorAt.set("pip", "forge");
     this.fitCamera();
     this.camera.snap();
@@ -115,18 +120,28 @@ export class ScenePlayer {
    * then a look up, a tiny settle-hop when the glance turns. Driven by the wall clock, never by the beat
    * clock, so the character keeps breathing between events and at the live edge.
    */
-  private idleBusiness(a: { face: number; look: "fwd" | "up" | "down"; sx: number; sy: number; lean: number; lift: number; moving: boolean }): void {
+  private idleBusiness(a: CharacterPose, placeId?: string, home?: Pt): void {
     if (this.reducedMotion) return;
     const w = this.wall / 1000;
     a.moving = false;
     if (this.quietLevel >= 2) { a.sy = 0.84 + 0.012 * Math.sin(w * 0.9); a.sx = 1.1; a.look = "down"; a.lean = 0.03 * Math.sin(w * 0.3); return; } // sat down, dozing
     a.sy = 1 + 0.025 * Math.sin(w * 1.1); a.sx = 1 / a.sy;                 // breathing / weight shift
     a.lean = 0.04 * Math.sin(w * 0.37);                                      // slow sway
+    if (placeId && home && this.wander(a, placeId, home)) return;           // off looking round the building
     const phase = (w % 7.3);                                                 // a glance cycle every ~7 s
     a.face = phase > 3.1 && phase < 5.4 ? -1 : 1;
     a.look = phase > 5.9 && phase < 6.8 ? "up" : "fwd";
     const hop = Math.abs(phase - 3.1) < 0.18 || Math.abs(phase - 5.4) < 0.18 ? Math.sin(((phase % 0.36) / 0.36) * Math.PI) : 0;
     a.lift = Math.max(a.lift, hop * 4);
+    // every ~11 s a bit of business, so a long think is still worth watching: stretch, spin-hop, a little dance, a tuck jump
+    const cyc = w % 11, n = Math.floor(w / 11) % 4, u = (cyc - 9.2) / 1.6;
+    if (u < 0 || u > 1) return;
+    switch (n) {
+      case 0: { const k = bump(u); a.sy = 1 + 0.16 * k; a.sx = 1 - 0.1 * k; a.look = "up"; a.lean = 0; break; }                                   // stretch
+      case 1: { a.lift = Math.sin(Math.PI * u) * 16; a.face = Math.floor(u * 6) % 2 ? -1 : 1; a.sy = u < 0.12 || u > 0.88 ? 0.88 : 1.05; a.sx = 1 / a.sy; break; } // spin-hop
+      case 2: { const b = Math.sin(u * Math.PI * 6); a.lean = 0.16 * b; a.lift = Math.abs(b) * 5; a.face = b > 0 ? 1 : -1; break; }                   // little dance
+      default: { const k = Math.sin(Math.PI * u); a.lift = k * 24; a.sy = u < 0.15 ? 0.82 : u < 0.5 ? 1.12 : 0.92 + 0.08 * u; a.sx = 1 / a.sy; a.look = "up"; } // tuck jump
+    }
   }
   get state(): PlayerState {
     const cur = this.currentBeat();
@@ -157,6 +172,7 @@ export class ScenePlayer {
     for (const g of this.gremlins.values()) g.update(dtMs);
     this.particles.update(dtMs);
     this.cameraStep(cur, dtMs);
+    this.scares?.update(dtMs, this.app.renderer.screen.width, this.app.renderer.screen.height);
     this.amb.setMood(this.mood);
   }
 
@@ -277,7 +293,7 @@ export class ScenePlayer {
       const mine = cur && cur.actor === actor ? cur : null;
       const standing = this.worldLayer.standingSpot(this.actorAt.get(actor) ?? (actor === "pip" ? "forge" : "dock"));
       a.x = standing.x; a.y = standing.y;
-      if (!mine) { if (actor !== "pip") a.sy = 0.96; else this.idleBusiness(a); continue; }
+      if (!mine) { if (actor !== "pip") a.sy = 0.96; else this.idleBusiness(a, this.actorAt.get(actor) ?? "forge", standing); continue; }
       const u = seg(this.t, mine.atMs, mine.atMs + mine.durationMs);
       const target = "target" in mine ? this.worldLayer.standingSpot(mine.target) : standing;
       switch (mine.kind) {
@@ -328,11 +344,11 @@ export class ScenePlayer {
           break;
         }
         case "blocked_on_you": a.face = 1; a.look = "fwd"; a.sy = 1 + 0.03 * Math.sin(this.t / 1000 * 6); a.sx = 1 / a.sy; break;
-        case "your_turn": this.idleBusiness(a); break; // waiting is thinking too
+        case "your_turn": this.idleBusiness(a, this.actorAt.get(actor) ?? "forge", standing); break; // waiting is thinking too
         case "stumble": { const k = bump(seg(u, 0, 0.7)); a.lean = Math.sin(this.t / 1000 * 40) * 0.12 * k; a.sy = 1 - 0.08 * k; a.sx = 1 + 0.06 * k; break; }
         case "unverified_claim": { a.face = 1; a.hiding = 1; const g = this.claimGremlinId ? this.gremlins.get(this.claimGremlinId) : null; if (g) { g.x = a.x - a.face * 14; g.y = a.y - 2; g.peek = 1; } break; }
         case "curtain_down": a.lean = Math.sin(this.t / 1000 * 6) * 0.15; a.face = 1; break;
-        case "idle": this.idleBusiness(a); break;
+        case "idle": this.idleBusiness(a, this.actorAt.get(actor) ?? "forge", standing); break;
         default: break;
       }
       if (actor === "pip" && this.quietLevel >= 2 && !a.moving) { const w = this.wall / 1000; a.sy = 0.84 + 0.012 * Math.sin(w * 0.9); a.sx = 1.1; a.look = "down"; a.lift = 0; } // sat down, dozing — whatever the last beat was
@@ -342,6 +358,34 @@ export class ScenePlayer {
       if (actor !== "pip") a.mood = "focused";
     }
     for (const g of this.gremlins.values()) g.container.zIndex = g.y / (TH / 2) + 0.7;
+  }
+  /** Other places to stand around a building: its corner and its left face, only where the ground is open. */
+  private spotsAround(placeId: string): Pt[] {
+    const pos = this.worldLayer.positionOf(placeId); if (!pos) return [];
+    const { gx, gy, footprint: f } = pos.place, B = this.world.bounds;
+    // in a packed district a side can be another building's wall, and at the edge it can be water
+    const free = (cx: number, cy: number) => cx >= B.x && cy >= B.y && cx < B.x + B.w && cy < B.y + B.h && !this.world.places.some((q) => q.id !== placeId && cx >= q.gx && cx < q.gx + q.footprint && cy >= q.gy && cy < q.gy + q.footprint);
+    return ([[gx + f + 0.35, gy + f + 0.35], [gx - 0.55, gy + f * 0.55]] as const).filter(([cx, cy]) => free(cx, cy)).map(([cx, cy]) => iso(cx, cy));
+  }
+  /**
+   * A long think isn't spent on one spot: every ~16 s the character strolls to another side of the building,
+   * looks it over, and strolls back. Wall clock (like the rest of the thinking business), so it also runs at
+   * the live edge while the agent is quiet. Returns true while away from the usual spot.
+   */
+  private wander(a: { x: number; y: number; face: 1 | -1; look: "fwd" | "up" | "down"; lift: number; moving: boolean; lean: number }, placeId: string, home: Pt): boolean {
+    if (this.reducedMotion) return false;
+    const spots = this.spotsAround(placeId); if (!spots.length) return false;
+    const P = 16000, c = this.wall % P, away = spots[Math.floor(this.wall / P) % spots.length]!, GO = 8000, BACK = 13000, HOP = 950;
+    let from = home, to = home, k = 1;
+    if (c >= GO && c < GO + HOP) { to = away; k = (c - GO) / HOP; }
+    else if (c >= GO + HOP && c < BACK) { from = to = away; }
+    else if (c >= BACK && c < BACK + HOP) { from = away; k = (c - BACK) / HOP; }
+    else return false;
+    const e = walkEase(k);
+    a.x = lerp(from.x, to.x, e); a.y = lerp(from.y, to.y, e);
+    if (k < 1) { a.moving = true; a.face = to.x >= from.x ? 1 : -1; a.lift = Math.abs(Math.sin((c / 1000) * 11)) * 3.5; a.lean = a.face * 0.07; }
+    else { a.face = this.facing(a as CharacterPose, placeId); a.look = Math.sin(c / 700) > 0.2 ? "up" : "fwd"; a.lean = 0.05 * Math.sin(c / 900); }
+    return true;
   }
   private facing(a: CharacterPose, target: string): 1 | -1 { const p = this.worldLayer.positionOf(target); return p && p.ground.x < a.x ? -1 : 1; }
 
@@ -452,5 +496,5 @@ export class ScenePlayer {
     }
     return out;
   }
-  destroy(): void { this.amb.stop(); this.worldLayer.destroy(); this.stage.destroy({ children: true }); }
+  destroy(): void { this.amb.stop(); this.scares?.container.destroy({ children: true }); this.worldLayer.destroy(); this.stage.destroy({ children: true }); }
 }

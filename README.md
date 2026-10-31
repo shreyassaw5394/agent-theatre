@@ -12,7 +12,8 @@ other members of the cast. Live, or replayed from any past session.
 work, a game, infrastructure — and suggests the stages that suit it: Island, Orbit, Metropolis,
 Harbour, Observatory, Greenhouse, Workshop, Arcade, Kingdom, Outpost, Snowfield, Canopy,
 Lagoon, Volcano, Cloudtop, Reef, Bazaar, Monastery, Moonbase, Lanterns — and, in the weeks
-around Halloween, Halloween: jack-o'-lanterns, bats and a ghost-white gremlin. Or hit *Surprise me*.
+around Halloween, Halloween: jack-o'-lanterns, bats, a ghost-white gremlin and the odd jump scare (switch them
+off with *Scares* in the toolbar). Or hit *Surprise me*.
 
 And one honest detail no other visualiser has: **if the agent says the job is done but no test
 has passed since the last edit, a gremlin hides behind it.**
