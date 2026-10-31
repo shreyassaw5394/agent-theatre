@@ -92,7 +92,7 @@ describe("changesFromEvents", () => {
     expect(cs.files.find((f) => f.path === "src/old.ts")!.action).toBe("deleted");
     expect(cs.files.find((f) => f.path === "lib/x.ts")!.agents).toEqual(["sub1"]);
     expect(cs.files.find((f) => f.path === "README.md")!.action).toBe("read");
-    expect(cs.totals).toEqual({ changed: 4, edited: 2, created: 1, deleted: 1, read: 1, added: 54, removed: 3, outside: 0, external: 1 });
+    expect(cs.totals).toEqual({ changed: 4, edited: 2, created: 1, deleted: 1, read: 1, added: 54, removed: 3, outside: 0, external: 1, temporary: 0 });
     // most impact first, reads last
     expect(cs.files[0]!.path).toBe("src/new.ts");
     expect(cs.files[cs.files.length - 1]!.action).toBe("read");
@@ -219,12 +219,30 @@ describe("filters and git", () => {
 });
 
 describe("live test findings (1.6.1)", () => {
-  it("a file created and deleted in the same session stays deleted, with nothing left to count", () => {
+  it("a file created and deleted in the same session never existed outside it: off the map, counted as temporary", () => {
     const events = [ev({ kind: "write_file", path: "t/plan.md", added: 3, created: true }), ev({ kind: "delete_file", path: "t/plan.md", via: "shell" })];
     const plain = changesFromEvents(events);
-    expect(plain.files[0]).toMatchObject({ action: "deleted", added: 0, removed: 0 });
+    expect(plain.files).toEqual([]);
+    expect(plain.totals).toMatchObject({ changed: 0, deleted: 0, temporary: 1 });
+    expect(headline(plain)).toBe("");
     const withGit = changesFromEvents(events, { exists: () => false, git: { status: {} } });
-    expect(withGit.files[0]).toMatchObject({ action: "deleted", added: 0, removed: 0 });
+    expect(withGit.files).toEqual([]);
+    expect(withGit.totals.temporary).toBe(1);
+  });
+  it("a file git still knows (tracked, or touched by a commit) stays a real deletion even if a write came first", () => {
+    const events = [ev({ kind: "write_file", path: "old.md", added: 3, created: true }), ev({ kind: "delete_file", path: "old.md", via: "shell" })];
+    expect(changesFromEvents(events, { exists: () => false, git: { status: { "old.md": "D" } } }).files[0]).toMatchObject({ action: "deleted" });
+    expect(changesFromEvents(events, { exists: () => false, git: { status: {}, committed: { "old.md": "A" } } }).files[0]).toMatchObject({ action: "deleted" });
+  });
+  it("a file that existed before (edited first) and was then deleted is a deletion", () => {
+    const cs = changesFromEvents([ev({ kind: "edit_file", path: "a.ts", added: 1, removed: 1, hunks: 1 }), ev({ kind: "delete_file", path: "a.ts", via: "shell" })]);
+    expect(cs.files[0]).toMatchObject({ action: "deleted" });
+    expect(cs.totals.temporary).toBe(0);
+  });
+  it("re-created after the delete: it exists at the end, so it is created, not temporary", () => {
+    const cs = changesFromEvents([ev({ kind: "write_file", path: "n.md", added: 2, created: true }), ev({ kind: "delete_file", path: "n.md", via: "shell" }), ev({ kind: "write_file", path: "n.md", added: 4, created: true })]);
+    expect(cs.files[0]).toMatchObject({ action: "created" });
+    expect(cs.totals.temporary).toBe(0);
   });
   it("a delete that was undone (file back, clean in git) reads as edited", () => {
     const cs = changesFromEvents([ev({ kind: "delete_file", path: "kept.ts", via: "shell" }), ev({ kind: "write_file", path: "kept.ts", added: 2, created: false })], { exists: () => true, git: { status: {} } });
@@ -234,5 +252,55 @@ describe("live test findings (1.6.1)", () => {
     const events = [ev({ kind: "write_file", path: "t/notes.md", added: 6, created: true }), ev({ kind: "edit_file", path: "t/notes.md", added: 3, removed: 1, hunks: 1 })];
     const cs = changesFromEvents(events, { exists: () => true, git: { status: { "t/notes.md": "?" }, numstat: { "t/notes.md": { added: 8, removed: 0 } } } });
     expect(cs.files[0]).toMatchObject({ action: "created", added: 8, removed: 0, countsFromGit: true });
+  });
+});
+
+describe("outside this folder", () => {
+  it("lists the paths the agent changed elsewhere, sorted, without putting them on the map", () => {
+    const cs = changesFromEvents([
+      ev({ kind: "edit_file", path: "~/other/b.ts", added: 1, removed: 0, hunks: 1 }),
+      ev({ kind: "write_file", path: "~/other/a.md", added: 2, created: true }),
+      ev({ kind: "read_file", path: "~/notes/readme.md" }),
+      ev({ kind: "edit_file", path: "src/in.ts", added: 1, removed: 0, hunks: 1 }),
+    ]);
+    expect(cs.files.map((f) => f.path)).toEqual(["src/in.ts"]);
+    expect(cs.totals.external).toBe(2);
+    expect(cs.externalPaths).toEqual(["~/other/a.md", "~/other/b.ts"]);
+  });
+});
+
+describe("shell variables are not file names", () => {
+  it("skips write, copy and delete targets built from $vars or backticks", () => {
+    expect(classifyBash('for f in a b; do cp "src/$f" "out/log-$f"; done').writes).toEqual([]);
+    expect(classifyBash("cat x > out/${name}.txt").writes).toEqual([]);
+    expect(classifyBash("touch `date +%s`.log").writes).toEqual([]);
+    expect(classifyBash("cp a.txt b.txt").writes).toEqual(["b.txt"]);
+  });
+});
+
+describe("cleanup is not change", () => {
+  it("a scratch script written by shell and removed again, unknown to git, is temporary", () => {
+    const cs = changesFromEvents([ev({ kind: "write_file", path: "scripts/_probe.mjs", added: 0, created: false, via: "shell" }), ev({ kind: "delete_file", path: "scripts/_probe.mjs", via: "shell" })], { exists: () => false, git: { status: {} } });
+    expect(cs.files).toEqual([]);
+    expect(cs.totals.temporary).toBe(1);
+  });
+  it("a past session (no git): written and deleted, gone from disk now, is temporary; with no way to look, it stays a deletion", () => {
+    const events = [ev({ kind: "write_file", path: "_x.mjs", added: 0, created: false, via: "shell" }), ev({ kind: "delete_file", path: "_x.mjs", via: "shell" })];
+    expect(changesFromEvents(events, { exists: () => false }).totals.temporary).toBe(1);
+    expect(changesFromEvents(events).files[0]).toMatchObject({ action: "deleted" });
+  });
+  it("rm -rf of a build folder git never tracked is dropped; a tracked file removed by shell stays a deletion", () => {
+    const cs = changesFromEvents([ev({ kind: "delete_file", path: "dist", via: "shell" }), ev({ kind: "delete_file", path: "src/old.ts", via: "shell" })], { exists: () => false, git: { status: { "src/old.ts": "D" } } });
+    expect(cs.files.map((f) => [f.path, f.action])).toEqual([["src/old.ts", "deleted"]]);
+  });
+  it("outside paths seen only in shell text must look like files", () => {
+    const cs = changesFromEvents([
+      ev({ kind: "write_file", path: "~/other/await", added: 0, created: false, via: "shell" }),
+      ev({ kind: "write_file", path: "~/other/0,", added: 0, created: false, via: "shell" }),
+      ev({ kind: "write_file", path: "~/other/[Agent", added: 0, created: false, via: "shell" }),
+      ev({ kind: "write_file", path: "~/other/notes.md", added: 0, created: false, via: "shell" }),
+      ev({ kind: "write_file", path: "~/other/Makefile", added: 0, created: false, via: "shell" }),
+    ]);
+    expect(cs.externalPaths).toEqual(["~/other/Makefile", "~/other/notes.md"]);
   });
 });
