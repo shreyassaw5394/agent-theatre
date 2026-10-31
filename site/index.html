@@ -19,7 +19,7 @@
 <nav class="nav" aria-label="Primary">
   <a class="wordmark" href="/">Agent Theatre</a>
   <div class="links"><a href="#changes">What changed</a><a href="#episodes">Episodes</a><a href="#stages">Stages</a><a href="#cast">Cast</a><a href="#honest">Honesty</a><a href="#privacy">Privacy</a><a class="install-link" href="#install">Install</a></div>
-  <a class="pill ghost" href="https://discord.gg/PPGeQWd7r" rel="noopener">Discord</a><a class="pill" href="https://github.com/shreyassaw5394/agent-theatre" rel="noopener">GitHub</a>
+  <div class="navcta"><a class="install-m" href="#install">Install</a><a class="pill ghost" href="https://discord.gg/PPGeQWd7r" rel="noopener">Discord</a><a class="pill" href="https://github.com/shreyassaw5394/agent-theatre" rel="noopener">GitHub</a></div>
 </nav>
 
 <header class="hero">
@@ -246,6 +246,8 @@
   const copy = document.querySelector(".hero .copy"), veil = document.querySelector(".veil");
   const onScroll = () => { const y = Math.min(1, scrollY / (innerHeight * 0.8)); if (copy) { copy.style.opacity = String(1 - y * 1.2); copy.style.transform = `translateY(${-y * 60}px)`; } if (veil) veil.style.opacity = String(0.35 + y * 0.65); };
   addEventListener("scroll", onScroll, { passive: true }); onScroll();
+  const atTop = () => document.documentElement.classList.toggle("scrolled", scrollY > 60);
+  addEventListener("scroll", atTop, { passive: true }); atTop();
 })();
 </script>
 </body>
