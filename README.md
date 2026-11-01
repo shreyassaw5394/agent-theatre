@@ -171,7 +171,7 @@ The server binds to `127.0.0.1` only. Hooks exit 0 and never block or slow your 
 
 ## Community
 
-Questions, stages worth showing off, ideas for v2: **[Agent Theatre Discord](https://discord.gg/PPGeQWd7r)**. The whole suite (LastSearch, Debug Anything, Agent Theatre) also shares [one server](https://discord.gg/s8wj7tBAM).
+Questions, stages worth showing off, ideas for v2: **[Ship at Midnight Discord](https://discord.gg/s8wj7tBAM)**, one server for every tool, with a channel for Agent Theatre.
 
 ## Site
 
