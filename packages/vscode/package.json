@@ -235,9 +235,9 @@
     "agent-theatre": "workspace:*"
   },
   "devDependencies": {
-    "@types/vscode": "^1.90.0",
+    "@types/vscode": "^1.144.0",
     "@vscode/test-electron": "2.4.1",
-    "@vscode/vsce": "^4.0.0",
+    "@vscode/vsce": "^4.1.0",
     "tsup": "^8.3.0",
     "typescript": "^5.7.0",
     "vitest": "^4.1.12"
