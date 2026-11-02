@@ -52,4 +52,4 @@ disk, commits made mid-session still count, and files changed during the session
 ## Links
 
 Site and episodes: https://agenttheatre.dev · Source: https://github.com/shreyassaw5394/agent-theatre ·
-Discord: https://discord.gg/PPGeQWd7r
+Discord: https://discord.gg/s8wj7tBAM

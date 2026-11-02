@@ -35,7 +35,7 @@ Bump the version in `packages/cli`, `packages/vscode`, `.claude-plugin/plugin.js
 
 ## Community
 
-Questions and show-and-tell: https://discord.gg/PPGeQWd7r · Code of conduct: be kind, assume good faith, no harassment; maintainers may remove anyone who isn't.
+Questions and show-and-tell: https://discord.gg/s8wj7tBAM · Code of conduct: be kind, assume good faith, no harassment; maintainers may remove anyone who isn't.
 
 ## Copyright and trademarks
 
