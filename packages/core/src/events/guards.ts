@@ -11,6 +11,7 @@ const KINDS: ReadonlySet<string> = new Set<AgentEventKind>([
   "search",
   "subagent_start",
   "subagent_stop",
+  "helper_elsewhere",
   "waiting_for_user",
   "turn_end",
   "error",

@@ -1,9 +1,10 @@
 import * as vscode from "vscode";
 import { existsSync, readFileSync } from "node:fs";
+import { randomBytes } from "node:crypto";
 import { join } from "node:path";
 import { Theatre, hooksStatus, installHooks, listSessions, repoIdFor, scanRepo, uninstallHooks } from "agent-theatre";
-import { toMarkdown } from "@agent-theatre/core";
-import { ChangesTree, openChange, postToPr } from "./changes.js";
+import { toMarkdown, type ChangeSet } from "@agent-theatre/core";
+import { ChangesTree, onMap, openChange, postToPr } from "./changes.js";
 
 /**
  * The extension runs the same local server the CLI runs (same hooks, same
@@ -50,7 +51,7 @@ export async function activate(ctx: vscode.ExtensionContext): Promise<{ __state:
   ctx.subscriptions.push(view, changesTree, vscode.window.registerFileDecorationProvider(changesTree),
     vscode.commands.registerCommand("agentTheatre.refreshChanges", () => changesTree?.refresh()),
     vscode.commands.registerCommand("agentTheatre.toggleReads", () => changesTree?.toggleReads()),
-    vscode.commands.registerCommand("agentTheatre.openChange", (path: string) => { const r = mapRoot(); if (r && typeof path === "string") void openChange(r, path, changesTree?.changes ?? null); }),
+    vscode.commands.registerCommand("agentTheatre.openChange", (path: string) => { const r = mapRoot(); const cs = changesTree?.changes ?? null; if (r && typeof path === "string" && onMap(cs, path)) void openChange(r, path, cs); }),
     vscode.commands.registerCommand("agentTheatre.copyChanges", async () => { const cs = changesTree?.changes; if (!cs) return; await vscode.env.clipboard.writeText(toMarkdown(cs, { marker: false })); void vscode.window.showInformationMessage("Agent Theatre: copied the change map as Markdown."); }),
     vscode.commands.registerCommand("agentTheatre.postChanges", () => { const r = mapRoot(); if (r) void postToPr(r, changesTree?.changes ?? null); }),
     vscode.commands.registerCommand("agentTheatre.openChangesMap", () => open(ctx, "live", "changes")),
@@ -100,7 +101,7 @@ async function open(ctx: vscode.ExtensionContext, mode: "live" | { session: stri
   const set = vscode.workspace.getConfiguration("agentTheatre").get<string>("set") || "";
   const query = (mode === "live" ? "live=1" : `session=${encodeURIComponent(mode.session)}`) + (set ? `&set=${encodeURIComponent(set)}` : "") + (view ? `&view=${view}` : "");
   if (!panel) {
-    panel = vscode.window.createWebviewPanel("agentTheatre", `Agent Theatre — ${t.name}`, vscode.ViewColumn.Beside, { enableScripts: true, retainContextWhenHidden: true });
+    panel = vscode.window.createWebviewPanel("agentTheatre", `Agent Theatre — ${t.name}`, vscode.ViewColumn.Beside, { enableScripts: true, retainContextWhenHidden: true, localResourceRoots: [vscode.Uri.joinPath(ctx.extensionUri, "web"), vscode.Uri.joinPath(ctx.extensionUri, "media")] });
     panel.iconPath = vscode.Uri.joinPath(ctx.extensionUri, "media", "icon.png");
     panel.onDidDispose(() => { panel = null; });
     // the page asks to bring Claude Code forward when the agent is waiting on the person
@@ -122,7 +123,14 @@ async function open(ctx: vscode.ExtensionContext, mode: "live" | { session: stri
         void panel?.webview.postMessage({ type: "changes", reqId: m.reqId, payload });
         return;
       }
-      if (m?.type === "open-diff" && typeof m.path === "string") { const root = mapRoot(); if (root) await openChange(root, m.path, replaySession ? null : t.changes()); return; }
+      if (m?.type === "open-diff" && typeof m.path === "string") {
+        // the webview is untrusted: only a file on this change map opens
+        const root = mapRoot(); if (!root) return;
+        let cs: ChangeSet | null = null;
+        try { cs = replaySession ? ((await (await fetch(`${t.url}api/changes?session=${encodeURIComponent(replaySession)}`)).json()) as ChangeSet) : t.changes(); } catch { cs = null; }
+        if (onMap(cs, m.path)) await openChange(root, m.path, replaySession ? null : cs);
+        return;
+      }
       if (m?.type === "ready") { probe.ready = true; return; }
       if (m?.type === "scene") { probe.scenesSent++; void panel?.webview.postMessage({ type: "scene", payload: t.scene() }); return; }
       if (m?.type === "replay" && m.id) {
@@ -137,7 +145,7 @@ async function open(ctx: vscode.ExtensionContext, mode: "live" | { session: stri
     });
   }
   replaySession = mode === "live" ? null : mode.session;
-  panel.webview.html = html(ctx, panel.webview, `?${query}`);
+  panel.webview.html = html(ctx, panel.webview, `?${query}`, t.port);
   panel.reveal(vscode.ViewColumn.Beside, true);
 }
 
@@ -156,12 +164,16 @@ async function replay(ctx: vscode.ExtensionContext): Promise<void> {
  * base); only the API and the WebSocket go to the local server. Framing http://127.0.0.1 inside a webview
  * rendered blank, so nothing is framed.
  */
-function html(ctx: vscode.ExtensionContext, webview: vscode.Webview, query: string): string {
+function html(ctx: vscode.ExtensionContext, webview: vscode.Webview, query: string, port: number): string {
   const root = vscode.Uri.joinPath(ctx.extensionUri, "web");
   const webRoot = webview.asWebviewUri(root).toString();
+  const nonce = randomBytes(16).toString("base64");
   let page = readFileSync(vscode.Uri.joinPath(root, "index.html").fsPath, "utf8");
   page = page.replace(/(src|href)="\.\//g, `$1="${webRoot}/`);
-  const csp = `default-src 'none'; img-src ${webview.cspSource} data: blob:; style-src ${webview.cspSource} 'unsafe-inline'; font-src ${webview.cspSource}; script-src ${webview.cspSource} 'unsafe-inline'; connect-src http://127.0.0.1:* ws://127.0.0.1:* http://localhost:* ws://localhost:*; worker-src blob:; media-src blob:;`;
-  page = page.replace("<head>", `<head><meta http-equiv="Content-Security-Policy" content="${csp}"><script>window.__AT_QUERY=${JSON.stringify(query)};</script>`);
+  page = page.replace(/<script /g, `<script nonce="${nonce}" `);
+  // no inline script: the query travels in a meta tag the bundle reads; scripts need this page's nonce
+  const csp = `default-src 'none'; img-src ${webview.cspSource} data: blob:; style-src ${webview.cspSource} 'unsafe-inline'; font-src ${webview.cspSource}; script-src 'nonce-${nonce}' ${webview.cspSource}; connect-src http://127.0.0.1:${port} ws://127.0.0.1:${port}; worker-src blob:; media-src blob:;`;
+  const attr = (v: string) => v.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+  page = page.replace("<head>", `<head><meta http-equiv="Content-Security-Policy" content="${csp}"><meta name="at-query" content="${attr(query)}">`);
   return page;
 }

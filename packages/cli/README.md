@@ -35,7 +35,7 @@ Stage ids: `island orbit metropolis harbour observatory greenhouse workshop arca
 
 ## Privacy
 
-Runs entirely on your machine and listens only on `127.0.0.1`. Events carry repo-relative paths, line counts, a command's first word and a classified intent — never file contents, prompts, command bodies or search queries. A test in the repo plants marker strings in all of those and asserts zero leaks. The Changes view shows a file's diff only when you open it, read from your disk on `127.0.0.1`. At the end of a turn the hook prints a one-line summary of changed paths for Claude Code to show you (`AGENT_THEATRE_SUMMARY=0` turns it off); it is never a decision and never context for the agent. Paths outside the repo appear as `//ext/<name>`; your home directory as `~/`. The hook always exits 0 and never blocks a tool call.
+Runs entirely on your machine and listens only on `127.0.0.1`; nothing is sent anywhere unless you post a change map to GitHub yourself (`changes --pr`). Events carry repo-relative paths, line counts, a command's first word and a classified intent — never file contents, prompts, command bodies or search queries. A test in the repo plants marker strings in all of those and asserts zero leaks. The Changes view shows a file's diff only when you open it, read from your disk on `127.0.0.1`. At the end of a turn the hook prints a one-line summary of changed paths for Claude Code to show you (`AGENT_THEATRE_SUMMARY=0` turns it off); it is never a decision and never context for the agent. Paths outside the repo appear as `//ext/<name>`; your home directory as `~/`. The hook sends only paths, counts and flags, and only to a stage that answers with the id it registered. It always exits 0 and never blocks a tool call.
 
 ## What did the agent change?
 
@@ -64,4 +64,4 @@ Community: https://discord.gg/s8wj7tBAM
 
 ---
 
-Agent Theatre is a free, non-commercial passion project. MIT licensed; bundled third-party code is listed in `THIRD_PARTY_LICENSES.txt`. It runs locally and sends no telemetry ([privacy](https://agenttheatre.dev/privacy)).
+Agent Theatre is a free, non-commercial passion project. MIT licensed; bundled third-party code is listed in `THIRD_PARTY_LICENSES.txt`. It runs locally and sends no telemetry ([privacy](https://agenttheatre.dev/privacy)). Independent project, not affiliated with or endorsed by Anthropic, Microsoft, Anysphere (Cursor), Codeium (Windsurf), OpenAI or Google. Claude and Claude Code are trademarks of Anthropic; other names belong to their owners.

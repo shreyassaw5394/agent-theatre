@@ -12,13 +12,14 @@ import { Pip, type CharacterPose } from "./pip.js";
 import { pickCompany, type CharacterSpec } from "./cast.js";
 import type { AudioEngine } from "../audio/engine.js";
 import { Sfx } from "../audio/sfx.js";
+import { slotOffset } from "./slots.js";
 import { Ambience } from "../audio/ambience.js";
 
 export interface PlayerState {
   t: number; duration: number; playing: boolean; rate: number;
   current: Beat | null; mood: Mood;
   bubble: { text: string; color: number; screen: Pt } | null;
-  labels: Array<{ text: string; screen: Pt; active: boolean }>;
+  labels: Array<{ text: string; screen: Pt; active: boolean; away?: boolean }>;
   evidence: { passed: number } | null;
   signal: "ok" | "lost";
 }
@@ -46,7 +47,7 @@ export class ScenePlayer {
   private duration = 0;
   private mood: Mood = "curious";
   private actorAt = new Map<string, string>(); // actor -> placeId they stand at
-  private walkFrom = new Map<string, Pt>();
+  private away = new Map<string, string>(); // actor -> "elsewhere: <folder>" while it works outside this folder
   private growth = new Map<string, number>();
   private lastPass = 0;
   private signal: "ok" | "lost" = "ok";
@@ -82,11 +83,11 @@ export class ScenePlayer {
   load(beats: Beat[]): void { this.beats = beats; this.duration = beats.length ? Math.max(...beats.map((b) => b.atMs + b.durationMs)) : 0; this.seek(0); }
   get beatCount(): number { return this.beats.length; }
   /** What is under a stage-local screen point: a place, the lead, or a helper. Smallest hit wins. */
-  hitTest(sx: number, sy: number): { kind: "place"; place: import("@agent-theatre/core").Place } | { kind: "lead"; name: string; mood: string } | { kind: "helper"; name: string } | null {
+  hitTest(sx: number, sy: number): { kind: "place"; place: import("@agent-theatre/core").Place } | { kind: "lead"; name: string; mood: string } | { kind: "helper"; name: string; away?: string } | null {
     const z = this.camera.scale;
     const near = (p: { x: number; y: number }, r: number) => { const s = this.camera.toScreen(p.x, p.y); return Math.hypot(s.x - sx, s.y - sy) < r * z; };
     const lp = this.pip.drawn; if (near({ x: lp.x, y: lp.y - 18 }, 26)) return { kind: "lead", name: this.company.lead.name, mood: this.pip.pose.mood };
-    for (const [id, h] of this.helpers) { const d = h.drawn; if (near({ x: d.x, y: d.y - 14 }, 22)) return { kind: "helper", name: this.company.helpers.find((c) => c.id === id)?.name ?? "Helper" }; }
+    for (const [id, h] of this.helpers) { const d = h.drawn; if (near({ x: d.x, y: d.y - 14 }, 22)) { const away = this.away.get(id); return { kind: "helper", name: this.company.helpers.find((c) => c.id === id)?.name ?? "Helper", ...(away ? { away } : {}) }; } }
     let best: { place: import("@agent-theatre/core").Place; area: number } | null = null;
     for (const p of this.world.places) {
       const pos = this.worldLayer.positionOf(p.id); if (!pos) continue;
@@ -187,7 +188,7 @@ export class ScenePlayer {
 
   /** Replay all beats up to t without sound/particles to recover persistent state. */
   private rebuild(t: number): void {
-    this.actorAt.clear(); this.actorAt.set("pip", "forge");
+    this.actorAt.clear(); this.actorAt.set("pip", "forge"); this.away.clear();
     this.growth.clear(); this.lastPass = 0; this.evidenceCount = null; this.mood = "curious"; this.claimGremlinId = null; this.helperIndex = 0;
     for (const g of this.gremlins.values()) g.container.destroy(); this.gremlins.clear();
     for (const h of this.helpers.values()) h.container.destroy(); this.helpers.clear();
@@ -210,12 +211,13 @@ export class ScenePlayer {
 
   private onStart(b: Beat, silent: boolean): void {
     this.mood = b.mood;
+    // back on this stage: the "elsewhere" badge comes off (the director clears it on the same beats)
+    if (b.kind === "walk_to" || b.kind === "read" || b.kind === "build" || b.kind === "raise" || b.kind === "forge" || b.kind === "run_tests") this.away.delete(b.actor);
     const theme = this.theme;
     const pan = (id: string) => { const p = this.worldLayer.positionOf(id); return p ? Math.max(-0.8, Math.min(0.8, p.ground.x / 600)) : 0; };
     const play = (name: Parameters<Sfx["play"]>[0], ctx: Partial<Parameters<Sfx["play"]>[1]> = {}) => { if (!silent && Sfx.plays(name, this.rate)) this.sfx.play(name, { theme, ...ctx }); };
     switch (b.kind) {
       case "curtain_up": play("curtain_up"); if (!silent) this.camera.pushIn(0.12); break;
-      case "walk_to": { const from = this.worldLayer.standingSpot(this.actorAt.get(b.actor) ?? "forge"); this.walkFrom.set(b.actor, from); break; }
       case "read": play("read", { pan: pan(b.target) }); break;
       case "raise": {
         if (b.newPlace && !this.worldLayer.has(b.target)) {
@@ -273,13 +275,14 @@ export class ScenePlayer {
       }
       case "curtain_down": play("curtain_down"); break;
       case "idle": break;
+      case "away": this.away.set(b.actor, b.label); break;
     }
   }
   private onEnd(b: Beat, _silent: boolean): void {
     switch (b.kind) {
-      case "walk_to": this.actorAt.set(b.actor, b.target); this.walkFrom.delete(b.actor); break;
+      case "walk_to": this.actorAt.set(b.actor, b.target); break;
       case "build": this.growth.set(b.target, Math.min(18, (this.growth.get(b.target) ?? 0) + 3 + Math.round(b.intensity * 6))); this.worldLayer.setGrowth(b.target, this.growth.get(b.target)!); this.worldLayer.setScaffold(b.target, 0); break;
-      case "dismiss_helper": { const h = this.helpers.get(b.helperId); if (h) { h.container.destroy(); this.helpers.delete(b.helperId); this.actorAt.delete(b.helperId); } break; }
+      case "dismiss_helper": { const h = this.helpers.get(b.helperId); if (h) { h.container.destroy(); this.helpers.delete(b.helperId); this.actorAt.delete(b.helperId); this.away.delete(b.helperId); } break; }
       case "test_outcome": break;
     }
   }
@@ -287,19 +290,31 @@ export class ScenePlayer {
   // ---------- per-frame posing ----------
   private pose(cur: Beat | null, dtMs: number): void {
     const dt = dtMs / 1000;
-    for (const [actor, ch] of [["pip", this.pip] as const, ...[...this.helpers.entries()]]) {
+    // several actors on one spot (helpers at the dock, two at one building) each get their own slot, in summon order
+    const cast = [["pip", this.pip] as const, ...this.helpers.entries()];
+    const spotOf = (actor: string) => this.actorAt.get(actor) ?? (actor === "pip" ? "forge" : "dock");
+    const slotAt = (place: string, actor: string, arriving = false) => {
+      const group = cast.map(([id]) => id).filter((id) => id === actor ? arriving || spotOf(id) === place : spotOf(id) === place);
+      const i = Math.max(0, group.indexOf(actor));
+      const s = this.worldLayer.standingSpot(place), o = slotOffset(i, group.length);
+      return { x: s.x + o.dx, y: s.y + o.dy, slot: i };
+    };
+    for (const [actor, ch] of cast) {
       const a = ch.pose;
       a.moving = false; a.lift = 0; a.sx = 1; a.sy = 1; a.lean = 0; a.look = "fwd"; a.mood = this.mood; a.tool = "none"; a.toolPhase = 0;
       const mine = cur && cur.actor === actor ? cur : null;
-      const standing = this.worldLayer.standingSpot(this.actorAt.get(actor) ?? (actor === "pip" ? "forge" : "dock"));
+      const here = slotAt(spotOf(actor), actor);
+      const standing = { x: here.x, y: here.y };
       a.x = standing.x; a.y = standing.y;
-      if (!mine) { if (actor !== "pip") a.sy = 0.96; else this.idleBusiness(a, this.actorAt.get(actor) ?? "forge", standing); continue; }
+      // depth: feet y → grid depth; the slot breaks ties so actors on one spot never swap from frame to frame
+      const depth = () => { ch.container.zIndex = a.y / (TH / 2) + 0.6 + here.slot * 1e-3; };
+      if (!mine) { if (actor !== "pip") a.sy = 0.96; else this.idleBusiness(a, this.actorAt.get(actor) ?? "forge", standing); depth(); continue; }
       const u = seg(this.t, mine.atMs, mine.atMs + mine.durationMs);
-      const target = "target" in mine ? this.worldLayer.standingSpot(mine.target) : standing;
+      const target = "target" in mine ? (mine.kind === "walk_to" ? slotAt(mine.target, actor, true) : this.worldLayer.standingSpot(mine.target)) : standing;
       switch (mine.kind) {
         case "curtain_up": { const k = backOut(seg(u, 0.35, 0.8)); a.lift = (1 - Math.min(1, u / 0.5)) ** 2 * 150; a.sy = u < 0.5 ? 1.1 : 1 - 0.25 * bump(seg(u, 0.5, 0.75)); a.sx = 1 / a.sy; void k; break; }
         case "walk_to": {
-          const from = this.walkFrom.get(actor) ?? standing;
+          const from = standing; // the actor's own slot where it stands until the walk ends
           const ANT = Math.min(0.22, 140 / mine.durationMs); // anticipation: crouch and lean back before launching
           const e = u < ANT ? 0 : walkEase((u - ANT) / (1 - ANT));
           a.x = lerp(from.x, target.x, e); a.y = lerp(from.y, target.y, e); a.moving = u >= ANT && u < 0.98;
@@ -353,8 +368,7 @@ export class ScenePlayer {
       }
       if (actor === "pip" && this.quietLevel >= 2 && !a.moving) { const w = this.wall / 1000; a.sy = 0.84 + 0.012 * Math.sin(w * 0.9); a.sx = 1.1; a.look = "down"; a.lift = 0; } // sat down, dozing — whatever the last beat was
       if (this.claimGremlinId && mine.kind !== "unverified_claim") { const g = this.gremlins.get(this.claimGremlinId); if (g) { g.x = a.x - a.face * 14; g.y = a.y - 2; } }
-      // depth: feet y → grid depth
-      ch.container.zIndex = a.y / (TH / 2) + 0.6;
+      depth();
       if (actor !== "pip") a.mood = "focused";
     }
     for (const g of this.gremlins.values()) g.container.zIndex = g.y / (TH / 2) + 0.7;
@@ -485,6 +499,11 @@ export class ScenePlayer {
   }
   private labels(cur: Beat | null): PlayerState["labels"] {
     const out: PlayerState["labels"] = [];
+    for (const [actor, label] of this.away) {
+      const ch = actor === "pip" ? this.pip : this.helpers.get(actor); if (!ch) continue;
+      const d = ch.drawn;
+      out.push({ text: label, screen: this.camera.toScreen(d.x, d.y - 46), active: false, away: true });
+    }
     const active = cur && "target" in cur ? cur.target : null;
     for (const p of this.world.places) {
       if (p.kind === "forge" || p.kind === "dock") continue;

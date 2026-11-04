@@ -34,6 +34,8 @@ export type BeatBody =
   | { kind: "banish"; gremlinId: string }
   | { kind: "summon_helper"; helperId: string; label?: string }
   | { kind: "dismiss_helper"; helperId: string; ok: boolean }
+  /** The actor is working outside this folder; `label` is "elsewhere: <folder name>". No walk, no building. */
+  | { kind: "away"; label: string }
   | { kind: "blocked_on_you"; reason: "permission" | "question" }
   | { kind: "your_turn"; note?: string }
   | { kind: "stumble"; retrying: boolean }

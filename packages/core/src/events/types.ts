@@ -70,6 +70,8 @@ export type AgentEventBody =
   /** Emitted by the spawning thread about its child; `childId` is the child, `agentId` (base) is the spawner. */
   | { kind: "subagent_start"; childId: string; label?: string }
   | { kind: "subagent_stop"; childId: string; ok: boolean }
+  /** A helper (base `agentId`) is working in another folder. `repo` is that folder's name only, never a path. */
+  | { kind: "helper_elsewhere"; repo: string }
   | { kind: "waiting_for_user"; reason: WaitReason }
   /** The agent finished a turn (Stop hook / end_turn). Carries the claim-check input. */
   /** `note`: the agent's own closing words, truncated — the one piece of text the stage carries, so the person knows what their turn is. Never the person's prompt. */

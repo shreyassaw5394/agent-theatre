@@ -2,3 +2,5 @@ Fredoka (c) The Fredoka Project Authors — SIL Open Font License 1.1
 Nunito Sans (c) The Nunito Sans Project Authors — SIL Open Font License 1.1
 JetBrains Mono (c) 2020 The JetBrains Mono Project Authors — SIL Open Font License 1.1
 https://openfontlicense.org
+
+Full licence text and copyright notices: OFL.txt in this folder.

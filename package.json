@@ -22,6 +22,9 @@
     "vitest": "^4.1.12"
   },
   "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ],
     "overrides": {
       "@azure/msal-node": ">=7.1.0",
       "esbuild": ">=0.28.1",

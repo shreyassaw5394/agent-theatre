@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, readdirSync, statSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { existsSync, readFileSync, statSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -6,6 +6,7 @@ import { changesFromEvents, parseTranscript, toMarkdown, PR_MARKER, type ChangeS
 import { gitView } from "./git.js";
 import { listSessions } from "./sessions.js";
 import { isWithin } from "./server.js";
+import { readRegistry } from "./registry.js";
 
 /**
  * The change map outside the stage: for the `changes` command, the VS Code
@@ -35,18 +36,14 @@ export async function changesForRepo(cwd: string, opts: { sessionId?: string; pr
   return { cs: changesFromEvents(events, { exists, ...(git ? { git } : {}) }), source: "session", sessionId: s.id };
 }
 
-/** Ask a running stage for this folder (registry: ~/.agent-theatre/ports/<port> holds its folder). */
+/** Ask a running stage for this folder (registry: ~/.agent-theatre/ports/<port> holds its folder and id). */
 async function fromLiveStage(cwd: string): Promise<RepoChanges | null> {
   const home = process.env.AGENT_THEATRE_HOME || join(homedir(), ".agent-theatre");
-  let ports: string[] = [];
-  try { ports = readdirSync(join(home, "ports")); } catch { return null; }
-  for (const p of ports) {
-    let dir = "";
-    try { dir = readFileSync(join(home, "ports", p), "utf8").trim(); } catch { continue; }
+  for (const { port, cwd: dir } of readRegistry(home)) {
     if (!dir || !(isWithin(cwd, dir) && isWithin(dir, cwd))) continue;
     try {
-      const r = await fetch(`http://127.0.0.1:${parseInt(p, 10)}/api/changes`, { signal: AbortSignal.timeout(1500) });
-      if (r.ok) return { cs: (await r.json()) as ChangeSet, source: "live", mapUrl: `http://127.0.0.1:${parseInt(p, 10)}/?live=1&view=changes` };
+      const r = await fetch(`http://127.0.0.1:${port}/api/changes`, { signal: AbortSignal.timeout(1500) });
+      if (r.ok) return { cs: (await r.json()) as ChangeSet, source: "live", mapUrl: `http://127.0.0.1:${port}/?live=1&view=changes` };
     } catch { /* dead stage */ }
   }
   return null;

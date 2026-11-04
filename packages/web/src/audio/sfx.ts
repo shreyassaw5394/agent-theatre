@@ -92,6 +92,7 @@ export class Sfx {
       case "stumble": a.noise(0.12, { filter: "lowpass", freq: 400, gain: 0.14, pan }); a.tone(120, 0.25, { type: "triangle", gain: 0.1, slideTo: 70, pan }); return;
       case "unverified_claim": a.tone(196, 0.14, { type: "triangle", gain: 0.07, lowpass: 900, pan }); setTimeout(() => a.tone(185, 0.14, { type: "triangle", gain: 0.07, lowpass: 900, pan }), 240); setTimeout(() => a.tone(174.6, 0.24, { type: "triangle", gain: 0.06, lowpass: 900, pan }), 480); return;
       case "idle": return; // silence is part of the design
+      case "away": return; // working off stage: nothing to hear
     }
   }
 }

@@ -49,6 +49,7 @@ export class Pip {
   constructor(private theme: SetTheme, private reducedMotion: boolean, public spec: CharacterSpec = CAST[0]!) {
     this.container.addChild(this.shadow, this.body);
     this.container.scale.set(1.75 * spec.size);
+    this.container.zIndex = 1e6; // until the player sets a proper depth (it does every frame)
   }
   setTheme(t: SetTheme): void { this.theme = t; }
 
@@ -81,7 +82,6 @@ export class Pip {
     const landK = Math.sin(Math.PI * Math.min(1, m.land)) * m.land;
     const a = { ...target, x: sh.x, y: sh.y, lift: sh.lift, sx: sh.sx * Math.max(0.15, sh.faceK) * (1 + 0.1 * landK), sy: sh.sy * (1 - 0.13 * landK), lean: sh.lean + m.lean, face: sh.face };
     this.container.position.set(a.x, a.y);
-    this.container.zIndex = 1e6; // player sets a proper depth; this is a fallback
 
     const shadowK = 1 - Math.min(0.6, a.lift / 90);
     this.shadow.clear().ellipse(0, 0, 11 * shadowK, 5 * shadowK).fill({ color: 0x000000, alpha: 0.28 });

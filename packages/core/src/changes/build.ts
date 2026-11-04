@@ -1,4 +1,5 @@
 import type { AgentEvent } from "../events/types.js";
+import { isExternalPath } from "../adapters/paths.js";
 
 /**
  * What an agent touched in a session, per file: the change map behind the
@@ -90,7 +91,7 @@ export interface ChangeOptions {
 }
 
 const RANK: Record<FileAction, number> = { read: 0, edited: 1, created: 2, deleted: 3 };
-const isExternal = (p: string) => p.startsWith("//ext/") || p.startsWith("~/") || p.startsWith("../") || p.startsWith("/") || p === ".";
+const isExternal = (p: string) => isExternalPath(p) || p === ".";
 
 export function changesFromEvents(events: readonly AgentEvent[], opts: ChangeOptions = {}): ChangeSet {
   const files = new Map<string, FileChange>();
