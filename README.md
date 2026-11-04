@@ -15,7 +15,7 @@ Lagoon, Volcano, Cloudtop, Reef, Bazaar, Monastery, Moonbase, Lanterns — and, 
 around Halloween, Halloween: jack-o'-lanterns, bats, a ghost-white gremlin and the odd jump scare (switch them
 off with *Scares* in the toolbar). Or hit *Surprise me*.
 
-And one honest detail no other visualiser has: **if the agent says the job is done but no test
+And one honest detail: **if the agent says the job is done but no test
 has passed since the last edit, a gremlin hides behind it.**
 
 ![Lanterns, Juno at login.ts](docs/img/lanterns-juno.png)
@@ -67,7 +67,7 @@ end-to-end on real repos. Design notes in [docs/design.md](docs/design.md).
 
 ## Install
 
-Pick whichever fits how you work. All of them run the same local stage; nothing leaves your machine.
+Pick whichever fits how you work. All of them run the same local stage on your machine. It talks only to `127.0.0.1`, except when you post a change map to GitHub yourself (`changes --pr`).
 
 | Where | How | Notes |
 |---|---|---|
@@ -76,7 +76,7 @@ Pick whichever fits how you work. All of them run the same local stage; nothing 
 | **Homebrew** | `brew install shreyassaw5394/tap/agent-theatre` | tap: [shreyassaw5394/homebrew-tap](https://github.com/shreyassaw5394/homebrew-tap) |
 | **VS Code** | search **Agent Theatre** in Extensions, or [Marketplace](https://marketplace.visualstudio.com/items?itemName=agenttheatre.agent-theatre-vscode) | commands: *Open the stage (live)*, *Replay a session…*, *Switch folder*. `.vsix` also on every [release](https://github.com/shreyassaw5394/agent-theatre/releases/latest) |
 | **Cursor / Windsurf / VSCodium** | `agent-theatre.vsix` from the [latest release](https://github.com/shreyassaw5394/agent-theatre/releases/latest) → *Extensions → ⋯ → Install from VSIX…* | same extension; Open VSX listing coming |
-| **MCP server** (Cursor, Windsurf, Claude Desktop, Codex, Gemini CLI, VS Code Copilot) | `npx agent-theatre init` | registers `agent-theatre serve` with every agent on your machine; `--repo` writes `.mcp.json` / `.cursor/mcp.json` / `.vscode/mcp.json` for the team. One-click: [![Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=agent-theatre&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsImFnZW50LXRoZWF0cmVAbGF0ZXN0Iiwic2VydmUiXX0=) [![VS Code](https://img.shields.io/badge/VS_Code-Install-0098FF?style=flat-square&logo=visualstudiocode&logoColor=white)](https://vscode.dev/redirect/mcp/install?name=agent-theatre&config=%7B%22name%22%3A%22agent-theatre%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22agent-theatre%40latest%22%2C%22serve%22%5D%7D) |
+| **MCP server** (Cursor, Windsurf, Claude Desktop, Codex, Gemini CLI, VS Code Copilot) | `npx agent-theatre init` | registers `agent-theatre serve` with every agent on your machine; `--repo` writes `.mcp.json` / `.cursor/mcp.json` / `.vscode/mcp.json` for the team. One-click: [![Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=agent-theatre&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsImFnZW50LXRoZWF0cmVAMS45LjAiLCJzZXJ2ZSJdfQ==) [![VS Code](https://img.shields.io/badge/VS_Code-Install-0098FF?style=flat-square&logo=visualstudiocode&logoColor=white)](https://vscode.dev/redirect/mcp/install?name=agent-theatre&config=%7B%22name%22%3A%22agent-theatre%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22agent-theatre%401.9.0%22%2C%22serve%22%5D%7D) |
 | **Just watch** | [agenttheatre.dev](https://agenttheatre.dev) | six synthetic episodes, no install |
 
 **First run (CLI):**
@@ -123,8 +123,9 @@ Claude Code ──hooks──▶ agent-theatre (local) ──WebSocket──▶ 
 2. **Stage.** The repo's file tree becomes a deterministic arrangement — one of six layout
    archetypes (ring, grid, strip, scatter, terrace, spine) chosen from the repo and the stage,
    so the same project is a ring island in one set and a terraced spine in another, and always
-   the same in the same set. Capped to ~60 buildings by relevance; every file the session
-   touches is always placed.
+   the same in the same set. Capped to ~60 buildings by relevance; every file in the folder that
+   the session touches is always placed. Work outside the folder (another repo, your home folder)
+   raises nothing: the character doing it wears an "elsewhere: <folder>" badge instead.
 3. **Director.** Events become scene beats — `walk_to`, `build`, `run_tests`, `spawn_gremlin`,
    `chase`, `celebrate`, `unverified_claim` — with a mood: curious, focused, lost, happy.
 4. **Renderer.** PixiJS, isometric, soft lighting, easing everywhere — no linear tween exists
@@ -144,10 +145,13 @@ Claude Code ──hooks──▶ agent-theatre (local) ──WebSocket──▶ 
 
 ## Privacy
 
-Everything stays on your machine. The event stream never contains code, prompts, command text
-or search queries — only repo-relative paths, counts, a command's first word and a classified
-intent. This is a tested invariant (`packages/core/tests/privacy.test.ts` plants secrets in a
-fixture session and asserts none reach the stream).
+Everything runs on your machine; nothing is sent anywhere unless you post a change map to GitHub
+yourself. The event stream never contains code, prompts, command text or search queries — only
+repo-relative paths, counts, a command's first word and a classified intent. This is a tested
+invariant (`packages/core/tests/privacy.test.ts` plants secrets in a fixture session and asserts
+none reach the stream). The hook strips each Claude Code event down to those paths, counts and
+flags before it sends anything, and sends only to a stage that answers with the id it registered
+(`packages/cli/tests/script.test.ts` plants secrets in every hook field and asserts none are sent).
 
 | | Read | Rendered | Leaves the machine |
 |---|---|---|---|
@@ -162,7 +166,7 @@ fixture session and asserts none reach the stream).
 | Telemetry | — | — | none, ever |
 | Audio | — | synthesized, no files | never |
 
-The server binds to `127.0.0.1` only. Hooks exit 0 and never block or slow your agent.
+The server binds to `127.0.0.1` only. Hooks always exit 0, never block your agent, and give up within about half a second.
 
 ## Repo layout
 
@@ -182,6 +186,8 @@ repo, deployed on Vercel from `main`; the playable demo is the real web bundle a
 ## License
 
 MIT © 2026 Shreyas Sawant and Agent Theatre contributors.
+
+Independent project, not affiliated with or endorsed by Anthropic, Microsoft, Anysphere (Cursor), Codeium (Windsurf), OpenAI or Google. Claude and Claude Code are trademarks of Anthropic; other names belong to their owners.
 
 ---
 

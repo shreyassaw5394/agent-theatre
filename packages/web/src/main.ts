@@ -10,8 +10,8 @@ import { ENDED_REST_MS, Panel } from "./ui/panel.js";
 import { ChangesView, eventsSource, hostSource, httpSource } from "./ui/changes.js";
 import { previewSet } from "./render/preview.js";
 
-// a host (the VS Code extension) injects the query; its webview has its own location.search, so the injected one wins
-const q = new URLSearchParams((globalThis as { __AT_QUERY?: string }).__AT_QUERY ?? location.search);
+// a host (the VS Code extension) injects the query in a meta tag; its webview has its own location.search, so the injected one wins
+const q = new URLSearchParams(document.querySelector<HTMLMetaElement>('meta[name="at-query"]')?.content ?? (globalThis as { __AT_QUERY?: string }).__AT_QUERY ?? location.search);
 const BASE = q.get("base") ?? "";
 // acquireVsCodeApi may be called once per page: one handle, shared by the transport and the panel
 const VS = (globalThis as { acquireVsCodeApi?: () => { postMessage: (m: unknown) => void } }).acquireVsCodeApi?.() ?? null;

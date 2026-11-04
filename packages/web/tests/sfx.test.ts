@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { Sfx } from "../src/audio/sfx.js";
 
 // All beat kinds the director can emit (kept in sync with core's BeatBody).
-const BEAT_KINDS = ["curtain_up", "curtain_down", "walk_to", "read", "build", "raise", "forge", "search", "run_tests", "test_outcome", "spawn_gremlin", "chase", "banish", "summon_helper", "dismiss_helper", "blocked_on_you", "your_turn", "stumble", "celebrate", "idle", "unverified_claim"];
+const BEAT_KINDS = ["curtain_up", "curtain_down", "walk_to", "read", "build", "raise", "forge", "search", "run_tests", "test_outcome", "spawn_gremlin", "chase", "banish", "summon_helper", "dismiss_helper", "blocked_on_you", "your_turn", "stumble", "celebrate", "idle", "away", "unverified_claim"];
 
 describe("sound design", () => {
   it("every beat kind is handled by the sfx switch (silence must be explicit)", () => {

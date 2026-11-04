@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import { watch, type FSWatcher } from "node:fs";
-import { join } from "node:path";
+import { isAbsolute, join } from "node:path";
 import { changesForRepo, currentPr, listSessions, postPrComment, type Theatre } from "agent-theatre";
 import { headline, toMarkdown, type ChangeSet, type FileChange } from "@agent-theatre/core";
 
@@ -124,6 +124,11 @@ function tree(files: FileChange[]): Node[] {
 }
 
 /** The editor's own diff: HEAD on the left (via the built-in git extension), the file now on the right. */
+/** Only a repo-relative path that is on the change map may be opened (the webview and command arguments are untrusted). */
+export function onMap(cs: ChangeSet | null | undefined, path: string): boolean {
+  return !!cs && !!path && !isAbsolute(path) && !path.split(/[\\/]/).includes("..") && cs.files.some((f) => f.path === path);
+}
+
 export async function openChange(root: string, path: string, cs: ChangeSet | null): Promise<void> {
   const f = cs?.files.find((x) => x.path === path);
   const uri = vscode.Uri.file(join(root, path));

@@ -1,13 +1,16 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync, copyFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 /**
  * `agent-theatre init` — register the MCP server with every agent on this machine (or in this repo),
  * non-destructively: read the file, merge our one entry, back up, write. Nothing else in the file
  * is touched. Same shape for every agent; only the path and the key differ.
  */
-const ENTRY = { command: "npx", args: ["-y", "agent-theatre@latest", "serve"] };
+/** Configs pin this exact version (re-running init moves the pin), so an agent never runs a release nobody installed. */
+export const VERSION = (JSON.parse(readFileSync(fileURLToPath(new URL("../package.json", import.meta.url)), "utf8")) as { version: string }).version;
+const ENTRY = { command: "npx", args: ["-y", `agent-theatre@${VERSION}`, "serve"] };
 type Target = { agent: string; file: string; key: string; wrap?: (entry: object) => object };
 
 export function targets(scope: "user" | "repo", dir: string, env = process.env): Target[] {
@@ -38,8 +41,13 @@ export function mergeJson(existing: string | null, key: string): { next: string;
 }
 export function mergeToml(existing: string | null): { next: string; changed: boolean } {
   const cur = existing ?? "";
-  if (/\[mcp_servers\.agent-theatre\]/.test(cur)) return { next: cur, changed: false };
-  const block = `\n[mcp_servers.agent-theatre]\ncommand = "npx"\nargs = ["-y", "agent-theatre@latest", "serve"]\n`;
+  const args = `args = ["-y", "agent-theatre@${VERSION}", "serve"]`;
+  if (/\[mcp_servers\.agent-theatre\]/.test(cur)) {
+    // our block exists: only its args line may change (to move the version pin)
+    const next = cur.replace(/(\[mcp_servers\.agent-theatre\][^[]*?)^args = .*$/m, `$1${args}`);
+    return { next, changed: next !== cur };
+  }
+  const block = `\n[mcp_servers.agent-theatre]\ncommand = "npx"\n${args}\n`;
   return { next: cur.replace(/\s*$/, "\n") + block, changed: true };
 }
 

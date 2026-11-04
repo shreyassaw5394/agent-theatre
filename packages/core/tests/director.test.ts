@@ -151,3 +151,42 @@ describe("unknown test outcome", () => {
     expect(beats.find((b) => b.kind === "test_outcome")).toMatchObject({ outcome: "unknown" });
   });
 });
+
+describe("helpers working outside this folder", () => {
+  const world = generateWorld({ repoId: "r", files: [{ path: "src/a.ts", loc: 50 }, { path: "tests/a.test.ts", loc: 20 }], touched: [] });
+  const run = (events: AgentEvent[]) => { const d = new Director(world); const beats = events.flatMap((e) => d.feed(e)); return { d, beats }; };
+  it("files outside the folder raise nothing and nobody walks; each helper gets one 'elsewhere' badge and stays at the dock", () => {
+    const { d, beats } = run([
+      ev({ kind: "subagent_start", childId: "h1" }, 1000),
+      ev({ kind: "subagent_start", childId: "h2" }, 1100),
+      ev({ kind: "read_file", path: "~/other/x.ts", agentId: "h1" }, 2000),
+      ev({ kind: "read_file", path: "~/other/y.ts", agentId: "h1" }, 2100),
+      ev({ kind: "edit_file", path: "~/other/x.ts", added: 1, removed: 0, hunks: 1, agentId: "h2" }, 2200),
+    ]);
+    const forHelpers = beats.filter((b) => b.actor === "h1" || b.actor === "h2");
+    expect(forHelpers.filter((b) => b.kind === "raise" || b.kind === "walk_to")).toEqual([]);
+    expect(beats.some((b) => b.kind === "raise")).toBe(false);
+    const away = of(beats, "away");
+    expect(away.map((b) => [b.actor, b.label])).toEqual([["h1", "elsewhere: other"], ["h2", "elsewhere: other"]]);
+    const at = (d as unknown as { actorAt: Map<string, string> }).actorAt;
+    const dock = world.places.find((p) => p.kind === "dock")!.id;
+    expect([at.get("h1"), at.get("h2")]).toEqual([dock, dock]);
+  });
+  it("a helper_elsewhere event badges that helper with the folder name; the badge clears when it walks back on stage", () => {
+    const { beats } = run([
+      ev({ kind: "subagent_start", childId: "h1" }, 1000),
+      ev({ kind: "helper_elsewhere", repo: "other-repo", agentId: "h1" }, 2000),
+      ev({ kind: "helper_elsewhere", repo: "other-repo", agentId: "h1" }, 2100),
+      ev({ kind: "read_file", path: "src/a.ts", agentId: "h1" }, 3000),
+      ev({ kind: "helper_elsewhere", repo: "other-repo", agentId: "h1" }, 4000),
+      ev({ kind: "helper_elsewhere", repo: "x", agentId: "unknown" }, 4100),
+    ]);
+    expect(of(beats, "away").map((b) => [b.actor, b.label])).toEqual([["h1", "elsewhere: other-repo"], ["h1", "elsewhere: other-repo"]]);
+    expect(kinds(beats).filter((k) => k === "walk_to")).toHaveLength(1);
+  });
+  it("an outside edit still counts for the claim check", () => {
+    const { beats } = run([ev({ kind: "edit_file", path: "//ext/z.ts", added: 2, removed: 0, hunks: 1 }, 1000), ev({ kind: "turn_end", claimedSuccess: true }, 2000)]);
+    expect(of(beats, "away")[0]).toMatchObject({ actor: "pip", label: "elsewhere" });
+    expect(beats.some((b) => b.kind === "unverified_claim")).toBe(true);
+  });
+});

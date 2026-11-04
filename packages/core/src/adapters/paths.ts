@@ -25,6 +25,18 @@ export function relativizePath(abs: string, ctx: PathContext): string {
   return `//ext/${base}`;
 }
 
+/** A redacted path that points outside the folder: home-relative, parent-relative, absolute or `//ext/`. */
+export function isExternalPath(p: string): boolean {
+  return p.startsWith("//ext/") || p.startsWith("~/") || p.startsWith("../") || p.startsWith("/");
+}
+
+/** The folder name an outside path belongs to (`~/other/x.ts` → "other"), or "" when it doesn't say (`//ext/x.ts`). */
+export function outsideFolder(p: string): string {
+  const rest = p.startsWith("~/") ? p.slice(2) : p.startsWith("../") ? p.replace(/^(\.\.\/)+/, "") : "";
+  const i = rest.indexOf("/");
+  return i > 0 ? rest.slice(0, i) : "";
+}
+
 export function basename(p: string): string {
   const n = norm(p);
   return n.slice(n.lastIndexOf("/") + 1);

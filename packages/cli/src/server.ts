@@ -1,12 +1,15 @@
 import { createServer, type Server } from "node:http";
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, realpathSync } from "node:fs";
+import { randomBytes } from "node:crypto";
+import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, basename, resolve, sep } from "node:path";
 import { spawnSync } from "node:child_process";
 import { Hono } from "hono";
 import { getRequestListener } from "@hono/node-server";
 import { WebSocketServer, type WebSocket } from "ws";
-import { fromLocalProcess, isLocalHost, isLocalOrigin } from "./localOnly.js";
+import { fromLocalProcess, isLocalHost, isOwnOrigin } from "./localOnly.js";
+import { ensurePrivateDirs, writePrivate } from "./registry.js";
+import { HOOK_SCRIPT } from "./hooks/script.js";
 import { Director, changesFromEvents, currentTurn, direct, filesFromEvents, generateWorld, hookPayloadToEvents, parseTranscript, turnSummary, type AgentEvent, type Beat, type ChangeSet, type FileNode, type World } from "@agent-theatre/core";
 import { diffFor, gitView, takeBaseline, type Baseline } from "./git.js";
 import { listSessions } from "./sessions.js";
@@ -45,6 +48,10 @@ export class Theatre {
   private elsewhere: string | null = null;
   private readonly openSessions = new Set<string>();
   private readonly seen = new Set<string>();
+  /** The folder each helper was last seen working in outside this one (so it is announced once, not per tool call). */
+  private readonly helperAway = new Map<string, string>();
+  /** Random per-stage id, written to the registry (0600) and answered on /healthz: the hook checks it before sending. */
+  readonly stageId = randomBytes(16).toString("hex");
   private timer: NodeJS.Timeout | null = null;
   /** The working tree when this stage started watching: lets the change map tell this session's changes from older ones. */
   private readonly baseline: Baseline | null;
@@ -88,12 +95,22 @@ export class Theatre {
       try { payload = await c.req.json(); } catch { return c.body(null, 204); }
       // hooks are global to Claude Code: only this repo's sessions belong on this stage
       const cwd = typeof (payload as { cwd?: unknown })?.cwd === "string" ? (payload as { cwd: string }).cwd : "";
+      const sid = (payload as { session_id?: unknown }).session_id;
+      const agent = (payload as { agent_id?: unknown }).agent_id;
       if (cwd && !isWithin(cwd, this.opts.cwd)) {
+        // a helper of a session on this stage, working in another folder: one event with that folder's name only
+        if (typeof agent === "string" && agent && typeof sid === "string" && this.openSessions.has(sid)) {
+          const repo = basename(cwd).slice(0, 80);
+          if (repo && this.helperAway.get(agent) !== repo) {
+            this.helperAway.set(agent, repo);
+            this.ingest([{ id: `elsewhere:${agent}:${repo}:${Date.now()}`, seq: 0, ts: Date.now(), sessionId: sid, source: "hook", agentId: agent, kind: "helper_elsewhere", repo }]);
+          }
+        }
         // not this stage's repo — but tell the stage where the action is, so an empty stage can say so
         if (this.elsewhere !== cwd) { this.elsewhere = cwd; this.broadcast({ type: "elsewhere", cwd }); }
         return c.body(null, 204);
       }
-      const sid = (payload as { session_id?: unknown }).session_id;
+      if (typeof agent === "string") this.helperAway.delete(agent);
       const hookName = (payload as { hook_event_name?: unknown }).hook_event_name;
       // any session that speaks to this stage is open until its SessionEnd (a stage started mid-session never saw the SessionStart)
       if (typeof sid === "string" && sid) { if (hookName === "SessionEnd") this.openSessions.delete(sid); else this.openSessions.add(sid); }
@@ -148,16 +165,20 @@ export class Theatre {
       if (!d) return c.json({ error: "no diff" }, 404);
       return c.json({ path, ...d }, 200, { "cache-control": "no-store" });
     });
-    a.get("/healthz", (c) => c.json({ ok: true, port: this.port, events: this.live.events.length }));
+    a.get("/healthz", (c) => c.json({ ok: true, port: this.port, id: this.stageId, events: this.live.events.length }));
     if (this.opts.webDir) {
-      const dir = this.opts.webDir;
+      const dir = resolve(this.opts.webDir);
+      const root = dir.endsWith(sep) ? dir : dir + sep;
       a.get("/*", (c) => {
         const p = c.req.path === "/" ? "/index.html" : c.req.path;
         const file = join(dir, p);
-        if (!file.startsWith(dir) || !existsSync(file)) return c.text("not found", 404);
+        if (!file.startsWith(root) || !existsSync(file)) return c.text("not found", 404);
         const ext = p.slice(p.lastIndexOf(".") + 1);
         const type: Record<string, string> = { html: "text/html; charset=utf-8", js: "text/javascript", css: "text/css", json: "application/json", jsonl: "application/x-ndjson", svg: "image/svg+xml", png: "image/png", woff2: "font/woff2", webp: "image/webp" };
-        return c.body(readFileSync(file), 200, { "content-type": type[ext] ?? "application/octet-stream", "cache-control": p.includes("/assets/") ? "public, max-age=31536000, immutable" : "no-cache" });
+        const headers: Record<string, string> = { "content-type": type[ext] ?? "application/octet-stream", "cache-control": p.includes("/assets/") ? "public, max-age=31536000, immutable" : "no-cache", "x-content-type-options": "nosniff" };
+        // the stage page is never framed by another site, and talks only to this stage
+        if (ext === "html") Object.assign(headers, { "x-frame-options": "DENY", "content-security-policy": `frame-ancestors 'none'; default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' ws://127.0.0.1:${this.port} ws://localhost:${this.port}; img-src 'self' data: blob:; media-src 'self' blob:; worker-src 'self' blob:; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'` });
+        return c.body(readFileSync(file), 200, headers);
       });
     }
   }
@@ -194,7 +215,7 @@ export class Theatre {
     this.wss = new WebSocketServer({ noServer: true });
     this.server.on("upgrade", (req, socket, head) => {
       // WebSockets skip CORS: only this stage's own page (or a local non-browser client) may listen
-      if (!isLocalHost(req.headers.host) || !isLocalOrigin(req.headers.origin)) { socket.destroy(); return; }
+      if (!isLocalHost(req.headers.host) || !isOwnOrigin(req.headers.origin, this.port)) { socket.destroy(); return; }
       if (req.url?.startsWith("/live")) this.wss!.handleUpgrade(req, socket, head, (ws: WebSocket) => { this.wss!.emit("connection", ws, req); ws.send(JSON.stringify({ type: "hello", signal: this.signal })); });
       else socket.destroy();
     });
@@ -202,14 +223,16 @@ export class Theatre {
     const addr = this.server.address();
     this.port = typeof addr === "object" && addr ? addr.port : port;
     const home = this.opts.home ?? join(homedir(), ".agent-theatre");
-    mkdirSync(home, { recursive: true });
+    ensurePrivateDirs(home);
     // a stage started by an older build only wrote `port`: keep it reachable by adopting it into the registry first
-    try { const old = parseInt(readFileSync(join(home, "port"), "utf8").trim(), 10); if (old > 0 && old !== this.port && portAlive(old) && !existsSync(join(home, "ports", String(old)))) { mkdirSync(join(home, "ports"), { recursive: true }); writeFileSync(join(home, "ports", String(old)), "(started by an older build)"); } } catch { /* no port file */ }
-    writeFileSync(join(home, "port"), String(this.port));
-    // registry for fan-out: one file per running stage, holding the repo it is for; stale entries (dead ports) are pruned
-    mkdirSync(join(home, "ports"), { recursive: true });
+    try { const old = parseInt(readFileSync(join(home, "port"), "utf8").trim(), 10); if (old > 0 && old !== this.port && portAlive(old) && !existsSync(join(home, "ports", String(old)))) { writePrivate(join(home, "ports", String(old)), "(started by an older build)"); } } catch { /* no port file */ }
+    writePrivate(join(home, "port"), String(this.port));
+    // registry for fan-out: one file per running stage, holding the repo it is for and its id; stale entries (dead ports) are pruned
     for (const f of readdirSync(join(home, "ports"))) { const n = parseInt(f, 10); if (n > 0 && n !== this.port && !portAlive(n)) { try { rmSync(join(home, "ports", f)); } catch { /* fine */ } } }
-    writeFileSync(join(home, "ports", String(this.port)), this.opts.cwd);
+    writePrivate(join(home, "ports", String(this.port)), JSON.stringify({ cwd: this.opts.cwd, id: this.stageId }));
+    // a hook script installed by an older build is brought up to date (only when one is installed)
+    const script = join(home, "hooks", "agent-theatre-hook.mjs");
+    try { if (readFileSync(script, "utf8") !== HOOK_SCRIPT) writeFileSync(script, HOOK_SCRIPT, { mode: 0o755 }); } catch { /* not installed */ }
     const lostAfter = this.opts.lostAfterMs ?? (Number(process.env.AGENT_THEATRE_QUIET_MS) || 90_000);
     const beat = Number(process.env.AGENT_THEATRE_HEARTBEAT_MS) || 5_000;
     this.timer = setInterval(() => {

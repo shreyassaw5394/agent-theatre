@@ -69,7 +69,7 @@ export class Panel {
   private fileStats = new Map<string, { reads: number; edits: number; added: number; removed: number; tests?: string }>();
   private describeHit(hit: NonNullable<ReturnType<import("../scene/player.js").ScenePlayer["hitTest"]>>): string {
     if (hit.kind === "lead") return `<b>${esc(hit.name)}</b> — the agent, your lead.<br><span>Mood: ${esc(hit.mood)}. The light on its head shows it.</span>`;
-    if (hit.kind === "helper") return `<b>${esc(hit.name)}</b> — a helper (subagent).<br><span>Arrived at the dock; working on its own task.</span>`;
+    if (hit.kind === "helper") return `<b>${esc(hit.name)}</b> — a helper (subagent).<br><span>${hit.away ? `Working in ${esc(hit.away.replace(/^elsewhere(: )?/, "") || "another folder")}, outside this stage.` : "Arrived at the dock; working on its own task."}</span>`;
     const p = hit.place, st = this.fileStats.get(p.path);
     const activity = st ? [st.reads ? `read ${st.reads}×` : "", st.edits ? `edited ${st.edits}× (+${st.added} −${st.removed})` : ""].filter(Boolean).join(" · ") : "";
     switch (p.kind) {
@@ -306,10 +306,10 @@ export class Panel {
     // tags
     const r = this.stageEl.getBoundingClientRect();
     const narrow = r.width < 600;
-    const shown = s.labels.filter((l) => l.active || !narrow).sort((a, b) => a.screen.y - b.screen.y || a.screen.x - b.screen.x);
+    const shown = s.labels.filter((l) => l.active || l.away || !narrow).sort((a, b) => a.screen.y - b.screen.y || a.screen.x - b.screen.x);
     for (let i = 0; i < shown.length; i++) for (let j = 0; j < i; j++) { const a = shown[j]!, b = shown[i]!; if (Math.abs(a.screen.x - b.screen.x) < 76 && Math.abs(a.screen.y - b.screen.y) < 20) b.screen = { x: b.screen.x, y: a.screen.y - 20 }; }
     while (this.tagPool.length < shown.length) { const t = el("div", "tag"); this.overlay.append(t); this.tagPool.push(t); }
-    this.tagPool.forEach((t, i) => { const l = shown[i]; if (!l) { t.hidden = true; return; } t.hidden = false; t.textContent = l.text; const pid = world.places.find((p) => p.label === l.text)?.id ?? ""; const lamp = lampOf(pid); t.className = `tag${l.active ? " active" : ""}${lamp !== "idle" ? ` lamp-${lamp}` : ""}`; t.style.left = `${l.screen.x}px`; t.style.top = `${l.screen.y}px`; });
+    this.tagPool.forEach((t, i) => { const l = shown[i]; if (!l) { t.hidden = true; return; } t.hidden = false; t.textContent = l.text; const pid = l.away ? "" : world.places.find((p) => p.label === l.text)?.id ?? ""; const lamp = lampOf(pid); t.className = `tag${l.active ? " active" : ""}${l.away ? " away" : ""}${lamp !== "idle" ? ` lamp-${lamp}` : ""}`; t.style.left = `${l.screen.x}px`; t.style.top = `${l.screen.y}px`; });
     // bubble
     if (s.bubble) { this.bubbleEl.hidden = false; this.bubbleEl.textContent = s.bubble.text; this.bubbleEl.style.color = hex(s.bubble.color); this.bubbleEl.style.left = `${s.bubble.screen.x}px`; this.bubbleEl.style.top = `${s.bubble.screen.y}px`; this.bubbleEl.classList.toggle("pulse", cur?.kind === "blocked_on_you"); }
     else this.bubbleEl.hidden = true;
@@ -334,6 +334,7 @@ function describe(e: AgentEvent, world: World): [string, string] {
     case "search": return ["Search", e.scope];
     case "subagent_start": return ["Helper", e.label ?? e.childId];
     case "subagent_stop": return ["Helper done", e.childId];
+    case "helper_elsewhere": return ["Helper elsewhere", e.repo];
     case "waiting_for_user": return [e.reason === "permission" ? "Needs permission" : e.reason === "question" ? "Has a question" : "Waiting", ""];
     case "error": return ["Error", e.where];
     case "turn_end": return [e.claimedSuccess ? "Says it's done" : "Turn ends", ""];

@@ -13,15 +13,10 @@ export function isLocalHost(hostHeader: string | undefined): boolean {
   return !!hostHeader && LOOPBACK.has(bareHost(hostHeader));
 }
 
-/** No Origin (a local non-browser client) or an http origin on a loopback host. */
-export function isLocalOrigin(origin: string | undefined): boolean {
+/** No Origin (a local non-browser client) or exactly this stage's own origin: a page on another local port is refused. */
+export function isOwnOrigin(origin: string | undefined, port: number): boolean {
   if (!origin) return true;
-  try {
-    const u = new URL(origin);
-    return u.protocol === "http:" && LOOPBACK.has(bareHost(u.host));
-  } catch {
-    return false;
-  }
+  return [`http://127.0.0.1:${port}`, `http://localhost:${port}`, `http://[::1]:${port}`].includes(origin.trim().toLowerCase());
 }
 
 /** True for requests made by a local process rather than a web page. */

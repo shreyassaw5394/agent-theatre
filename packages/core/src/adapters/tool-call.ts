@@ -76,8 +76,10 @@ export function toolCallToOutcome(call: ToolCall, ctx: PathContext): ToolCallOut
     case "Read": {
       const path = str(input.file_path) ?? str(input.path);
       if (!path) return { bodies: [], warning: { code: "missing_field", detail: "Read without file_path" } };
-      const content = str(obj(obj(resp).file).content);
-      return { bodies: [{ kind: "read_file", path: rel(path), ...(content !== undefined ? { bytes: content.length } : {}) }] };
+      const file = obj(obj(resp).file);
+      // the hook sends only the size (`bytes`); a transcript has the content itself
+      const bytes = typeof file.content === "string" ? file.content.length : typeof file.bytes === "number" ? file.bytes : undefined;
+      return { bodies: [{ kind: "read_file", path: rel(path), ...(bytes !== undefined ? { bytes } : {}) }] };
     }
     case "Edit":
     case "MultiEdit":

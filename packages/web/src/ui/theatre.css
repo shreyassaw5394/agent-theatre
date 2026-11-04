@@ -24,6 +24,7 @@ h1{font-family:var(--display);font-weight:700;font-size:clamp(28px,4vw,40px);lin
 .overlay{position:absolute;inset:0;pointer-events:none}
 .tag{position:absolute;transform:translate(-50%,-100%);font:600 11px var(--mono);padding:3px 7px;border-radius:9px;background:rgba(11,34,52,.74);color:#e9f1f7;white-space:nowrap;transition:background .2s,color .2s}
 .tag.active{background:var(--sun);color:#2a1a05}
+.tag.away{background:rgba(182,156,255,.9);color:#1c1238;font-weight:500}
 .tag.lamp-fail{background:var(--coral);color:#2a0a08}.tag.lamp-pass{background:var(--mint);color:#06301f}.tag.lamp-scan{background:#fff;color:#123}
 .bubble{position:absolute;transform:translate(-50%,-50%);width:26px;height:26px;border-radius:50%;background:#fff;display:grid;place-items:center;font:700 17px var(--display);box-shadow:0 2px 0 rgba(0,0,0,.08)}
 .bubble::after{content:"";position:absolute;left:4px;bottom:-5px;width:7px;height:7px;border-radius:50%;background:#fff}
@@ -67,7 +68,7 @@ aside{display:flex;flex-direction:column;gap:16px;min-width:0}
 .log button.done{opacity:.8}.log button.now{opacity:1;background:rgba(255,181,71,.13)}
 .log time{font:11.5px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums;padding-top:2px}
 .dot{width:9px;height:9px;border-radius:50%;margin-top:6px}
-.k-session_start,.k-session_end,.k-turn_end{background:var(--muted)}.k-read_file,.k-search{background:var(--sky)}.k-edit_file,.k-write_file{background:var(--sun)}.k-run_command{background:#e4ebf1}.k-test_result.fail,.k-error{background:var(--coral)}.k-test_result{background:var(--mint)}.k-subagent_start,.k-subagent_stop{background:var(--lilac)}.k-waiting_for_user{background:#fff}
+.k-session_start,.k-session_end,.k-turn_end{background:var(--muted)}.k-read_file,.k-search{background:var(--sky)}.k-edit_file,.k-write_file{background:var(--sun)}.k-run_command{background:#e4ebf1}.k-test_result.fail,.k-error{background:var(--coral)}.k-test_result{background:var(--mint)}.k-subagent_start,.k-subagent_stop,.k-helper_elsewhere{background:var(--lilac)}.k-waiting_for_user{background:#fff}
 .ev{display:flex;flex-direction:column;min-width:0}
 .ev b{font-size:13.5px;font-weight:700}.ev code{font:11.5px var(--mono);color:var(--muted);overflow-wrap:anywhere}
 .picker{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:safe center;gap:14px;background:rgba(9,28,42,.86);backdrop-filter:blur(8px);padding:20px;z-index:3;overflow:auto;overscroll-behavior:contain}

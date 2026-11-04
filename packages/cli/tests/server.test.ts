@@ -122,3 +122,60 @@ describe("quiet heartbeat", () => {
     await t.close();
   });
 });
+
+import { statSync, writeFileSync } from "node:fs";
+import { WebSocket as WsClient } from "ws";
+describe("stage registry, socket origin, framing", () => {
+  const h2 = mkdtempSync(join(tmpdir(), "at-home2-"));
+  const web = mkdtempSync(join(tmpdir(), "at-web-"));
+  writeFileSync(join(web, "index.html"), "<!doctype html><title>t</title>");
+  let t: Theatre; let url = "";
+  beforeAll(async () => { t = new Theatre({ cwd: "/work/acme", repoId: "acme", files, home: h2, webDir: web, git: false }); await t.listen(0); url = `http://127.0.0.1:${t.port}`; });
+  afterAll(async () => { await t.close(); });
+  it("registers {cwd, id} in an owner-only file and answers the same id on /healthz", async () => {
+    const f = join(h2, "ports", String(t.port));
+    expect(JSON.parse(readFileSync(f, "utf8"))).toEqual({ cwd: "/work/acme", id: t.stageId });
+    expect(t.stageId).toMatch(/^[0-9a-f]{32}$/);
+    if (process.platform !== "win32") { expect(statSync(f).mode & 0o777).toBe(0o600); expect(statSync(join(h2, "ports")).mode & 0o777).toBe(0o700); }
+    expect(((await (await fetch(`${url}/healthz`)).json()) as { id: string }).id).toBe(t.stageId);
+  });
+  const open = (origin?: string) => new Promise<boolean>((res) => {
+    const ws = new WsClient(`ws://127.0.0.1:${t.port}/live`, origin ? { origin } : {});
+    ws.on("open", () => { ws.close(); res(true); }); ws.on("error", () => res(false));
+  });
+  it("the live socket takes only this stage's own origin (or none); a page on another local port is refused", async () => {
+    expect(await open()).toBe(true);
+    expect(await open(`http://127.0.0.1:${t.port}`)).toBe(true);
+    expect(await open(`http://localhost:${t.port}`)).toBe(true);
+    expect(await open("http://localhost:5173")).toBe(false);
+    expect(await open("https://evil.example")).toBe(false);
+  });
+  it("stage pages cannot be framed", async () => {
+    const r = await fetch(`${url}/`);
+    expect(r.headers.get("x-frame-options")).toBe("DENY");
+    expect(r.headers.get("content-security-policy")).toContain("frame-ancestors 'none'");
+    expect(r.headers.get("content-security-policy")).toContain(`ws://127.0.0.1:${t.port}`);
+  });
+  it("a helper of this stage's session working in another folder shows up by that folder's name only", async () => {
+    const got: string[] = [];
+    const ws = new WsClient(`ws://127.0.0.1:${t.port}/live`);
+    await new Promise<void>((r) => ws.on("open", () => r()));
+    ws.on("message", (m) => got.push(String(m)));
+    const post = (p: unknown) => fetch(`${url}/hook`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(p) });
+    await post({ session_id: "s9", cwd: "/work/acme", hook_event_name: "SessionStart" });
+    await post({ session_id: "s9", cwd: "/work/acme", hook_event_name: "SubagentStart", agent_id: "h1", agent_type: "Explore" });
+    const outside = { session_id: "s9", cwd: "/Users/dev/other-repo", hook_event_name: "PostToolUse", agent_id: "h1", tool_name: "Read", tool_input: { file_path: "/Users/dev/other-repo/secret.ts" } };
+    await post({ ...outside, tool_use_id: "o1" });
+    await post({ ...outside, tool_use_id: "o2" });
+    // a session this stage never saw: nothing
+    await post({ ...outside, session_id: "other", agent_id: "h9", tool_use_id: "o3" });
+    await new Promise((r) => setTimeout(r, 80));
+    ws.close();
+    const events = got.map((m) => JSON.parse(m)).filter((m) => m.type === "beats").flatMap((m) => m.events);
+    const away = events.filter((e: { kind: string }) => e.kind === "helper_elsewhere");
+    expect(away).toEqual([expect.objectContaining({ kind: "helper_elsewhere", repo: "other-repo", agentId: "h1" })]);
+    expect(JSON.stringify(got.map((m) => JSON.parse(m)).filter((m) => m.type === "beats"))).not.toContain("/Users/");
+    const beats = got.map((m) => JSON.parse(m)).filter((m) => m.type === "beats").flatMap((m) => m.beats);
+    expect(beats.filter((b: { kind: string }) => b.kind === "away")).toEqual([expect.objectContaining({ actor: "h1", label: "elsewhere: other-repo" })]);
+  });
+});

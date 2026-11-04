@@ -25,6 +25,7 @@ export function captionFor(b: Beat, world: World, helperLabel?: string): string 
     case "stumble": return b.retrying ? "Something went wrong. Pip tries again." : "Something went wrong.";
     case "celebrate": return "All green. Pip celebrates.";
     case "idle": return "";
+    case "away": return `${who} is working outside this folder${b.label.startsWith("elsewhere: ") ? `, in ${b.label.slice(11)}` : ""}.`;
     case "unverified_claim": return "Pip says it's done — but no test has passed since the last change. Something's hiding.";
   }
 }
@@ -62,7 +63,7 @@ export function deriveActs(beats: Beat[]): Act[] {
       case "blocked_on_you": phase = "Waiting"; break;
       case "unverified_claim": phase = "Hmm"; break;
       case "stumble": phase = "Trouble"; break;
-      case "your_turn": case "walk_to": case "idle": phase = null; break;
+      case "your_turn": case "walk_to": case "idle": case "away": phase = null; break;
     }
     if (phase) phased.push({ phase, at: b.atMs, end: b.atMs + b.durationMs, kind: b.kind });
   }

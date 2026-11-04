@@ -8,7 +8,7 @@ Watch your coding agent work — as a film, not a log. The same stage as `npx ag
 - **Agent changes** (Explorer) — every file the agent read, edited, created or deleted, with line counts; a dot on those files in the Explorer; click for the editor's own diff against the last commit. Toolbar: open the map, post to the pull request (asks first), copy as Markdown. Works from the newest session even when the stage is closed.
 - **Install / Uninstall Claude Code hooks** — non-destructive edit of `~/.claude/settings.json` with a backup; reversed byte-for-byte.
 
-Everything runs on your machine and talks only to `127.0.0.1`. Events carry paths and counts, never file contents or prompts.
+Everything runs on your machine and talks only to `127.0.0.1`, except when you post a change map to a pull request yourself. Events carry paths and counts, never file contents or prompts.
 
 Site: https://agenttheatre.dev · Source: https://github.com/shreyassaw5394/agent-theatre
 
@@ -18,4 +18,4 @@ Integration test in a real VS Code (opens a window): `pnpm test:vscode` — run 
 
 ---
 
-Agent Theatre is a free, non-commercial passion project. MIT licensed; bundled third-party code is listed in `THIRD_PARTY_LICENSES.txt`. It runs locally and sends no telemetry ([privacy](https://agenttheatre.dev/privacy)).
+Agent Theatre is a free, non-commercial passion project. MIT licensed; bundled third-party code is listed in `THIRD_PARTY_LICENSES.txt`. It runs locally and sends no telemetry ([privacy](https://agenttheatre.dev/privacy)). Independent project, not affiliated with or endorsed by Anthropic, Microsoft, Anysphere (Cursor), Codeium (Windsurf), OpenAI or Google. Claude and Claude Code are trademarks of Anthropic; other names belong to their owners.

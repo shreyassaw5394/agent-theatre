@@ -13,8 +13,11 @@ import type { GitView } from "@agent-theatre/core";
 const MAX_FILES = 3000;
 const MAX_HASH_BYTES = 5_000_000;
 
+/** Repo-local config can name programs git would run on a read (fsmonitor); these reads never run them. */
+const SAFE = ["-c", "core.fsmonitor=false", "-c", "core.untrackedCache=false"];
+
 function git(cwd: string, args: string[], timeout = 4000): string | null {
-  const r = spawnSync("git", ["-C", cwd, "-c", "core.quotepath=off", ...args], { encoding: "utf8", timeout, maxBuffer: 32 * 1024 * 1024, windowsHide: true });
+  const r = spawnSync("git", ["-C", cwd, ...SAFE, "-c", "core.quotepath=off", ...args], { encoding: "utf8", timeout, maxBuffer: 32 * 1024 * 1024, windowsHide: true });
   return r.status === 0 ? r.stdout : null;
 }
 
@@ -137,7 +140,7 @@ export function diffFor(cwd: string, path: string, maxBytes = 400_000): { diff: 
   let out = git(cwd, ["diff", "--no-color", "--no-ext-diff", "HEAD", "--", path], 4000) ?? "";
   if (!out) {
     // untracked or new: diff against nothing. --no-index exits 1 when files differ, so read stdout regardless
-    const r = spawnSync("git", ["-C", cwd, "diff", "--no-color", "--no-index", "--", "/dev/null", path], { encoding: "utf8", timeout: 4000, maxBuffer: 32 * 1024 * 1024, windowsHide: true });
+    const r = spawnSync("git", ["-C", cwd, ...SAFE, "diff", "--no-color", "--no-index", "--", "/dev/null", path], { encoding: "utf8", timeout: 4000, maxBuffer: 32 * 1024 * 1024, windowsHide: true });
     out = r.stdout ?? "";
   }
   const truncated = out.length > maxBytes;

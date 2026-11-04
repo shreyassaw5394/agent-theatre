@@ -31,7 +31,7 @@ Packages: `core` (events, world, director; no DOM, no Node), `web` (Pixi rendere
 
 ## Releases (maintainers)
 
-Bump the version in `packages/cli`, `packages/vscode`, `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json` and `server.json` (a test checks they agree), merge, then `git tag vX.Y.Z && git push origin vX.Y.Z`. The tag publishes npm, VS Code Marketplace, Open VSX, the Homebrew formula, the GitHub release and the MCP registry.
+Bump the version in `packages/cli`, `packages/vscode`, `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json` and `server.json` (a test checks they agree), run `node scripts/pin-version.mjs` so every `agent-theatre@<version>` install snippet and one-click MCP link names the new release (a test checks that too), merge, then `git tag vX.Y.Z && git push origin vX.Y.Z`. The tag publishes npm, VS Code Marketplace, Open VSX, the Homebrew formula, the GitHub release and the MCP registry.
 
 ## Community
 

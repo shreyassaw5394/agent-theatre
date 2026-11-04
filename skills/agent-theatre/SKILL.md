@@ -11,17 +11,17 @@ reads, builds on what it edits, runs tests at the beacons and chases gremlins wh
 agent claims success with no passing test since its last edit, a gremlin hides behind it.
 
 Everything is local. Events carry repo-relative paths and counts — never file contents, prompts or
-command bodies. The stage listens only on 127.0.0.1.
+command bodies. The stage listens only on 127.0.0.1; nothing leaves the machine unless the person posts a change map to GitHub (`changes --pr`).
 
 ## Commands
 
 | Need | Do |
 |---|---|
-| Open the live stage for this repo | `npx -y agent-theatre@latest --no-open` (background) → open the printed URL. `/theatre` does this. |
-| Replay a past session of this repo | `npx -y agent-theatre@latest replay --latest`, or without `--latest` to pick |
-| Which files did the agent touch | `npx -y agent-theatre@latest changes` (tree with line counts; `--md` Markdown, `--json`, `--reads`). In the stage: the **Changes** button, or open `<stage url>?live=1&view=changes` |
-| Put the change map on the pull request | `npx -y agent-theatre@latest changes --pr` — shows the comment and asks before posting with the person's `gh` login. Only run with `--yes` if the person explicitly asked to post |
-| Check the hooks | `npx -y agent-theatre@latest hooks status` (this plugin installs them; the CLI's `hooks install` is only for people without the plugin) |
+| Open the live stage for this repo | `npx -y agent-theatre@1.9.0 --no-open` (background) → open the printed URL. `/theatre` does this. |
+| Replay a past session of this repo | `npx -y agent-theatre@1.9.0 replay --latest`, or without `--latest` to pick |
+| Which files did the agent touch | `npx -y agent-theatre@1.9.0 changes` (tree with line counts; `--md` Markdown, `--json`, `--reads`). In the stage: the **Changes** button, or open `<stage url>?live=1&view=changes` |
+| Put the change map on the pull request | `npx -y agent-theatre@1.9.0 changes --pr` — shows the comment and asks before posting with the person's `gh` login. Only run with `--yes` if the person explicitly asked to post |
+| Check the hooks | `npx -y agent-theatre@1.9.0 hooks status` (this plugin installs them; the CLI's `hooks install` is only for people without the plugin) |
 | VS Code | the extension's *Agent Theatre: Open the stage (live)* command; `.vsix` on every GitHub release, Marketplace listing pending |
 
 ## When the stage looks wrong

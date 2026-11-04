@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-const pkg = JSON.parse(readFileSync(fileURLToPath(new URL("../package.json", import.meta.url)), "utf8")) as { contributes: { commands: Array<{ command: string }> }; main: string; engines: { vscode: string } };
+const pkg = JSON.parse(readFileSync(fileURLToPath(new URL("../package.json", import.meta.url)), "utf8")) as { contributes: { commands: Array<{ command: string }> }; main: string; engines: { vscode: string }; capabilities?: { untrustedWorkspaces?: { supported: unknown } } };
 const src = readFileSync(fileURLToPath(new URL("../src/extension.ts", import.meta.url)), "utf8");
 
 describe("extension manifest", () => {
@@ -14,8 +14,20 @@ describe("extension manifest", () => {
     expect(pkg.engines.vscode).toMatch(/^\^1\.\d+\.0$/);
   });
   it("the webview talks only to the loopback server and frames nothing", () => {
-    expect(src).toContain("connect-src http://127.0.0.1:* ws://127.0.0.1:* http://localhost:* ws://localhost:*");
+    expect(src).toContain("connect-src http://127.0.0.1:${port} ws://127.0.0.1:${port};");
+    expect(src).not.toMatch(/connect-src[^;`]*:\*/);
     expect(src).not.toContain("<iframe");
     expect(src).not.toMatch(/https?:\/\/(?!127\.0\.0\.1|localhost)[a-z]/);
+  });
+  it("the webview runs no inline script, loads only the extension's own files, and opens only files on the change map", () => {
+    expect(src).not.toContain("'unsafe-inline'; connect");
+    expect(src).toMatch(/script-src 'nonce-\$\{nonce\}' \$\{webview\.cspSource\}/);
+    expect(src).not.toContain("<script>");
+    expect(src).toContain("localResourceRoots");
+    expect(src).toMatch(/onMap\(cs, m\.path\)/);
+    expect(src).toMatch(/onMap\(cs, path\)/);
+  });
+  it("declares that it does not run in untrusted workspaces", () => {
+    expect(pkg.capabilities?.untrustedWorkspaces?.supported).toBe(false);
   });
 });

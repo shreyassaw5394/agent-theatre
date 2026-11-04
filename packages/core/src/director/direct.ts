@@ -1,5 +1,5 @@
 import type { AgentEvent } from "../events/types.js";
-import { isTestPath } from "../adapters/paths.js";
+import { isExternalPath, isTestPath, outsideFolder } from "../adapters/paths.js";
 import type { Place, PlaceId, World } from "../world/types.js";
 import { kindOf } from "../world/relevance.js";
 import { MoodTracker } from "./mood.js";
@@ -28,6 +28,8 @@ export class Director {
   private seq = 0;
   private readonly actorAt = new Map<ActorId, PlaceId>();
   private readonly helpers = new Map<string, { label?: string }>();
+  /** What each actor's "elsewhere" badge says right now (cleared when it walks to a place on this stage). */
+  private readonly awayAs = new Map<ActorId, string>();
   private readonly gremlins = new Map<string, PlaceId>(); // gremlinId -> place
   private lastEdited: Place | null = null;
   private pendingBeacon: Place | null = null;
@@ -61,6 +63,7 @@ export class Director {
         this.emit(e, actor, { kind: "curtain_up", repoId: e.repoId }, 1200);
         break;
       case "read_file": {
+        if (this.goneElsewhere(e, actor, e.path)) break;
         const p = this.placeFor(e.path, e, actor);
         this.walk(e, actor, p);
         this.emit(e, actor, { kind: "read", target: p.id }, clamp(700 + (e.bytes ?? 400) / 4, 900, 1800), this.mood.onRead());
@@ -68,6 +71,7 @@ export class Director {
       }
       case "edit_file":
       case "write_file": {
+        if (this.goneElsewhere(e, actor, e.path)) { this.editedSinceTurn = true; this.verifiedSinceEdit = false; break; }
         const p = this.placeFor(e.path, e, actor);
         this.walk(e, actor, p);
         const lines = e.kind === "edit_file" ? e.added + e.removed : e.added;
@@ -83,6 +87,7 @@ export class Director {
       }
       case "delete_file": {
         // a file taken away: the agent goes there and works briefly; the change map shows it as deleted
+        if (this.goneElsewhere(e, actor, e.path)) { this.editedSinceTurn = true; this.verifiedSinceEdit = false; break; }
         const p = this.placeFor(e.path, e, actor);
         this.walk(e, actor, p);
         this.emit(e, actor, { kind: "build", target: p.id, intensity: 0.2 }, 700, this.mood.onBuild());
@@ -141,7 +146,12 @@ export class Director {
           this.emit(e, e.childId, { kind: "dismiss_helper", helperId: e.childId, ok: e.ok }, 1000, this.mood.mood);
           this.helpers.delete(e.childId);
           this.actorAt.delete(e.childId);
+          this.awayAs.delete(e.childId);
         }
+        break;
+      case "helper_elsewhere":
+        // only a known helper gets the badge; the lead never wears another thread's whereabouts
+        if (actor !== "pip") this.away(e, actor, `elsewhere: ${e.repo}`);
         break;
       case "waiting_for_user":
         if (e.reason === "idle") this.emit(e, actor, { kind: "your_turn" }, 1000, this.mood.mood);
@@ -192,12 +202,26 @@ export class Director {
   }
 
   private walk(e: AgentEvent, actor: ActorId, to: Place): void {
+    this.awayAs.delete(actor); // back on this stage
     const fromId = this.actorAt.get(actor) ?? this.forge.id;
     if (fromId === to.id) return;
     const from = this.places.get(fromId) ?? this.forge;
     const cells = Math.hypot(to.gx - from.gx, to.gy - from.gy);
     this.emit(e, actor, { kind: "walk_to", target: to.id }, clamp(Math.round(cells * this.msPerCell), 700, 3500));
     this.actorAt.set(actor, to.id);
+  }
+
+  /** A file outside this folder: no building is raised and nobody walks; the actor gets an "elsewhere" badge instead. */
+  private goneElsewhere(e: AgentEvent, actor: ActorId, path: string): boolean {
+    if (!isExternalPath(path)) return false;
+    const folder = outsideFolder(path);
+    this.away(e, actor, folder ? `elsewhere: ${folder}` : "elsewhere");
+    return true;
+  }
+  private away(e: AgentEvent, actor: ActorId, label: string): void {
+    if (this.awayAs.get(actor) === label) return;
+    this.awayAs.set(actor, label);
+    this.emit(e, actor, { kind: "away", label }, 900);
   }
 
   private raised = 0;
