@@ -38,13 +38,13 @@
     "dev": "tsx src/cli.ts"
   },
   "dependencies": {
-    "@hono/node-server": "^2.1.5",
+    "@hono/node-server": "^2.1.6",
     "@modelcontextprotocol/sdk": "1.32.2",
-    "commander": "^15.0.0",
-    "hono": "^4.6.0",
+    "commander": "^15.1.0",
+    "hono": "^4.13.17",
     "open": "^10.1.0",
     "picocolors": "^1.1.0",
-    "ws": "^8.18.0",
+    "ws": "^8.22.2",
     "zod": "^4.6.7"
   },
   "devDependencies": {
